@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --un-blue: #1560BD;
+  --un-blue-dark: #0F4C96;
+  --un-yellow: #FFD23F;
+  --dark-text: #0B1B33;
+}
+
+body {
+  background-color: var(--un-blue);
+  color: #FFFFFF;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Enforce rule 3: Large type everywhere, nothing smaller than 16px, no shadows, no gradients, no emojis */
+* {
+  box-shadow: none !important;
+}
+
+/* Smooth motion & micro-interactions */
+.page-enter {
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.interactive-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease;
+}
+.interactive-card:hover {
+  transform: translateY(-2px);
+}
+.interactive-card:active {
+  transform: scale(0.99);
+}
+
+.tactile-btn {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease;
+}
+.tactile-btn:hover {
+  transform: translateY(-2px);
+}
+.tactile-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* Smooth SVG & icon motion */
+svg {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0F4C96;
+}
+::-webkit-scrollbar-thumb {
+  background: #2575dc;
+  border-radius: 4px;
+}
