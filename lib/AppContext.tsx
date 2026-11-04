@@ -704,10 +704,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const markConferencePublished = () => {
-    setEvent((prev) => ({
-      ...prev,
-      status: "published",
-    }));
+    setEvent((prev) => {
+      const updated = {
+        ...prev,
+        status: "published" as const,
+      };
+      if (isSupabaseConfigured && supabase && updated.id) {
+        supabase
+          .from("events")
+          .update({ status: "published" })
+          .eq("id", updated.id)
+          .then();
+      }
+      return updated;
+    });
   };
 
   const clearDatabase = () => {
