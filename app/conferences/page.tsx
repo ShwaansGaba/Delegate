@@ -129,7 +129,7 @@ export default function AvailableConferencesPage() {
   }, [event.name, event.id, committees, portfolios]);
 
   return (
-    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-8 sm:px-8 sm:py-12 text-white">
+    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-8 sm:px-8 sm:py-12 text-white page-transition">
       <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col">
         {/* Navigation / Header */}
         <div className="flex items-center justify-between mb-8 pb-4 border-b border-blue-400/30">
@@ -196,7 +196,7 @@ export default function AvailableConferencesPage() {
             </div>
           ) : (
             /* Render ONLY actual database conferences */
-            conferences.map((conf) => {
+            conferences.map((conf, index) => {
               const commsCount = conf.committees?.length || committees.length || 0;
               let seatsAvailable = 0;
               if (conf.committees) {
@@ -208,10 +208,12 @@ export default function AvailableConferencesPage() {
                 seatsAvailable = portfolios.filter((p) => p.status === "open").length || 0;
               }
 
+              const staggerClass = `stagger-${Math.min(index + 1, 6)}`;
+
               return (
                 <div
                   key={conf.id}
-                  className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 border border-blue-100 interactive-card transition-all duration-300"
+                  className={`bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 border border-blue-100 interactive-card reveal-item ${staggerClass}`}
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-100">
                     <div>

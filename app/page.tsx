@@ -364,7 +364,7 @@ export default function SetupLandingPage() {
 
           {/* OVERVIEW / STEPPER MENU (Matching Page 13 mobile & Page 26 desktop) */}
           {currentStep === "overview" && (
-            <div className="space-y-6 pt-4">
+            <div key="overview" className="space-y-6 pt-4 page-transition">
               <div>
                 <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                   Set up your <br />
@@ -571,7 +571,7 @@ export default function SetupLandingPage() {
 
           {/* STEP 1: BASICS */}
           {currentStep === "basics" && (
-            <div className="space-y-6 pt-4">
+            <div key="basics" className="space-y-6 pt-4 page-transition">
               <div>
                 <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                   Conference <br />
@@ -686,7 +686,7 @@ export default function SetupLandingPage() {
 
           {/* STEP 2: COMMITTEES (Pages 14 & 26) */}
           {currentStep === "committees" && (
-            <div className="space-y-6 pt-4">
+            <div key="committees" className="space-y-6 pt-4 page-transition">
               <div>
                 <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                   Committees
@@ -812,7 +812,7 @@ export default function SetupLandingPage() {
 
           {/* STEP 3: COUNTRIES */}
           {currentStep === "countries" && (
-            <div className="space-y-6 pt-4">
+            <div key="countries" className="space-y-6 pt-4 page-transition">
               <div>
                 <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                   Countries & Portfolios
@@ -916,7 +916,7 @@ export default function SetupLandingPage() {
 
           {/* STEP 4: RULES (Pages 15 & 27) */}
           {currentStep === "rules" && (
-            <div className="space-y-6 pt-4">
+            <div key="rules" className="space-y-6 pt-4 page-transition">
               <div>
                 <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                   How should <br />
@@ -996,7 +996,7 @@ export default function SetupLandingPage() {
 
           {/* STEP 5: PUBLISH & SHARABLE LINK (Pages 16 & 28) */}
           {currentStep === "publish" && (
-            <div className="space-y-6 pt-4">
+            <div key="publish" className="space-y-6 pt-4 page-transition">
               <div>
                 <h1 className="text-5xl sm:text-6xl font-heading font-extrabold text-white leading-tight">
                   Registrations <br />

@@ -63,8 +63,8 @@ export default function StatusPage() {
   // State 1: Input form (Page 11)
   if (!currentReg) {
     return (
-      <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 overflow-x-hidden">
-        <div className="max-w-[350px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between animate-slideUp">
+      <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 overflow-x-hidden page-transition">
+        <div className="max-w-[350px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
           <div>
             <ProgressBar currentStep={1} totalSteps={1} onBack={handleBack} />
 
@@ -85,7 +85,7 @@ export default function StatusPage() {
                   placeholder="MUN 2048"
                   autoFocus
                   onKeyDown={(e) => e.key === "Enter" && handleLookup(inputNum)}
-                  className="w-full bg-white text-[#0B1B33] rounded-2xl p-5 text-3xl font-heading font-extrabold outline-none uppercase placeholder:text-neutral-400"
+                  className="w-full bg-white text-[#0B1B33] rounded-2xl p-5 text-3xl font-heading font-extrabold outline-none uppercase placeholder:text-neutral-400 input-smooth focus:ring-4 focus:ring-blue-300"
                 />
               </div>
 
@@ -148,8 +148,8 @@ export default function StatusPage() {
     const port = portfolios.find((p) => p.id === currentReg.allotment?.portfolioId);
 
     return (
-      <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 overflow-x-hidden">
-        <div className="max-w-[350px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between animate-slideUp">
+      <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 overflow-x-hidden page-transition">
+        <div className="max-w-[350px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
           <div>
             <div className="pb-4">
               <button
@@ -207,7 +207,7 @@ export default function StatusPage() {
 
   // State 3: Payment Pending (Page 12)
   return (
-    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 overflow-x-hidden">
+    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 overflow-x-hidden page-transition">
       <div className="max-w-[350px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
         <div className="space-y-6">
           <ProgressBar currentStep={1} totalSteps={2} onBack={handleBack} />

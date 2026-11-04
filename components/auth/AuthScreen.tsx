@@ -73,18 +73,24 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
         </div>
 
         {/* White Card */}
-        <div className="bg-white rounded-3xl p-8 border border-blue-200">
-          <div className="flex border-b border-gray-200 mb-6 pb-2">
+        <div className="bg-white rounded-3xl p-8 border border-blue-200 interactive-card">
+          {/* Animated Sliding Pill Segmented Switch */}
+          <div className="tab-slider-container mb-6">
+            <div
+              className="tab-slider-indicator"
+              style={{
+                left: mode === "login" ? "0.35rem" : "calc(50% + 0.15rem)",
+                width: "calc(50% - 0.5rem)",
+              }}
+            />
             <button
               type="button"
               onClick={() => {
                 setMode("login");
                 setErrorMsg("");
               }}
-              className={`flex-1 text-center py-2 text-lg font-heading font-bold transition-colors ${
-                mode === "login"
-                  ? "text-[#1560BD] border-b-4 border-[#1560BD] -mb-2.5"
-                  : "text-gray-400 hover:text-gray-700"
+              className={`relative z-10 flex-1 text-center py-2.5 text-lg font-heading font-bold transition-colors duration-200 cursor-pointer ${
+                mode === "login" ? "text-white" : "text-gray-600 hover:text-gray-900"
               }`}
             >
               Log In
@@ -95,18 +101,16 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 setMode("signup");
                 setErrorMsg("");
               }}
-              className={`flex-1 text-center py-2 text-lg font-heading font-bold transition-colors ${
-                mode === "signup"
-                  ? "text-[#1560BD] border-b-4 border-[#1560BD] -mb-2.5"
-                  : "text-gray-400 hover:text-gray-700"
+              className={`relative z-10 flex-1 text-center py-2.5 text-lg font-heading font-bold transition-colors duration-200 cursor-pointer ${
+                mode === "signup" ? "text-white" : "text-gray-600 hover:text-gray-900"
               }`}
             >
               Sign Up
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
+          <form key={mode} onSubmit={handleSubmit} className="space-y-5 page-transition">
+            <div className="reveal-item stagger-1">
               <label className="block text-[#0B1B33] text-base font-bold mb-2">
                 Email address
               </label>
@@ -116,11 +120,11 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="organizer@school.edu"
                 required
-                className="w-full p-4 border-2 border-gray-200 rounded-xl text-lg text-[#0B1B33] focus:border-[#1560BD] focus:outline-none transition-colors"
+                className="w-full p-4 border-2 border-gray-200 rounded-xl text-lg text-[#0B1B33] input-smooth focus:border-[#1560BD] focus:outline-none"
               />
             </div>
 
-            <div>
+            <div className="reveal-item stagger-2">
               <label className="block text-[#0B1B33] text-base font-bold mb-2">
                 Password
               </label>
@@ -130,29 +134,46 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password (min 6 characters)"
                 required
-                className="w-full p-4 border-2 border-gray-200 rounded-xl text-lg text-[#0B1B33] focus:border-[#1560BD] focus:outline-none transition-colors"
+                className="w-full p-4 border-2 border-gray-200 rounded-xl text-lg text-[#0B1B33] input-smooth focus:border-[#1560BD] focus:outline-none"
               />
             </div>
 
             {errorMsg && (
-              <div className="p-3 bg-red-50 border-2 border-red-300 rounded-xl text-red-800 text-base font-medium">
-                {errorMsg}
+              <div className="p-4 bg-red-50 border-2 border-red-300 rounded-xl text-red-800 text-base font-medium space-y-1 reveal-item stagger-3">
+                <div className="font-bold">{errorMsg}</div>
+                {errorMsg.toLowerCase().includes("disabled") && (
+                  <p className="text-sm text-red-700 font-normal mt-1">
+                    To enable: Go to{" "}
+                    <a
+                      href="https://supabase.com/dashboard/project/znhbotfzmmrsibazlraw/auth/providers"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline font-bold"
+                    >
+                      Supabase Dashboard → Authentication → Providers → Email
+                    </a>
+                    , toggle <strong>Enable Email provider</strong> to <strong>ON</strong>, and click <strong>Save</strong>.
+                  </p>
+                )}
               </div>
             )}
 
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              fullWidth
-              disabled={isSubmitting}
-            >
-              {isSubmitting
-                ? "Please wait..."
-                : mode === "login"
-                ? "Log in"
-                : "Create account"}
-            </Button>
+            <div className="reveal-item stagger-3">
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                fullWidth
+                disabled={isSubmitting}
+                className="tactile-btn"
+              >
+                {isSubmitting
+                  ? "Please wait..."
+                  : mode === "login"
+                  ? "Log in"
+                  : "Create account"}
+              </Button>
+            </div>
           </form>
 
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">

@@ -242,7 +242,7 @@ export default function IndividualRegisterPage() {
 
         {/* STEP 1: What is your name? (Page 3) */}
         {step === 1 && (
-          <div className="flex-1 flex flex-col justify-between pt-6 animate-slideUp">
+          <div key="step-1" className="flex-1 flex flex-col justify-between pt-6 page-transition">
             <div className="space-y-3">
               <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 What is your <br />
@@ -269,7 +269,7 @@ export default function IndividualRegisterPage() {
 
         {/* STEP 2: Where do you study? (Page 4) */}
         {step === 2 && (
-          <div className="flex-1 flex flex-col justify-between pt-6 animate-slideUp">
+          <div key="step-2" className="flex-1 flex flex-col justify-between pt-6 page-transition">
             <div className="space-y-5">
               <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 Where do you <br />
@@ -411,7 +411,7 @@ export default function IndividualRegisterPage() {
 
         {/* STEP 3: Committee 1 (Page 5) */}
         {step === 3 && (
-          <div className="flex-1 flex flex-col justify-between pt-6 animate-slideUp">
+          <div key="step-3" className="flex-1 flex flex-col justify-between pt-6 page-transition">
             <div className="space-y-6">
               <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 Your first <br />
@@ -478,7 +478,7 @@ export default function IndividualRegisterPage() {
 
         {/* STEP 4: Committee 2 */}
         {step === 4 && (
-          <div className="flex-1 flex flex-col justify-between pt-6 animate-slideUp">
+          <div key="step-4" className="flex-1 flex flex-col justify-between pt-6 page-transition">
             <div className="space-y-6">
               <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 Your second <br />
@@ -544,7 +544,7 @@ export default function IndividualRegisterPage() {
 
         {/* STEP 5: Committee 3 */}
         {step === 5 && (
-          <div className="flex-1 flex flex-col justify-between pt-6 animate-slideUp">
+          <div key="step-5" className="flex-1 flex flex-col justify-between pt-6 page-transition">
             <div className="space-y-6">
               <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 Your third <br />
@@ -610,7 +610,7 @@ export default function IndividualRegisterPage() {
 
         {/* STEP 6: Check your details (Page 7) */}
         {step === 6 && (
-          <div className="flex-1 flex flex-col justify-between pt-6 animate-slideUp">
+          <div key="step-6" className="flex-1 flex flex-col justify-between pt-6 page-transition">
             <div className="space-y-6">
               <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 Check your <br />
