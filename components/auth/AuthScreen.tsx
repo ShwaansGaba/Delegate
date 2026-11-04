@@ -187,7 +187,7 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
           <p className="text-blue-100 text-base">Delegate attending a conference?</p>
           <div className="flex justify-center space-x-6 text-base">
             <Link
-              href="/register"
+              href="/conferences"
               className="text-white underline font-bold hover:text-yellow-200"
             >
               Register for MUN
