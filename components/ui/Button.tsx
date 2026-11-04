@@ -21,7 +21,9 @@ export function Button({
     "inline-flex items-center justify-center font-heading font-extrabold tactile-btn active:scale-[0.97] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none select-none text-center cursor-pointer";
 
   const sizeClasses =
-    size === "lg" ? "py-4 px-6 text-lg rounded-2xl min-h-[58px]" : "py-3 px-5 text-base rounded-xl min-h-[48px]";
+    size === "lg"
+      ? "py-3 px-5 text-base sm:py-4 sm:px-6 sm:text-lg rounded-xl sm:rounded-2xl min-h-[48px] sm:min-h-[56px]"
+      : "py-2.5 px-4 text-base rounded-lg sm:rounded-xl min-h-[44px]";
 
   const variantClasses = {
     primary: "bg-[#FFD23F] text-[#0B1B33] hover:bg-[#F5C830] active:bg-[#E8BC26]",

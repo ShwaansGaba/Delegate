@@ -307,12 +307,12 @@ export default function SetupLandingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-8 sm:px-8 sm:py-12 overflow-x-hidden text-white">
+    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden text-white">
       <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col justify-between">
         {/* Top Header & Progress */}
         <div>
           {user && (
-            <div className="flex items-center justify-between bg-blue-900/40 border border-blue-400/30 px-4 py-2.5 rounded-2xl mb-6 text-sm sm:text-base">
+            <div className="flex items-center justify-between bg-blue-900/40 border border-blue-400/30 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl mb-4 sm:mb-6 text-xs sm:text-base">
               <div className="flex items-center space-x-2 truncate">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
                 <span className="text-blue-100 font-medium truncate">{user.email}</span>
@@ -320,16 +320,16 @@ export default function SetupLandingPage() {
               <button
                 type="button"
                 onClick={signOut}
-                className="text-white hover:text-yellow-300 font-bold underline ml-4 text-sm shrink-0 flex items-center gap-1.5 cursor-pointer"
+                className="text-white hover:text-yellow-300 font-bold underline ml-4 text-xs sm:text-sm shrink-0 flex items-center gap-1.5 cursor-pointer"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 Sign out
               </button>
             </div>
           )}
 
           {validationError && (
-            <div className="bg-[#FFD23F] text-[#0B1B33] p-4 rounded-2xl font-bold mb-6 text-base flex items-center justify-between shadow-lg">
+            <div className="bg-[#FFD23F] text-[#0B1B33] p-3 sm:p-4 rounded-xl sm:rounded-2xl font-bold mb-4 sm:mb-6 text-sm sm:text-base flex items-center justify-between shadow-lg">
               <span>{validationError}</span>
               <button
                 type="button"
@@ -364,42 +364,42 @@ export default function SetupLandingPage() {
 
           {/* OVERVIEW / STEPPER MENU (Matching Page 13 mobile & Page 26 desktop) */}
           {currentStep === "overview" && (
-            <div key="overview" className="space-y-6 pt-4 page-transition">
+            <div key="overview" className="space-y-4 sm:space-y-6 pt-2 sm:pt-4 page-transition">
               <div>
-                <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+                <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                   Set up your <br />
                   conference
                 </h1>
-                <p className="text-xl text-white/90 font-medium mt-2">
+                <p className="text-base sm:text-xl text-white/90 font-medium mt-1 sm:mt-2">
                   Create your MUN conference in a few simple steps.
                 </p>
               </div>
 
               {/* Stacked Cards matching Page 13 */}
-              <div className="space-y-3 pt-2">
+              <div className="space-y-2.5 sm:space-y-3 pt-1 sm:pt-2">
                 {/* 1. Basics */}
                 <div
                   onClick={() => {
                     setValidationError(null);
                     setCurrentStep("basics");
                   }}
-                  className="bg-white text-[#0B1B33] rounded-2xl p-5 flex items-center justify-between cursor-pointer hover:bg-neutral-50 interactive-card select-none"
+                  className="bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-neutral-50 interactive-card select-none"
                 >
                   <div>
-                    <div className="text-2xl font-heading font-extrabold text-[#0B1B33]">
+                    <div className="text-xl sm:text-2xl font-heading font-extrabold text-[#0B1B33]">
                       Basics
                     </div>
-                    <div className="text-base text-neutral-600 font-medium mt-0.5">
+                    <div className="text-sm sm:text-base text-neutral-600 font-medium mt-0.5">
                       {event.name ? `${event.name}, ${event.dates}` : "Name, dates, fee"}
                     </div>
                   </div>
                   <div>
                     {isBasicsDone ? (
-                      <span className="text-xl font-heading font-extrabold text-emerald-700 flex items-center gap-1 animate-pop">
-                        <Check className="w-6 h-6 stroke-[3]" /> Done
+                      <span className="text-base sm:text-xl font-heading font-extrabold text-emerald-700 flex items-center gap-1 animate-pop">
+                        <Check className="w-5 h-5 sm:w-6 sm:h-6 stroke-[3]" /> Done
                       </span>
                     ) : (
-                      <span className="text-xl font-heading font-extrabold text-[#1560BD]">
+                      <span className="text-base sm:text-xl font-heading font-extrabold text-[#1560BD]">
                         Start
                       </span>
                     )}
@@ -412,23 +412,23 @@ export default function SetupLandingPage() {
                     setValidationError(null);
                     setCurrentStep("committees");
                   }}
-                  className="bg-white text-[#0B1B33] rounded-2xl p-5 flex items-center justify-between cursor-pointer hover:bg-neutral-50 interactive-card select-none"
+                  className="bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-neutral-50 interactive-card select-none"
                 >
                   <div>
-                    <div className="text-2xl font-heading font-extrabold text-[#0B1B33]">
+                    <div className="text-xl sm:text-2xl font-heading font-extrabold text-[#0B1B33]">
                       Committees
                     </div>
-                    <div className="text-base text-neutral-600 font-medium mt-0.5">
+                    <div className="text-sm sm:text-base text-neutral-600 font-medium mt-0.5">
                       {committees.length > 0 ? `${committees.length} added` : "Add or choose templates"}
                     </div>
                   </div>
                   <div>
                     {isCommitteesDone ? (
-                      <span className="text-xl font-heading font-extrabold text-emerald-700 flex items-center gap-1 animate-pop">
-                        <Check className="w-6 h-6 stroke-[3]" /> Done
+                      <span className="text-base sm:text-xl font-heading font-extrabold text-emerald-700 flex items-center gap-1 animate-pop">
+                        <Check className="w-5 h-5 sm:w-6 sm:h-6 stroke-[3]" /> Done
                       </span>
                     ) : (
-                      <span className="text-xl font-heading font-extrabold text-[#1560BD]">
+                      <span className="text-base sm:text-xl font-heading font-extrabold text-[#1560BD]">
                         Start
                       </span>
                     )}
@@ -446,13 +446,13 @@ export default function SetupLandingPage() {
                       setCurrentStep("countries");
                     }
                   }}
-                  className="bg-white text-[#0B1B33] rounded-2xl p-5 flex items-center justify-between cursor-pointer hover:bg-neutral-50 interactive-card select-none"
+                  className="bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-neutral-50 interactive-card select-none"
                 >
                   <div>
-                    <div className="text-2xl font-heading font-extrabold text-[#0B1B33]">
+                    <div className="text-xl sm:text-2xl font-heading font-extrabold text-[#0B1B33]">
                       Countries
                     </div>
-                    <div className="text-base text-neutral-600 font-medium mt-0.5">
+                    <div className="text-sm sm:text-base text-neutral-600 font-medium mt-0.5">
                       {portfolios.length > 0
                         ? `${portfolios.length} portfolios ready`
                         : "Country matrices per committee"}
@@ -460,11 +460,11 @@ export default function SetupLandingPage() {
                   </div>
                   <div>
                     {isCountriesDone ? (
-                      <span className="text-xl font-heading font-extrabold text-emerald-700 flex items-center gap-1 animate-pop">
-                        <Check className="w-6 h-6 stroke-[3]" /> Done
+                      <span className="text-base sm:text-xl font-heading font-extrabold text-emerald-700 flex items-center gap-1 animate-pop">
+                        <Check className="w-5 h-5 sm:w-6 sm:h-6 stroke-[3]" /> Done
                       </span>
                     ) : (
-                      <span className="text-xl font-heading font-extrabold text-[#1560BD]">
+                      <span className="text-base sm:text-xl font-heading font-extrabold text-[#1560BD]">
                         Start
                       </span>
                     )}
@@ -477,18 +477,18 @@ export default function SetupLandingPage() {
                     setValidationError(null);
                     setCurrentStep("rules");
                   }}
-                  className="bg-white text-[#0B1B33] rounded-2xl p-5 flex items-center justify-between cursor-pointer hover:bg-neutral-50 interactive-card select-none"
+                  className="bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-neutral-50 interactive-card select-none"
                 >
                   <div>
-                    <div className="text-2xl font-heading font-extrabold text-[#0B1B33]">
+                    <div className="text-xl sm:text-2xl font-heading font-extrabold text-[#0B1B33]">
                       Rules
                     </div>
-                    <div className="text-base text-neutral-600 font-medium mt-0.5">
+                    <div className="text-sm sm:text-base text-neutral-600 font-medium mt-0.5">
                       How registration works
                     </div>
                   </div>
                   <div>
-                    <span className="text-xl font-heading font-extrabold text-[#1560BD]">
+                    <span className="text-base sm:text-xl font-heading font-extrabold text-[#1560BD]">
                       Configure
                     </span>
                   </div>
@@ -571,20 +571,20 @@ export default function SetupLandingPage() {
 
           {/* STEP 1: BASICS */}
           {currentStep === "basics" && (
-            <div key="basics" className="space-y-6 pt-4 page-transition">
+            <div key="basics" className="space-y-4 sm:space-y-6 pt-2 sm:pt-4 page-transition">
               <div>
-                <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+                <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                   Conference <br />
                   basics
                 </h1>
-                <p className="text-xl text-white/90 font-medium mt-1">
+                <p className="text-base sm:text-xl text-white/90 font-medium mt-1">
                   Name, dates, venue, and delegate fees.
                 </p>
               </div>
 
-              <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-5">
+              <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-3.5 sm:space-y-5">
                 <div>
-                  <label className="block text-lg font-heading font-extrabold text-neutral-800 mb-1">
+                  <label className="block text-base sm:text-lg font-heading font-extrabold text-neutral-800 mb-1">
                     Conference name
                   </label>
                   <input
@@ -593,53 +593,53 @@ export default function SetupLandingPage() {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Oakridge International MUN 2026"
                     autoFocus
-                    className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                    className="w-full bg-neutral-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-xl font-bold outline-none input-smooth"
                   />
                 </div>
 
                 {/* Date From and Date To */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-lg font-heading font-extrabold text-neutral-800 mb-1">
+                    <label className="block text-base sm:text-lg font-heading font-extrabold text-neutral-800 mb-1">
                       Conference start date
                     </label>
                     <input
                       type="date"
                       value={dateFrom}
                       onChange={(e) => setDateFrom(e.target.value)}
-                      className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                      className="w-full bg-neutral-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-xl font-bold outline-none input-smooth"
                     />
                   </div>
                   <div>
-                    <label className="block text-lg font-heading font-extrabold text-neutral-800 mb-1">
+                    <label className="block text-base sm:text-lg font-heading font-extrabold text-neutral-800 mb-1">
                       Conference end date
                     </label>
                     <input
                       type="date"
                       value={dateTo}
                       onChange={(e) => setDateTo(e.target.value)}
-                      className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                      className="w-full bg-neutral-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-xl font-bold outline-none input-smooth"
                     />
                   </div>
                 </div>
 
                 {/* Registration Deadline Date */}
                 <div>
-                  <label className="block text-lg font-heading font-extrabold text-neutral-800 mb-1">
+                  <label className="block text-base sm:text-lg font-heading font-extrabold text-neutral-800 mb-1">
                     Registration deadline
                   </label>
                   <input
                     type="date"
                     value={deadlineDate}
                     onChange={(e) => setDeadlineDate(e.target.value)}
-                    className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                    className="w-full bg-neutral-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-xl font-bold outline-none input-smooth"
                   />
                 </div>
 
                 {/* Individual vs School Delegation Fee */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-lg font-heading font-extrabold text-neutral-800 mb-1">
+                    <label className="block text-base sm:text-lg font-heading font-extrabold text-neutral-800 mb-1">
                       Individual fee (Rs)
                     </label>
                     <input
@@ -647,11 +647,11 @@ export default function SetupLandingPage() {
                       value={fee}
                       onChange={(e) => setFee(e.target.value)}
                       placeholder="1500"
-                      className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                      className="w-full bg-neutral-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-xl font-bold outline-none input-smooth"
                     />
                   </div>
                   <div>
-                    <label className="block text-lg font-heading font-extrabold text-neutral-800 mb-1">
+                    <label className="block text-base sm:text-lg font-heading font-extrabold text-neutral-800 mb-1">
                       School team fee (Rs / student)
                     </label>
                     <input
@@ -659,13 +659,13 @@ export default function SetupLandingPage() {
                       value={schoolFee}
                       onChange={(e) => setSchoolFee(e.target.value)}
                       placeholder="1200"
-                      className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                      className="w-full bg-neutral-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-xl font-bold outline-none input-smooth"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-lg font-heading font-extrabold text-neutral-800 mb-1">
+                  <label className="block text-base sm:text-lg font-heading font-extrabold text-neutral-800 mb-1">
                     Venue
                   </label>
                   <input
@@ -673,7 +673,7 @@ export default function SetupLandingPage() {
                     value={venue}
                     onChange={(e) => setVenue(e.target.value)}
                     placeholder="Main Auditorium"
-                    className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                    className="w-full bg-neutral-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-xl font-bold outline-none input-smooth"
                   />
                 </div>
               </div>
@@ -686,33 +686,33 @@ export default function SetupLandingPage() {
 
           {/* STEP 2: COMMITTEES (Pages 14 & 26) */}
           {currentStep === "committees" && (
-            <div key="committees" className="space-y-6 pt-4 page-transition">
+            <div key="committees" className="space-y-4 sm:space-y-6 pt-2 sm:pt-4 page-transition">
               <div>
-                <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+                <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                   Committees
                 </h1>
-                <p className="text-xl text-white/90 font-medium mt-1">
+                <p className="text-base sm:text-xl text-white/90 font-medium mt-1">
                   Add the simulation committees for your conference.
                 </p>
               </div>
 
               {/* Existing Committees List matching Page 14 */}
-              <div className="space-y-3">
+              <div className="space-y-2.5 sm:space-y-3">
                 {committees.length === 0 ? (
-                  <div className="bg-white/10 rounded-2xl p-6 text-center text-white text-lg">
+                  <div className="bg-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center text-white text-base sm:text-lg">
                     No committees added yet. Add your first committee or start from standard templates.
                   </div>
                 ) : (
                   committees.map((comm) => (
                     <div
                       key={comm.id}
-                      className="bg-white text-[#0B1B33] rounded-2xl p-5 flex items-center justify-between"
+                      className="bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 flex items-center justify-between"
                     >
                       <div>
-                        <div className="text-2xl font-heading font-extrabold text-[#0B1B33]">
+                        <div className="text-xl sm:text-2xl font-heading font-extrabold text-[#0B1B33]">
                           {comm.name}
                         </div>
-                        <div className="text-base text-neutral-600 font-medium mt-0.5">
+                        <div className="text-sm sm:text-base text-neutral-600 font-medium mt-0.5">
                           {comm.totalSeats} seats, {portfolios.filter(p => p.committeeId === comm.id).length} portfolios
                         </div>
                       </div>
@@ -736,20 +736,20 @@ export default function SetupLandingPage() {
                 <button
                   type="button"
                   onClick={loadTemplateCommittees}
-                  className="text-xl font-heading font-extrabold text-[#FFD23F] hover:underline cursor-pointer"
+                  className="text-base sm:text-xl font-heading font-extrabold text-[#FFD23F] hover:underline cursor-pointer"
                 >
                   Start from a template (UNSC, DISEC, UNHRC, UNEP)
                 </button>
               </div>
 
               {/* Add a committee card */}
-              <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-4">
-                <h3 className="text-2xl font-heading font-extrabold text-[#0B1B33]">
+              <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-3 sm:space-y-4">
+                <h3 className="text-xl sm:text-2xl font-heading font-extrabold text-[#0B1B33]">
                   Add a committee
                 </h3>
 
                 <div>
-                  <label className="block text-base font-bold text-neutral-700 mb-1">
+                  <label className="block text-sm sm:text-base font-bold text-neutral-700 mb-1">
                     Name
                   </label>
                   <input
@@ -757,12 +757,12 @@ export default function SetupLandingPage() {
                     value={newCommName}
                     onChange={(e) => setNewCommName(e.target.value)}
                     placeholder="UNGA"
-                    className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                    className="w-full bg-neutral-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-xl font-bold outline-none input-smooth"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-base font-bold text-neutral-700 mb-1">
+                  <label className="block text-sm sm:text-base font-bold text-neutral-700 mb-1">
                     Agenda
                   </label>
                   <input
@@ -770,12 +770,12 @@ export default function SetupLandingPage() {
                     value={newCommAgenda}
                     onChange={(e) => setNewCommAgenda(e.target.value)}
                     placeholder="Agenda title"
-                    className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                    className="w-full bg-neutral-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-xl font-bold outline-none input-smooth"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-base font-bold text-neutral-700 mb-1">
+                  <label className="block text-sm sm:text-base font-bold text-neutral-700 mb-1">
                     Seats
                   </label>
                   <input
@@ -783,21 +783,21 @@ export default function SetupLandingPage() {
                     value={newCommSeats}
                     onChange={(e) => setNewCommSeats(e.target.value)}
                     placeholder="30"
-                    className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                    className="w-full bg-neutral-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-xl font-bold outline-none input-smooth"
                   />
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-1 sm:pt-2">
                   <button
                     type="button"
                     onClick={() => setGuideUploaded(true)}
-                    className="w-full border-2 border-[#0B1B33] hover:bg-neutral-100 rounded-2xl p-4 text-lg font-heading font-extrabold text-center transition-colors cursor-pointer"
+                    className="w-full border-2 border-[#0B1B33] hover:bg-neutral-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-lg font-heading font-extrabold text-center transition-colors cursor-pointer"
                   >
                     {guideUploaded ? "Background guide uploaded ✓" : "Upload background guide"}
                   </button>
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-1 sm:pt-2">
                   <Button onClick={handleAddCommittee}>Add committee</Button>
                 </div>
               </div>
@@ -812,17 +812,17 @@ export default function SetupLandingPage() {
 
           {/* STEP 3: COUNTRIES */}
           {currentStep === "countries" && (
-            <div key="countries" className="space-y-6 pt-4 page-transition">
+            <div key="countries" className="space-y-4 sm:space-y-6 pt-2 sm:pt-4 page-transition">
               <div>
-                <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+                <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                   Countries & Portfolios
                 </h1>
-                <p className="text-xl text-white/90 font-medium mt-1">
+                <p className="text-base sm:text-xl text-white/90 font-medium mt-1">
                   Hover to delete via circle, or select multiple checkboxes to delete in bulk.
                 </p>
               </div>
 
-              <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-6">
+              <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4 sm:space-y-6">
                 {/* Committee Selector Tabs */}
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {committees.map((comm) => (
@@ -833,7 +833,7 @@ export default function SetupLandingPage() {
                         setActiveCommId(comm.id);
                         setSelectedPortIds([]);
                       }}
-                      className={`px-4 py-2 rounded-xl text-lg font-heading font-extrabold transition-colors cursor-pointer whitespace-nowrap ${
+                      className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-base sm:text-lg font-heading font-extrabold transition-colors cursor-pointer whitespace-nowrap ${
                         (activeCommId || committees[0]?.id) === comm.id
                           ? "bg-[#1560BD] text-white"
                           : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
@@ -916,16 +916,16 @@ export default function SetupLandingPage() {
 
           {/* STEP 4: RULES (Pages 15 & 27) */}
           {currentStep === "rules" && (
-            <div key="rules" className="space-y-6 pt-4 page-transition">
+            <div key="rules" className="space-y-4 sm:space-y-6 pt-2 sm:pt-4 page-transition">
               <div>
-                <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+                <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                   How should <br />
                   registration <br />
                   work?
                 </h1>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5 sm:space-y-3">
                 <Toggle
                   label="Allow school teams"
                   description="Schools register all their delegates at once"
@@ -955,7 +955,7 @@ export default function SetupLandingPage() {
                 />
               </div>
 
-              <p className="text-lg text-white font-medium leading-relaxed">
+              <p className="text-base sm:text-lg text-white font-medium leading-relaxed">
                 Turn off first come, first served and every preference is weighed together.
               </p>
 
@@ -996,40 +996,40 @@ export default function SetupLandingPage() {
 
           {/* STEP 5: PUBLISH & SHARABLE LINK (Pages 16 & 28) */}
           {currentStep === "publish" && (
-            <div key="publish" className="space-y-6 pt-4 page-transition">
+            <div key="publish" className="space-y-4 sm:space-y-6 pt-2 sm:pt-4 page-transition">
               <div>
-                <h1 className="text-5xl sm:text-6xl font-heading font-extrabold text-white leading-tight">
+                <h1 className="text-3xl sm:text-6xl font-heading font-extrabold text-white leading-tight">
                   Registrations <br />
                   are open.
                 </h1>
-                <p className="text-xl sm:text-2xl text-white font-medium mt-2">
+                <p className="text-base sm:text-2xl text-white font-medium mt-1 sm:mt-2">
                   Send this one link. Delegates choose alone or as a school.
                 </p>
               </div>
 
               {/* Link Box */}
-              <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-4">
-                <div className="text-base text-neutral-500 font-bold uppercase tracking-wider">
+              <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-3 sm:space-y-4">
+                <div className="text-xs sm:text-base text-neutral-500 font-bold uppercase tracking-wider">
                   Your registration link
                 </div>
-                <div className="text-2xl font-heading font-extrabold text-[#0B1B33] break-all p-4 bg-neutral-100 rounded-2xl">
+                <div className="text-base sm:text-2xl font-heading font-extrabold text-[#0B1B33] break-all p-3 sm:p-4 bg-neutral-100 rounded-xl sm:rounded-2xl">
                   {registrationLink}
                 </div>
 
-                <div className="space-y-3 pt-2">
+                <div className="space-y-2 sm:space-y-3 pt-1 sm:pt-2">
                   <button
                     type="button"
                     onClick={handleShareWhatsApp}
-                    className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-2xl p-5 flex items-center justify-between text-xl font-heading font-extrabold transition-colors cursor-pointer"
+                    className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 flex items-center justify-between text-base sm:text-xl font-heading font-extrabold transition-colors cursor-pointer"
                   >
                     <span>Share on WhatsApp</span>
-                    <ArrowRight className="w-6 h-6" strokeWidth={2.5} />
+                    <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
                   </button>
 
                   <button
                     type="button"
                     onClick={handleCopyLink}
-                    className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-2xl p-5 text-center text-xl font-heading font-extrabold transition-colors cursor-pointer"
+                    className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 text-center text-base sm:text-xl font-heading font-extrabold transition-colors cursor-pointer"
                   >
                     {copiedLink ? "✓ Link Copied!" : "Copy link"}
                   </button>
@@ -1037,11 +1037,11 @@ export default function SetupLandingPage() {
               </div>
 
               {/* What happens next card */}
-              <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-3">
-                <h3 className="text-2xl font-heading font-extrabold text-[#0B1B33]">
+              <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-2.5 sm:space-y-3">
+                <h3 className="text-xl sm:text-2xl font-heading font-extrabold text-[#0B1B33]">
                   What happens next
                 </h3>
-                <div className="space-y-2 text-lg font-medium text-neutral-700">
+                <div className="space-y-1.5 sm:space-y-2 text-base sm:text-lg font-medium text-neutral-700">
                   <div>1. Delegates register and pick preferences</div>
                   <div>2. You verify payments</div>
                   <div>3. You allot and publish</div>

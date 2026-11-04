@@ -63,21 +63,21 @@ export default function StatusPage() {
   // State 1: Input form (Page 11)
   if (!currentReg) {
     return (
-      <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 overflow-x-hidden page-transition">
-        <div className="max-w-[350px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
+      <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition">
+        <div className="max-w-[360px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
           <div>
             <ProgressBar currentStep={1} totalSteps={1} onBack={handleBack} />
 
-            <div className="pt-6 space-y-3">
-              <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+            <div className="pt-3 sm:pt-6 space-y-2 sm:space-y-3">
+              <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 Check your <br />
                 status
               </h1>
-              <p className="text-xl sm:text-2xl text-white font-medium">
+              <p className="text-base sm:text-xl text-white font-medium">
                 Enter the number from your confirmation email.
               </p>
 
-              <div className="pt-6">
+              <div className="pt-4 sm:pt-6">
                 <input
                   type="text"
                   value={inputNum}
@@ -85,20 +85,20 @@ export default function StatusPage() {
                   placeholder="MUN 2048"
                   autoFocus
                   onKeyDown={(e) => e.key === "Enter" && handleLookup(inputNum)}
-                  className="w-full bg-white text-[#0B1B33] rounded-2xl p-5 text-3xl font-heading font-extrabold outline-none uppercase placeholder:text-neutral-400 input-smooth focus:ring-4 focus:ring-blue-300"
+                  className="w-full bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 text-xl sm:text-3xl font-heading font-extrabold outline-none uppercase placeholder:text-neutral-400 input-smooth focus:ring-4 focus:ring-blue-300"
                 />
               </div>
 
               {errorMsg && (
-                <div className="bg-[#FFD23F] text-[#0B1B33] p-4 rounded-2xl font-bold mt-4 text-base">
+                <div className="bg-[#FFD23F] text-[#0B1B33] p-3 sm:p-4 rounded-xl sm:rounded-2xl font-bold mt-3 sm:mt-4 text-sm sm:text-base">
                   {errorMsg}
                 </div>
               )}
 
-              <div className="pt-4">
+              <div className="pt-3 sm:pt-4">
                 <a
                   href="mailto:contact@delegate.app"
-                  className="text-lg font-heading font-bold text-[#FFD23F] hover:underline"
+                  className="text-base sm:text-lg font-heading font-bold text-[#FFD23F] hover:underline"
                 >
                   Lost your number? Contact the organizers
                 </a>
@@ -106,11 +106,11 @@ export default function StatusPage() {
 
               {/* Helper for quick lookup if registrations exist */}
               {registrations.length > 0 && (
-                <div className="pt-8 space-y-2">
-                  <p className="text-sm uppercase tracking-wider text-white/70 font-bold">
+                <div className="pt-4 sm:pt-8 space-y-1.5 sm:space-y-2">
+                  <p className="text-xs sm:text-sm uppercase tracking-wider text-white/70 font-bold">
                     Registered numbers in system:
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {registrations.slice(0, 3).map((r) => (
                       <button
                         key={r.id}
@@ -119,7 +119,7 @@ export default function StatusPage() {
                           setInputNum(r.registrationNumber);
                           handleLookup(r.registrationNumber);
                         }}
-                        className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-xl text-base font-bold cursor-pointer"
+                        className="bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-sm sm:text-base font-bold cursor-pointer"
                       >
                         {r.registrationNumber} ({r.delegateName.split(" ")[0]})
                       </button>
@@ -130,7 +130,7 @@ export default function StatusPage() {
             </div>
           </div>
 
-          <div className="pt-8 pb-4">
+          <div className="pt-4 pb-2 sm:pt-8 sm:pb-4">
             <Button onClick={() => handleLookup(inputNum)}>Check status</Button>
           </div>
         </div>
@@ -148,21 +148,21 @@ export default function StatusPage() {
     const port = portfolios.find((p) => p.id === currentReg.allotment?.portfolioId);
 
     return (
-      <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 overflow-x-hidden page-transition">
-        <div className="max-w-[350px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
+      <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition">
+        <div className="max-w-[360px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
           <div>
-            <div className="pb-4">
+            <div className="pb-2 sm:pb-4">
               <button
                 type="button"
                 onClick={handleBack}
-                className="text-white hover:opacity-80 active:opacity-60 cursor-pointer p-1 font-bold text-lg flex items-center gap-2"
+                className="text-white hover:opacity-80 active:opacity-60 cursor-pointer p-1 font-bold text-base sm:text-lg flex items-center gap-2"
               >
                 ← Back
               </button>
             </div>
 
-            <div className="mb-6">
-              <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white">
+            <div className="mb-4 sm:mb-6">
+              <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white">
                 You are in.
               </h1>
             </div>
@@ -177,7 +177,7 @@ export default function StatusPage() {
             />
           </div>
 
-          <div className="pt-8 pb-4">
+          <div className="pt-4 pb-2 sm:pt-8 sm:pb-4">
             <Button variant="white" onClick={handleBack}>
               Look up another number
             </Button>
@@ -186,10 +186,10 @@ export default function StatusPage() {
 
         {/* Choices Modal */}
         {showChoicesModal && (
-          <div className="fixed inset-0 z-50 bg-[#1560BD]/90 flex items-center justify-center p-6">
-            <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-4">
-              <h3 className="text-2xl font-heading font-extrabold">Your Preferences</h3>
-              <div className="space-y-3 text-lg font-medium">
+          <div className="fixed inset-0 z-50 bg-[#1560BD]/90 flex items-center justify-center p-4 sm:p-6">
+            <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-5 sm:p-8 max-w-md w-full space-y-3 sm:space-y-4">
+              <h3 className="text-xl sm:text-2xl font-heading font-extrabold">Your Preferences</h3>
+              <div className="space-y-2.5 sm:space-y-3 text-base sm:text-lg font-medium">
                 {currentReg.preferences.map((p, i) => (
                   <div key={i} className="border-b border-neutral-200 pb-2">
                     <span className="font-bold">{i + 1}. {committees.find(c => c.id === p.committeeId)?.name || p.committeeId.toUpperCase()}: </span>
@@ -207,44 +207,44 @@ export default function StatusPage() {
 
   // State 3: Payment Pending (Page 12)
   return (
-    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 overflow-x-hidden page-transition">
-      <div className="max-w-[350px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
-        <div className="space-y-6">
+    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition">
+      <div className="max-w-[360px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
+        <div className="space-y-4 sm:space-y-6">
           <ProgressBar currentStep={1} totalSteps={2} onBack={handleBack} />
 
           <div>
-            <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+            <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
               Payment <br />
               pending.
             </h1>
-            <p className="text-2xl text-white font-medium mt-2">
+            <p className="text-lg sm:text-2xl text-white font-medium mt-1 sm:mt-2">
               {currentReg.registrationNumber}, {currentReg.delegateName}
             </p>
           </div>
 
           {/* Three-stage Status Card matching Page 12 */}
-          <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-4">
-            <div className="flex items-center gap-3 text-xl font-heading font-bold text-emerald-700">
-              <span className="text-2xl">✓</span>
+          <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-5 sm:p-8 space-y-3 sm:space-y-4">
+            <div className="flex items-center gap-3 text-lg sm:text-xl font-heading font-bold text-emerald-700">
+              <span className="text-xl sm:text-2xl">✓</span>
               <span>Registration received</span>
             </div>
 
-            <div className="flex items-center gap-3 text-xl font-heading font-bold text-[#0B1B33]">
-              <span className="text-2xl text-amber-500">○</span>
+            <div className="flex items-center gap-3 text-lg sm:text-xl font-heading font-bold text-[#0B1B33]">
+              <span className="text-xl sm:text-2xl text-amber-500">○</span>
               <span>Payment, Rs {currentReg.feeAmount.toLocaleString()}</span>
             </div>
 
-            <div className="flex items-center gap-3 text-xl font-heading font-bold text-neutral-400">
-              <span className="text-2xl">○</span>
+            <div className="flex items-center gap-3 text-lg sm:text-xl font-heading font-bold text-neutral-400">
+              <span className="text-xl sm:text-2xl">○</span>
               <span>Allotment</span>
             </div>
           </div>
 
-          <p className="text-xl text-white font-medium leading-relaxed">
+          <p className="text-base sm:text-xl text-white font-medium leading-relaxed">
             Allotments are published after payment closes on {event.deadline}.
           </p>
 
-          <div className="space-y-3 pt-2">
+          <div className="space-y-2.5 sm:space-y-3 pt-1 sm:pt-2">
             <Row
               title="Upload payment proof"
               onClick={() => {

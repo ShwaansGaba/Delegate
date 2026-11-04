@@ -55,7 +55,7 @@ export function SearchableSelect({
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-xl font-heading font-extrabold text-white mb-2">
+        <label className="block text-base sm:text-xl font-heading font-extrabold text-white mb-1.5 sm:mb-2">
           {label}
         </label>
       )}
@@ -63,7 +63,7 @@ export function SearchableSelect({
       {/* Trigger Button/Field styled like white card in design */}
       <div
         onClick={() => !disabled && setIsOpen(true)}
-        className={`w-full bg-white text-[#0B1B33] rounded-2xl p-4 sm:p-5 text-xl font-medium flex items-center justify-between cursor-pointer select-none transition-colors ${
+        className={`w-full bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 text-base sm:text-xl font-medium flex items-center justify-between cursor-pointer select-none transition-colors ${
           disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-neutral-50"
         }`}
       >
@@ -86,19 +86,19 @@ export function SearchableSelect({
         subtitle={sheetSubtitle}
       >
         {/* Search Input Box */}
-        <div className="mb-4">
+        <div className="mb-3 sm:mb-4">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search..."
             autoFocus
-            className="w-full bg-white text-[#0B1B33] rounded-2xl p-4 sm:p-5 text-xl font-medium outline-none placeholder:text-neutral-400"
+            className="w-full bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3 sm:p-5 text-base sm:text-xl font-medium outline-none placeholder:text-neutral-400"
           />
         </div>
 
         {/* Options List */}
-        <div className="space-y-3 pb-8">
+        <div className="space-y-2 sm:space-y-3 pb-8">
           {allowCustomNew && searchQuery.trim() && !options.some((o) => o.name.toLowerCase() === searchQuery.toLowerCase().trim()) && (
             <button
               type="button"
@@ -107,14 +107,14 @@ export function SearchableSelect({
                 setIsOpen(false);
                 setSearchQuery("");
               }}
-              className="w-full bg-white text-[#0B1B33] rounded-2xl p-5 text-left text-xl font-heading font-extrabold hover:bg-neutral-50 active:bg-neutral-100 cursor-pointer"
+              className="w-full bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 text-left text-base sm:text-xl font-heading font-extrabold hover:bg-neutral-50 active:bg-neutral-100 cursor-pointer"
             >
               Add &ldquo;{searchQuery.trim()}&rdquo; as new
             </button>
           )}
 
           {filteredOptions.length === 0 && !allowCustomNew && (
-            <div className="bg-white/10 rounded-2xl p-6 text-center text-white text-lg">
+            <div className="bg-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center text-white text-base sm:text-lg">
               No matching options found.
             </div>
           )}
@@ -133,21 +133,21 @@ export function SearchableSelect({
                     setSearchQuery("");
                   }
                 }}
-                className={`w-full rounded-2xl p-4 sm:p-5 text-left flex items-center justify-between transition-colors select-none ${
+                className={`w-full rounded-xl sm:rounded-2xl p-3 sm:p-5 text-left flex items-center justify-between transition-colors select-none ${
                   isTaken
                     ? "bg-[#8cb7ea] text-neutral-600 opacity-80 cursor-not-allowed"
                     : "bg-white text-[#0B1B33] hover:bg-neutral-50 active:bg-neutral-100 cursor-pointer"
                 }`}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
                   {opt.code && <CountryMonogram code={opt.code} size="md" />}
                   <div>
-                    <div className="text-xl font-heading font-extrabold">{opt.name}</div>
-                    {opt.subtitle && <div className="text-base text-neutral-600">{opt.subtitle}</div>}
+                    <div className="text-base sm:text-xl font-heading font-extrabold">{opt.name}</div>
+                    {opt.subtitle && <div className="text-sm sm:text-base text-neutral-600">{opt.subtitle}</div>}
                   </div>
                 </div>
                 {isTaken && (
-                  <span className="text-lg font-heading font-bold text-neutral-600 mr-2">Taken</span>
+                  <span className="text-sm sm:text-lg font-heading font-bold text-neutral-600 mr-2">Taken</span>
                 )}
               </button>
             );

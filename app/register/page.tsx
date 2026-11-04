@@ -225,8 +225,8 @@ export default function IndividualRegisterPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 overflow-x-hidden">
-      <div className="max-w-[350px] sm:max-w-md w-full mx-auto flex-1 flex flex-col">
+    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden">
+      <div className="max-w-[360px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
         {/* Progress bar with back arrow */}
         <ProgressBar
           currentStep={step}
@@ -235,33 +235,33 @@ export default function IndividualRegisterPage() {
         />
 
         {errorMsg && (
-          <div className="bg-[#FFD23F] text-[#0B1B33] p-4 rounded-2xl font-bold mt-4 text-base">
+          <div className="bg-[#FFD23F] text-[#0B1B33] p-3.5 sm:p-4 rounded-xl sm:rounded-2xl font-bold mt-2 sm:mt-4 text-sm sm:text-base">
             {errorMsg}
           </div>
         )}
 
         {/* STEP 1: What is your name? (Page 3) */}
         {step === 1 && (
-          <div key="step-1" className="flex-1 flex flex-col justify-between pt-6 page-transition">
+          <div key="step-1" className="flex-1 flex flex-col justify-between pt-3 sm:pt-6 page-transition">
             <div className="space-y-3">
-              <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+              <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 What is your <br />
                 name?
               </h1>
 
-              <div className="pt-6">
+              <div className="pt-3 sm:pt-6">
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Aarav Mehta"
                   autoFocus
-                  className="w-full bg-white text-[#0B1B33] rounded-2xl p-5 text-2xl font-heading font-extrabold outline-none placeholder:text-neutral-400"
+                  className="w-full bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 text-xl sm:text-2xl font-heading font-extrabold outline-none placeholder:text-neutral-400 input-smooth focus:ring-4 focus:ring-blue-300"
                 />
               </div>
             </div>
 
-            <div className="pt-8 pb-4">
+            <div className="pt-4 pb-2 sm:pt-8 sm:pb-4">
               <Button onClick={handleNext}>Next</Button>
             </div>
           </div>
@@ -269,15 +269,15 @@ export default function IndividualRegisterPage() {
 
         {/* STEP 2: Where do you study? (Page 4) */}
         {step === 2 && (
-          <div key="step-2" className="flex-1 flex flex-col justify-between pt-6 page-transition">
-            <div className="space-y-5">
-              <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+          <div key="step-2" className="flex-1 flex flex-col justify-between pt-3 sm:pt-6 page-transition">
+            <div className="space-y-3 sm:space-y-5">
+              <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 Where do you <br />
                 study?
               </h1>
 
               {/* School typable search */}
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 <input
                   type="text"
                   value={schoolSearchQuery !== "" ? schoolSearchQuery : school}
@@ -286,12 +286,12 @@ export default function IndividualRegisterPage() {
                     setSchool(e.target.value);
                   }}
                   placeholder="Type school name..."
-                  className="w-full bg-white text-[#0B1B33] rounded-2xl p-5 text-xl font-heading font-bold outline-none placeholder:text-neutral-400"
+                  className="w-full bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-lg font-heading font-bold outline-none placeholder:text-neutral-400 input-smooth focus:ring-4 focus:ring-blue-300"
                 />
 
                 {/* Suggestions ONLY when someone starts typing */}
                 {schoolSearchQuery.trim().length > 0 && (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 sm:space-y-2">
                     {PRESET_SCHOOLS.filter((s) =>
                       s.toLowerCase().includes(schoolSearchQuery.toLowerCase())
                     )
@@ -304,7 +304,7 @@ export default function IndividualRegisterPage() {
                             setSchool(s);
                             setSchoolSearchQuery("");
                           }}
-                          className={`w-full bg-white text-[#0B1B33] rounded-2xl p-4 text-left text-lg font-heading font-extrabold transition-colors cursor-pointer ${
+                          className={`w-full bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3 sm:p-4 text-left text-sm sm:text-lg font-heading font-extrabold transition-colors cursor-pointer ${
                             school === s ? "ring-4 ring-[#FFD23F]" : "hover:bg-neutral-50"
                           }`}
                         >
@@ -318,7 +318,7 @@ export default function IndividualRegisterPage() {
                         setSchool(schoolSearchQuery.trim());
                         setSchoolSearchQuery("");
                       }}
-                      className="w-full bg-white text-[#0B1B33] rounded-2xl p-4 text-left text-lg font-heading font-extrabold hover:bg-neutral-50 cursor-pointer"
+                      className="w-full bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3 sm:p-4 text-left text-sm sm:text-lg font-heading font-extrabold hover:bg-neutral-50 cursor-pointer"
                     >
                       Add &ldquo;{schoolSearchQuery.trim()}&rdquo; as a new school
                     </button>
@@ -327,9 +327,9 @@ export default function IndividualRegisterPage() {
               </div>
 
               {/* Contact info - Email & Phone Mandatory */}
-              <div className="space-y-3 pt-2">
+              <div className="space-y-2 sm:space-y-3 pt-1">
                 <div>
-                  <label className="block text-sm font-heading font-bold text-white/90 mb-1">
+                  <label className="block text-xs sm:text-sm font-heading font-bold text-white/90 mb-1">
                     Email address *
                   </label>
                   <input
@@ -338,11 +338,11 @@ export default function IndividualRegisterPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="aarav@example.com"
                     required
-                    className="w-full bg-white text-[#0B1B33] rounded-2xl p-4 text-lg font-medium outline-none placeholder:text-neutral-400"
+                    className="w-full bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-lg font-medium outline-none placeholder:text-neutral-400 input-smooth"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-heading font-bold text-white/90 mb-1">
+                  <label className="block text-xs sm:text-sm font-heading font-bold text-white/90 mb-1">
                     Phone number *
                   </label>
                   <input
@@ -351,23 +351,23 @@ export default function IndividualRegisterPage() {
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="98765 43210"
                     required
-                    className="w-full bg-white text-[#0B1B33] rounded-2xl p-4 text-lg font-medium outline-none placeholder:text-neutral-400"
+                    className="w-full bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3 sm:p-4 text-base sm:text-lg font-medium outline-none placeholder:text-neutral-400 input-smooth"
                   />
                 </div>
               </div>
 
               {/* Class pills: 6 to 12 */}
-              <div className="pt-2">
-                <label className="block text-xl font-heading font-extrabold text-white mb-3">
+              <div className="pt-1">
+                <label className="block text-base sm:text-xl font-heading font-extrabold text-white mb-2">
                   Which class?
                 </label>
-                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 sm:gap-2">
                   {["6", "7", "8", "9", "10", "11", "12"].map((c) => (
                     <button
                       key={c}
                       type="button"
                       onClick={() => setClassYear(c)}
-                      className={`h-14 rounded-2xl text-xl font-heading font-extrabold transition-colors cursor-pointer flex items-center justify-center ${
+                      className={`h-10 sm:h-12 rounded-xl text-base sm:text-xl font-heading font-extrabold transition-colors cursor-pointer flex items-center justify-center ${
                         classYear === c
                           ? "bg-white text-[#0B1B33]"
                           : "border-2 border-white text-white hover:bg-white/10"
@@ -380,17 +380,17 @@ export default function IndividualRegisterPage() {
               </div>
 
               {/* Experience */}
-              <div className="pt-2">
-                <label className="block text-xl font-heading font-extrabold text-white mb-2">
+              <div className="pt-1">
+                <label className="block text-base sm:text-xl font-heading font-extrabold text-white mb-1.5">
                   MUNs attended
                 </label>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                   {[0, 1, 2, 3, 5].map((count) => (
                     <button
                       key={count}
                       type="button"
                       onClick={() => setExperienceMuns(count)}
-                      className={`h-14 rounded-xl text-xl font-heading font-bold transition-colors cursor-pointer flex items-center justify-center ${
+                      className={`h-10 sm:h-12 rounded-xl text-base sm:text-xl font-heading font-bold transition-colors cursor-pointer flex items-center justify-center ${
                         experienceMuns === count
                           ? "bg-white text-[#0B1B33]"
                           : "border border-white/60 text-white hover:bg-white/10"
@@ -403,7 +403,7 @@ export default function IndividualRegisterPage() {
               </div>
             </div>
 
-            <div className="pt-8 pb-4">
+            <div className="pt-4 pb-2 sm:pt-8 sm:pb-4">
               <Button onClick={handleNext}>Next</Button>
             </div>
           </div>
@@ -411,9 +411,9 @@ export default function IndividualRegisterPage() {
 
         {/* STEP 3: Committee 1 (Page 5) */}
         {step === 3 && (
-          <div key="step-3" className="flex-1 flex flex-col justify-between pt-6 page-transition">
-            <div className="space-y-6">
-              <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+          <div key="step-3" className="flex-1 flex flex-col justify-between pt-3 sm:pt-6 page-transition">
+            <div className="space-y-4 sm:space-y-6">
+              <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 Your first <br />
                 committee
               </h1>
@@ -433,8 +433,8 @@ export default function IndividualRegisterPage() {
                 />
               </div>
 
-              <div className="space-y-3">
-                <label className="block text-xl font-heading font-extrabold text-white">
+              <div className="space-y-2 sm:space-y-3">
+                <label className="block text-base sm:text-xl font-heading font-extrabold text-white">
                   Your 3 portfolios, in order
                 </label>
 
@@ -470,7 +470,7 @@ export default function IndividualRegisterPage() {
               </div>
             </div>
 
-            <div className="pt-8 pb-4">
+            <div className="pt-4 pb-2 sm:pt-8 sm:pb-4">
               <Button onClick={handleNext}>Next</Button>
             </div>
           </div>
@@ -478,9 +478,9 @@ export default function IndividualRegisterPage() {
 
         {/* STEP 4: Committee 2 */}
         {step === 4 && (
-          <div key="step-4" className="flex-1 flex flex-col justify-between pt-6 page-transition">
-            <div className="space-y-6">
-              <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+          <div key="step-4" className="flex-1 flex flex-col justify-between pt-3 sm:pt-6 page-transition">
+            <div className="space-y-4 sm:space-y-6">
+              <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 Your second <br />
                 committee
               </h1>
@@ -502,8 +502,8 @@ export default function IndividualRegisterPage() {
                 />
               </div>
 
-              <div className="space-y-3">
-                <label className="block text-xl font-heading font-extrabold text-white">
+              <div className="space-y-2 sm:space-y-3">
+                <label className="block text-base sm:text-xl font-heading font-extrabold text-white">
                   Your 3 portfolios, in order
                 </label>
 
@@ -536,7 +536,7 @@ export default function IndividualRegisterPage() {
               </div>
             </div>
 
-            <div className="pt-8 pb-4">
+            <div className="pt-4 pb-2 sm:pt-8 sm:pb-4">
               <Button onClick={handleNext}>Next</Button>
             </div>
           </div>
@@ -544,9 +544,9 @@ export default function IndividualRegisterPage() {
 
         {/* STEP 5: Committee 3 */}
         {step === 5 && (
-          <div key="step-5" className="flex-1 flex flex-col justify-between pt-6 page-transition">
-            <div className="space-y-6">
-              <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+          <div key="step-5" className="flex-1 flex flex-col justify-between pt-3 sm:pt-6 page-transition">
+            <div className="space-y-4 sm:space-y-6">
+              <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 Your third <br />
                 committee
               </h1>
@@ -568,8 +568,8 @@ export default function IndividualRegisterPage() {
                 />
               </div>
 
-              <div className="space-y-3">
-                <label className="block text-xl font-heading font-extrabold text-white">
+              <div className="space-y-2 sm:space-y-3">
+                <label className="block text-base sm:text-xl font-heading font-extrabold text-white">
                   Your 3 portfolios, in order
                 </label>
 
@@ -602,7 +602,7 @@ export default function IndividualRegisterPage() {
               </div>
             </div>
 
-            <div className="pt-8 pb-4">
+            <div className="pt-4 pb-2 sm:pt-8 sm:pb-4">
               <Button onClick={handleNext}>Next</Button>
             </div>
           </div>
@@ -610,9 +610,9 @@ export default function IndividualRegisterPage() {
 
         {/* STEP 6: Check your details (Page 7) */}
         {step === 6 && (
-          <div key="step-6" className="flex-1 flex flex-col justify-between pt-6 page-transition">
-            <div className="space-y-6">
-              <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+          <div key="step-6" className="flex-1 flex flex-col justify-between pt-3 sm:pt-6 page-transition">
+            <div className="space-y-4 sm:space-y-6">
+              <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 Check your <br />
                 details
               </h1>

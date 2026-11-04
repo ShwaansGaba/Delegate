@@ -129,66 +129,66 @@ export default function AvailableConferencesPage() {
   }, [event.name, event.id, committees, portfolios]);
 
   return (
-    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-8 sm:px-8 sm:py-12 text-white page-transition">
+    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 text-white page-transition">
       <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col">
         {/* Navigation / Header */}
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-blue-400/30">
+        <div className="flex items-center justify-between mb-4 sm:mb-8 pb-3 sm:pb-4 border-b border-blue-400/30">
           <button
             type="button"
             onClick={() => router.push("/")}
-            className="inline-flex items-center gap-2 text-white hover:text-yellow-300 font-bold text-lg cursor-pointer transition-colors"
+            className="inline-flex items-center gap-1.5 sm:gap-2 text-white hover:text-yellow-300 font-bold text-base sm:text-lg cursor-pointer transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             Back to Home
           </button>
 
           <Link
             href="/status"
-            className="text-white hover:text-yellow-300 underline font-bold text-base"
+            className="text-white hover:text-yellow-300 underline font-bold text-sm sm:text-base"
           >
             Already registered? Check status
           </Link>
         </div>
 
         {/* Title */}
-        <div className="mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-blue-100 text-sm font-bold uppercase tracking-wider mb-3">
+        <div className="mb-4 sm:mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-blue-100 text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 sm:mb-3">
             <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
             Delegate Registration Portal
           </div>
-          <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+          <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
             Available MUN Conferences
           </h1>
-          <p className="text-xl text-blue-100 font-medium mt-2">
+          <p className="text-base sm:text-xl text-blue-100 font-medium mt-1 sm:mt-2">
             Conferences configured in the database appear here in real-time.
           </p>
         </div>
 
         {/* Conferences List */}
-        <div className="space-y-6 flex-1">
+        <div className="space-y-4 sm:space-y-6 flex-1">
           {loading ? (
-            <div className="bg-white text-[#0B1B33] rounded-3xl p-12 text-center">
-              <div className="text-2xl font-heading font-bold text-gray-700">
+            <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center">
+              <div className="text-xl sm:text-2xl font-heading font-bold text-gray-700">
                 Loading live database...
               </div>
             </div>
           ) : conferences.length === 0 ? (
             /* Clean Empty State when database has 0 conferences */
-            <div className="bg-white text-[#0B1B33] rounded-3xl p-10 sm:p-14 text-center border border-blue-100 animate-fadeIn">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-50 text-[#1560BD] mb-5">
-                <Calendar className="w-10 h-10" />
+            <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-6 sm:p-14 text-center border border-blue-100 animate-fadeIn">
+              <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-blue-50 text-[#1560BD] mb-3 sm:mb-5">
+                <Calendar className="w-7 h-7 sm:w-10 sm:h-10" />
               </div>
-              <h2 className="text-3xl sm:text-4xl font-heading font-extrabold text-[#0B1B33] mb-3">
+              <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-[#0B1B33] mb-2 sm:mb-3">
                 No Active Conferences in Database
               </h2>
-              <p className="text-lg sm:text-xl text-gray-600 font-medium max-w-lg mx-auto mb-8">
+              <p className="text-base sm:text-xl text-gray-600 font-medium max-w-lg mx-auto mb-6 sm:mb-8">
                 There are currently no Model United Nations conferences created in your Supabase database.
                 Sign in as an organizer to set up your first conference and publish registrations.
               </p>
               <Link href="/">
                 <button
                   type="button"
-                  className="bg-[#FFD23F] text-[#0B1B33] px-8 py-4 rounded-xl text-xl font-heading font-extrabold hover:bg-yellow-400 active:scale-95 transition-all shadow-md cursor-pointer"
+                  className="bg-[#FFD23F] text-[#0B1B33] px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-base sm:text-xl font-heading font-extrabold hover:bg-yellow-400 active:scale-95 transition-all shadow-md cursor-pointer"
                 >
                   Set Up Your Conference →
                 </button>
@@ -213,21 +213,21 @@ export default function AvailableConferencesPage() {
               return (
                 <div
                   key={conf.id}
-                  className={`bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 border border-blue-100 interactive-card reveal-item ${staggerClass}`}
+                  className={`bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-blue-100 interactive-card reveal-item ${staggerClass}`}
                 >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-100">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-gray-100">
                     <div>
-                      <div className="inline-block px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-sm font-bold mb-2">
+                      <div className="inline-block px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs sm:text-sm font-bold mb-1.5 sm:mb-2">
                         {conf.status === "published" ? "Open for Registrations" : "Registration Open"}
                       </div>
-                      <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0B1B33]">
+                      <h2 className="text-xl sm:text-3xl font-heading font-extrabold text-[#0B1B33]">
                         {conf.name}
                       </h2>
                     </div>
 
                     <div className="text-left md:text-right shrink-0">
-                      <div className="text-sm text-gray-500 font-semibold uppercase">Delegate Fee</div>
-                      <div className="text-2xl font-heading font-extrabold text-[#1560BD]">
+                      <div className="text-xs sm:text-sm text-gray-500 font-semibold uppercase">Delegate Fee</div>
+                      <div className="text-xl sm:text-2xl font-heading font-extrabold text-[#1560BD]">
                         ₹{(conf.fee || 1500).toLocaleString("en-IN")}
                       </div>
                       <div className="text-xs text-gray-500 font-medium">
@@ -237,32 +237,32 @@ export default function AvailableConferencesPage() {
                   </div>
 
                   {/* Details grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-6 border-b border-gray-100 text-[#0B1B33]">
-                    <div className="flex items-start gap-3">
-                      <Calendar className="w-5 h-5 text-[#1560BD] shrink-0 mt-0.5" />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 py-4 sm:py-6 border-b border-gray-100 text-[#0B1B33]">
+                    <div className="flex items-start gap-2.5 sm:gap-3">
+                      <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-[#1560BD] shrink-0 mt-0.5" />
                       <div>
                         <div className="text-xs text-gray-500 font-bold uppercase">Dates</div>
-                        <div className="text-base font-bold">
+                        <div className="text-sm sm:text-base font-bold">
                           {conf.dates || (conf.date_from ? `${conf.date_from} to ${conf.date_to}` : "Dates TBA")}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-start gap-3">
-                      <MapPin className="w-5 h-5 text-[#1560BD] shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2.5 sm:gap-3">
+                      <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-[#1560BD] shrink-0 mt-0.5" />
                       <div>
                         <div className="text-xs text-gray-500 font-bold uppercase">Venue</div>
-                        <div className="text-base font-bold line-clamp-2">
+                        <div className="text-sm sm:text-base font-bold line-clamp-2">
                           {conf.venue || "Main Auditorium"}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-start gap-3">
-                      <Users className="w-5 h-5 text-[#1560BD] shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2.5 sm:gap-3">
+                      <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#1560BD] shrink-0 mt-0.5" />
                       <div>
                         <div className="text-xs text-gray-500 font-bold uppercase">Committees & Seats</div>
-                        <div className="text-base font-bold">
+                        <div className="text-sm sm:text-base font-bold">
                           {commsCount} Committees {seatsAvailable > 0 ? `• ${seatsAvailable} Open Seats` : ""}
                         </div>
                       </div>
@@ -270,20 +270,20 @@ export default function AvailableConferencesPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="pt-4 sm:pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
                     <Link
                       href="/browse"
-                      className="w-full sm:w-auto text-[#1560BD] hover:text-[#0F4C96] font-heading font-bold text-base underline flex items-center justify-center gap-1.5 py-2"
+                      className="w-full sm:w-auto text-[#1560BD] hover:text-[#0F4C96] font-heading font-bold text-sm sm:text-base underline flex items-center justify-center gap-1.5 py-1 sm:py-2"
                     >
                       <Award className="w-4 h-4" />
                       Browse committee agendas & guides
                     </Link>
 
-                    <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
+                    <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:gap-3">
                       <button
                         type="button"
                         onClick={() => setSelectedConfForModal(conf.id)}
-                        className="w-full sm:w-auto bg-[#FFD23F] text-[#0B1B33] px-6 py-3.5 rounded-xl text-lg font-heading font-extrabold hover:bg-yellow-400 active:scale-95 transition-all text-center cursor-pointer"
+                        className="w-full sm:w-auto bg-[#FFD23F] text-[#0B1B33] px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl text-base sm:text-lg font-heading font-extrabold hover:bg-yellow-400 active:scale-95 transition-all text-center cursor-pointer"
                       >
                         Register for this MUN
                       </button>

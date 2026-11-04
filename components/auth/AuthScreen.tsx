@@ -57,25 +57,25 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#1560BD] flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-[#1560BD] flex flex-col items-center justify-center p-3 sm:p-4">
       {/* Conference / Product Monogram */}
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white text-[#1560BD] font-heading font-extrabold text-2xl mb-4">
+      <div className="w-full max-w-md my-auto py-2">
+        <div className="text-center mb-4 sm:mb-8">
+          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white text-[#1560BD] font-heading font-extrabold text-xl sm:text-2xl mb-2 sm:mb-4">
             UN
           </div>
-          <h1 className="text-4xl text-white font-heading font-extrabold tracking-tight">
+          <h1 className="text-3xl sm:text-4xl text-white font-heading font-extrabold tracking-tight">
             Delegate
           </h1>
-          <p className="text-blue-100 text-lg mt-2 font-medium">
+          <p className="text-blue-100 text-sm sm:text-lg mt-0.5 sm:mt-2 font-medium">
             Student Events & Conference Platform
           </p>
         </div>
 
         {/* White Card */}
-        <div className="bg-white rounded-3xl p-8 border border-blue-200 interactive-card">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-blue-200 interactive-card">
           {/* Animated Sliding Pill Segmented Switch */}
-          <div className="tab-slider-container mb-6">
+          <div className="tab-slider-container mb-4 sm:mb-6">
             <div
               className="tab-slider-indicator"
               style={{
@@ -89,7 +89,7 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 setMode("login");
                 setErrorMsg("");
               }}
-              className={`relative z-10 flex-1 text-center py-2.5 text-lg font-heading font-bold transition-colors duration-200 cursor-pointer ${
+              className={`relative z-10 flex-1 text-center py-2 sm:py-2.5 text-base sm:text-lg font-heading font-bold transition-colors duration-200 cursor-pointer ${
                 mode === "login" ? "text-white" : "text-gray-600 hover:text-gray-900"
               }`}
             >
@@ -101,7 +101,7 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 setMode("signup");
                 setErrorMsg("");
               }}
-              className={`relative z-10 flex-1 text-center py-2.5 text-lg font-heading font-bold transition-colors duration-200 cursor-pointer ${
+              className={`relative z-10 flex-1 text-center py-2 sm:py-2.5 text-base sm:text-lg font-heading font-bold transition-colors duration-200 cursor-pointer ${
                 mode === "signup" ? "text-white" : "text-gray-600 hover:text-gray-900"
               }`}
             >
@@ -109,9 +109,9 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
             </button>
           </div>
 
-          <form key={mode} onSubmit={handleSubmit} className="space-y-5 page-transition">
+          <form key={mode} onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-5 page-transition">
             <div className="reveal-item stagger-1">
-              <label className="block text-[#0B1B33] text-base font-bold mb-2">
+              <label className="block text-[#0B1B33] text-sm sm:text-base font-bold mb-1 sm:mb-2">
                 Email address
               </label>
               <input
@@ -120,12 +120,12 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="organizer@school.edu"
                 required
-                className="w-full p-4 border-2 border-gray-200 rounded-xl text-lg text-[#0B1B33] input-smooth focus:border-[#1560BD] focus:outline-none"
+                className="w-full p-3 sm:p-4 border-2 border-gray-200 rounded-xl text-base sm:text-lg text-[#0B1B33] input-smooth focus:border-[#1560BD] focus:outline-none"
               />
             </div>
 
             <div className="reveal-item stagger-2">
-              <label className="block text-[#0B1B33] text-base font-bold mb-2">
+              <label className="block text-[#0B1B33] text-sm sm:text-base font-bold mb-1 sm:mb-2">
                 Password
               </label>
               <input
@@ -134,15 +134,15 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password (min 6 characters)"
                 required
-                className="w-full p-4 border-2 border-gray-200 rounded-xl text-lg text-[#0B1B33] input-smooth focus:border-[#1560BD] focus:outline-none"
+                className="w-full p-3 sm:p-4 border-2 border-gray-200 rounded-xl text-base sm:text-lg text-[#0B1B33] input-smooth focus:border-[#1560BD] focus:outline-none"
               />
             </div>
 
             {errorMsg && (
-              <div className="p-4 bg-red-50 border-2 border-red-300 rounded-xl text-red-800 text-base font-medium space-y-1 reveal-item stagger-3">
+              <div className="p-3.5 sm:p-4 bg-red-50 border-2 border-red-300 rounded-xl text-red-800 text-sm sm:text-base font-medium space-y-1 reveal-item stagger-3">
                 <div className="font-bold">{errorMsg}</div>
                 {errorMsg.toLowerCase().includes("disabled") && (
-                  <p className="text-sm text-red-700 font-normal mt-1">
+                  <p className="text-xs sm:text-sm text-red-700 font-normal mt-1">
                     To enable: Go to{" "}
                     <a
                       href="https://supabase.com/dashboard/project/znhbotfzmmrsibazlraw/auth/providers"
@@ -158,7 +158,7 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
               </div>
             )}
 
-            <div className="reveal-item stagger-3">
+            <div className="reveal-item stagger-3 pt-1">
               <Button
                 type="submit"
                 variant="primary"
@@ -176,9 +176,9 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
             </div>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+          <div className="mt-4 pt-4 sm:mt-6 sm:pt-6 border-t border-gray-100 text-center">
             {mode === "login" ? (
-              <p className="text-gray-600 text-base">
+              <p className="text-gray-600 text-sm sm:text-base">
                 New organizer?{" "}
                 <button
                   type="button"
@@ -189,7 +189,7 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 </button>
               </p>
             ) : (
-              <p className="text-gray-600 text-base">
+              <p className="text-gray-600 text-sm sm:text-base">
                 Already registered?{" "}
                 <button
                   type="button"
@@ -204,9 +204,9 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
         </div>
 
         {/* Delegate options */}
-        <div className="mt-8 text-center space-y-2">
-          <p className="text-blue-100 text-base">Delegate attending a conference?</p>
-          <div className="flex justify-center space-x-6 text-base">
+        <div className="mt-5 sm:mt-8 text-center space-y-1.5 sm:space-y-2">
+          <p className="text-blue-100 text-sm sm:text-base">Delegate attending a conference?</p>
+          <div className="flex justify-center space-x-6 text-sm sm:text-base">
             <Link
               href="/conferences"
               className="text-white underline font-bold hover:text-yellow-200"
