@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -25,28 +25,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm install
 
       - name: Build Next.js static export
         env:
           GITHUB_PAGES: "true"
+          NEXT_PUBLIC_SUPABASE_URL: "https://znhbotfzmmrsibazlraw.supabase.co"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_aAKyRRw9WOv5m8zy1X6aVg_OPj0RZTL"
         run: npm run build
 
       - name: Prevent Jekyll from skipping Next.js folders
         run: touch ./out/.nojekyll
-
-      - name: Deploy to gh-pages branch (dual backup)
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./out
-          publish_branch: gh-pages
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
