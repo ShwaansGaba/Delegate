@@ -3,8 +3,11 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "Yamuna MUN 2026 | Student Events Platform",
-  description: "Official registration and allotment portal for Yamuna Model United Nations 2026.",
+  title: {
+    template: "%s | Delegate",
+    default: "Delegate | Student Events & MUN Platform",
+  },
+  description: "Official registration, allotment, and conference management platform for student events and Model United Nations.",
 };
 
 export default function RootLayout({

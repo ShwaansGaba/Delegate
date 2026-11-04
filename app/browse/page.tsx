@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -8,8 +8,12 @@ import { Button } from "@/components/ui/Button";
 
 export default function BrowseCommitteesPage() {
   const router = useRouter();
-  const { committees, portfolios } = useApp();
+  const { committees, portfolios, event } = useApp();
   const [expandedId, setExpandedId] = useState<string>("disec");
+
+  useEffect(() => {
+    document.title = event.name ? `Committees - ${event.name} | Delegate` : "Committees | Delegate";
+  }, [event.name]);
 
   return (
     <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 overflow-x-hidden">

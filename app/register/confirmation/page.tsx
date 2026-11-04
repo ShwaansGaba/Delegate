@@ -16,6 +16,7 @@ export default function ConfirmationPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    document.title = "Registration Confirmed | Delegate";
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
       const num = sp.get("num");

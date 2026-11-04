@@ -6,7 +6,7 @@ import { useApp } from "@/lib/AppContext";
 import { Button } from "@/components/ui/Button";
 
 export default function RegistrationsPage() {
-  const { registrations, committees, portfolios, verifyPayment } = useApp();
+  const { registrations, committees, portfolios, verifyPayment, event } = useApp();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<string>("all");
@@ -98,7 +98,8 @@ export default function RegistrationsPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Yamuna_MUN_Registrations_${new Date().toISOString().slice(0, 10)}.csv`);
+    const safeName = event.name ? event.name.replace(/[^a-zA-Z0-9]/g, "_") : "Delegate_MUN";
+    link.setAttribute("download", `${safeName}_Registrations_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

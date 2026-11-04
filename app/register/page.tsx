@@ -37,6 +37,10 @@ export default function IndividualRegisterPage() {
 
   // Form state
   const [name, setName] = useState("");
+
+  React.useEffect(() => {
+    document.title = event.name ? `Register - ${event.name} | Delegate` : "Register for MUN | Delegate";
+  }, [event.name]);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [school, setSchool] = useState("");

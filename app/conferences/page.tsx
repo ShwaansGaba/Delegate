@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
@@ -12,10 +12,14 @@ export default function AvailableConferencesPage() {
   const { event, committees, portfolios } = useApp();
   const [selectedConfForModal, setSelectedConfForModal] = useState<string | null>(null);
 
+  useEffect(() => {
+    document.title = "Available Conferences | Delegate";
+  }, []);
+
   // Active primary conference from database / state
   const primaryConference = {
     id: event.id || "primary-mun",
-    name: event.name || "Yamuna Model United Nations 2026",
+    name: event.name || "National Youth Model United Nations 2026",
     dates: event.dates || "March 14–16, 2026",
     venue: event.venue || "Main Auditorium, Campus Block A",
     fee: event.fee || 1500,

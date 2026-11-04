@@ -21,6 +21,7 @@ export default function StatusPage() {
   const [showChoicesModal, setShowChoicesModal] = useState(false);
 
   useEffect(() => {
+    document.title = "Registration Status | Delegate";
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
       const queryNum = sp.get("num") || "";
@@ -96,7 +97,7 @@ export default function StatusPage() {
 
               <div className="pt-4">
                 <a
-                  href="mailto:organizers@yamunamun.org"
+                  href="mailto:contact@delegate.app"
                   className="text-lg font-heading font-bold text-[#FFD23F] hover:underline"
                 >
                   Lost your number? Contact the organizers

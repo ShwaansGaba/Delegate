@@ -11,6 +11,15 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   const { event, user, signOut } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  React.useEffect(() => {
+    const pageName =
+      pathname === "/organizer"
+        ? "Dashboard"
+        : pathname.split("/").pop() || "Organizer";
+    const capitalized = pageName.charAt(0).toUpperCase() + pageName.slice(1);
+    document.title = `${capitalized} - ${event.name || "Delegate"}`;
+  }, [pathname, event.name]);
+
   const navLinks = [
     { name: "Dashboard", href: "/organizer" },
     { name: "Registrations", href: "/organizer/registrations" },
@@ -142,7 +151,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
             ← View conference setup
           </Link>
           <div className="text-sm text-white/60 font-medium">
-            Yamuna Conference Suite v1.0
+            Delegate Conference Suite v1.0
           </div>
         </div>
       </aside>

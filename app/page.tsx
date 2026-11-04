@@ -61,6 +61,7 @@ export default function SetupLandingPage() {
 
   // Sync state if event loads asynchronously
   React.useEffect(() => {
+    document.title = event.name ? `${event.name} Setup | Delegate` : "Conference Setup | Delegate";
     if (event.name) setName(event.name);
     if (event.dateFrom) setDateFrom(event.dateFrom);
     if (event.dateTo) setDateTo(event.dateTo);
@@ -501,12 +502,12 @@ export default function SetupLandingPage() {
                     type="button"
                     onClick={() => {
                       if (!event.name) {
-                        setName("Yamuna MUN 2026");
+                        setName("Model United Nations 2026");
                         setDateFrom("2026-12-14");
                         setDateTo("2026-12-15");
                         setDeadlineDate("2026-11-20");
                         updateEventBasics({
-                          name: "Yamuna MUN 2026",
+                          name: "Model United Nations 2026",
                           dates: "14 and 15 December",
                           dateFrom: "2026-12-14",
                           dateTo: "2026-12-15",
@@ -590,7 +591,7 @@ export default function SetupLandingPage() {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Yamuna MUN 2026"
+                    placeholder="e.g. Oakridge International MUN 2026"
                     autoFocus
                     className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
                   />

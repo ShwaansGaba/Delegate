@@ -273,7 +273,7 @@ export default function OrganizerSetupPage() {
     setCurrentStep("publish");
   };
 
-  const registrationLink = typeof window !== "undefined" ? window.location.origin : "https://yamunamun2026.org";
+  const registrationLink = typeof window !== "undefined" ? `${window.location.origin}/conferences` : "https://delegate-platform.org/conferences";
 
   const handleCopyLink = () => {
     navigator.clipboard?.writeText(registrationLink);
