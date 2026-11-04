@@ -8,12 +8,16 @@ import { Toggle } from "@/components/ui/Toggle";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { PortfolioCombobox } from "@/components/ui/PortfolioCombobox";
 import { CountryPill } from "@/components/ui/CountryPill";
-import { ArrowRight, Check, Trash2 } from "lucide-react";
+import { AuthScreen } from "@/components/auth/AuthScreen";
+import { ArrowRight, Check, Trash2, LogOut } from "lucide-react";
 
 type SetupSubStep = "overview" | "basics" | "committees" | "countries" | "rules" | "publish";
 
 export default function SetupLandingPage() {
   const {
+    user,
+    isAuthLoaded,
+    signOut,
     event,
     committees,
     portfolios,
@@ -297,11 +301,32 @@ export default function SetupLandingPage() {
     window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank");
   };
 
+  if (isAuthLoaded && !user) {
+    return <AuthScreen />;
+  }
+
   return (
     <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-8 sm:px-8 sm:py-12 overflow-x-hidden text-white">
       <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col justify-between">
         {/* Top Header & Progress */}
         <div>
+          {user && (
+            <div className="flex items-center justify-between bg-blue-900/40 border border-blue-400/30 px-4 py-2.5 rounded-2xl mb-6 text-sm sm:text-base">
+              <div className="flex items-center space-x-2 truncate">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
+                <span className="text-blue-100 font-medium truncate">{user.email}</span>
+              </div>
+              <button
+                type="button"
+                onClick={signOut}
+                className="text-white hover:text-yellow-300 font-bold underline ml-4 text-sm shrink-0 flex items-center gap-1.5 cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign out
+              </button>
+            </div>
+          )}
+
           {validationError && (
             <div className="bg-[#FFD23F] text-[#0B1B33] p-4 rounded-2xl font-bold mb-6 text-base flex items-center justify-between shadow-lg">
               <span>{validationError}</span>

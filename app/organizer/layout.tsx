@@ -8,7 +8,7 @@ import { Menu, X } from "lucide-react";
 
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { event } = useApp();
+  const { event, user, signOut } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
@@ -65,12 +65,24 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
               </Link>
             );
           })}
-          <div className="pt-2 border-t border-white/10">
+          <div className="pt-2 border-t border-white/10 space-y-2">
+            {user && (
+              <div className="px-5 py-2 text-sm text-white/90">
+                Signed in as <span className="font-bold text-white">{user.email}</span>
+                <button
+                  type="button"
+                  onClick={signOut}
+                  className="block text-yellow-300 font-bold underline mt-1"
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
             <Link
               href="/"
               className="block px-5 py-2 text-base text-white/80 hover:text-white font-medium"
             >
-              ← Back to delegate site
+              ← Back to conference setup
             </Link>
           </div>
         </div>
@@ -109,12 +121,25 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* Footer info & link */}
-        <div className="pt-6 border-t border-white/10 space-y-2">
+        <div className="pt-6 border-t border-white/10 space-y-3">
+          {user && (
+            <div className="bg-white/10 rounded-xl p-3">
+              <div className="text-xs text-white/70 font-semibold uppercase">Signed in as</div>
+              <div className="text-sm text-white font-bold truncate">{user.email}</div>
+              <button
+                type="button"
+                onClick={signOut}
+                className="text-xs text-yellow-300 hover:underline mt-1 font-bold"
+              >
+                Sign out
+              </button>
+            </div>
+          )}
           <Link
             href="/"
             className="block text-base text-white/80 hover:text-white underline font-medium hover:translate-x-1 transition-transform"
           >
-            ← View delegate site
+            ← View conference setup
           </Link>
           <div className="text-sm text-white/60 font-medium">
             Yamuna Conference Suite v1.0

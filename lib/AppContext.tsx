@@ -11,8 +11,19 @@ import {
 } from "./types";
 import { EMPTY_EVENT, STANDARD_TEMPLATES } from "./store";
 import { simulateAutoAllotment, AutoAllotSimulationResult } from "./autoAllot";
+import { supabase, isSupabaseConfigured } from "./supabase";
+
+export interface AuthUser {
+  id: string;
+  email: string;
+}
 
 interface AppContextType {
+  user: AuthUser | null;
+  isAuthLoaded: boolean;
+  signUp: (email: string, password: string) => Promise<{ error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signOut: () => Promise<void>;
   event: EventModel;
   committees: MunCommittee[];
   portfolios: MunPortfolio[];
@@ -46,11 +57,93 @@ const AppContext = createContext<AppContextType | null>(null);
 const STORAGE_KEY = "mun_platform_database_clean_v2";
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isAuthLoaded, setIsAuthLoaded] = useState(false);
   const [event, setEvent] = useState<EventModel>(EMPTY_EVENT);
   const [committees, setCommittees] = useState<MunCommittee[]>([]);
   const [portfolios, setPortfolios] = useState<MunPortfolio[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Authentication: Supabase integration with seamless mock fallback
+  useEffect(() => {
+    if (isSupabaseConfigured && supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user?.email) {
+          setUser({ id: session.user.id, email: session.user.email });
+        }
+        setIsAuthLoaded(true);
+      });
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user?.email) {
+          setUser({ id: session.user.id, email: session.user.email });
+        } else {
+          setUser(null);
+        }
+      });
+
+      return () => subscription.unsubscribe();
+    } else {
+      try {
+        const stored = localStorage.getItem("delegate_auth_user");
+        if (stored) {
+          setUser(JSON.parse(stored));
+        }
+      } catch {
+        // ignore
+      }
+      setIsAuthLoaded(true);
+    }
+  }, []);
+
+  const signUp = async (email: string, password: string): Promise<{ error?: string }> => {
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) return { error: error.message };
+      if (data?.user?.email) {
+        setUser({ id: data.user.id, email: data.user.email });
+      }
+      return {};
+    } else {
+      const newUser = { id: `user_${Date.now()}`, email };
+      setUser(newUser);
+      try {
+        localStorage.setItem("delegate_auth_user", JSON.stringify(newUser));
+      } catch {}
+      return {};
+    }
+  };
+
+  const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: error.message };
+      if (data?.user?.email) {
+        setUser({ id: data.user.id, email: data.user.email });
+      }
+      return {};
+    } else {
+      const newUser = { id: `user_${Date.now()}`, email };
+      setUser(newUser);
+      try {
+        localStorage.setItem("delegate_auth_user", JSON.stringify(newUser));
+      } catch {}
+      return {};
+    }
+  };
+
+  const signOut = async () => {
+    if (isSupabaseConfigured && supabase) {
+      await supabase.auth.signOut();
+    }
+    setUser(null);
+    try {
+      localStorage.removeItem("delegate_auth_user");
+    } catch {}
+  };
 
   useEffect(() => {
     try {
@@ -383,6 +476,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
+        user,
+        isAuthLoaded,
+        signUp,
+        signIn,
+        signOut,
         event,
         committees,
         portfolios,
