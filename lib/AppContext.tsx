@@ -64,205 +64,6 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | null>(null);
 
-// Deterministic mock seed data for Organizer 1
-const MOCK_CONF_ORG1: EventModel = {
-  id: "delhi-youth-summit-2026",
-  ownerId: "org_user_1",
-  slug: "delhi-youth-summit-2026",
-  organizationId: "org-1",
-  type: "mun",
-  name: "Delhi Youth Summit MUN 2026",
-  dates: "March 14-16, 2026",
-  dateFrom: "2026-03-14",
-  dateTo: "2026-03-16",
-  venue: "Sanskriti School Auditorium, Chanakyapuri",
-  fee: 1600,
-  schoolFeePerStudent: 1200,
-  deadline: "March 05, 2026",
-  deadlineDate: "2026-03-05",
-  status: "published",
-  rules: {
-    allowSchoolTeams: true,
-    askPaymentProof: true,
-    showTakenPortfoliosLive: true,
-    firstComeFirstServed: true,
-    allotmentsPublished: false,
-  },
-};
-
-const MOCK_COMMS_ORG1: MunCommittee[] = [
-  {
-    id: "delhi-youth-summit-2026-unsc",
-    eventId: "delhi-youth-summit-2026",
-    name: "UNSC",
-    agenda: "Addressing maritime security in international waters",
-    totalSeats: 15,
-  },
-  {
-    id: "delhi-youth-summit-2026-disec",
-    eventId: "delhi-youth-summit-2026",
-    name: "DISEC",
-    agenda: "Non-proliferation of tactical ballistic weapons",
-    totalSeats: 25,
-  },
-];
-
-const MOCK_PORTS_ORG1: MunPortfolio[] = [
-  { id: "delhi-unsc-in", committeeId: "delhi-youth-summit-2026-unsc", countryName: "India", code: "IN", status: "open" },
-  { id: "delhi-unsc-us", committeeId: "delhi-youth-summit-2026-unsc", countryName: "United States", code: "US", status: "open" },
-  { id: "delhi-unsc-gb", committeeId: "delhi-youth-summit-2026-unsc", countryName: "United Kingdom", code: "GB", status: "open" },
-  { id: "delhi-unsc-fr", committeeId: "delhi-youth-summit-2026-unsc", countryName: "France", code: "FR", status: "open" },
-  { id: "delhi-unsc-ru", committeeId: "delhi-youth-summit-2026-unsc", countryName: "Russia", code: "RU", status: "open" },
-  { id: "delhi-unsc-cn", committeeId: "delhi-youth-summit-2026-unsc", countryName: "China", code: "CN", status: "open" },
-  { id: "delhi-unsc-br", committeeId: "delhi-youth-summit-2026-unsc", countryName: "Brazil", code: "BR", status: "open" },
-  { id: "delhi-unsc-jp", committeeId: "delhi-youth-summit-2026-unsc", countryName: "Japan", code: "JP", status: "open" },
-  { id: "delhi-disec-in", committeeId: "delhi-youth-summit-2026-disec", countryName: "India", code: "IN", status: "open" },
-  { id: "delhi-disec-us", committeeId: "delhi-youth-summit-2026-disec", countryName: "United States", code: "US", status: "open" },
-  { id: "delhi-disec-de", committeeId: "delhi-youth-summit-2026-disec", countryName: "Germany", code: "DE", status: "open" },
-  { id: "delhi-disec-fr", committeeId: "delhi-youth-summit-2026-disec", countryName: "France", code: "FR", status: "open" },
-  { id: "delhi-disec-jp", committeeId: "delhi-youth-summit-2026-disec", countryName: "Japan", code: "JP", status: "open" },
-];
-
-const MOCK_REGS_ORG1: Registration[] = [
-  {
-    id: "reg-delhi-101",
-    eventId: "delhi-youth-summit-2026",
-    delegateName: "Aarav Mehta",
-    email: "aarav.mehta@dps.edu",
-    phone: "98112 34567",
-    school: "Delhi Public School RK Puram",
-    classYear: "12",
-    experienceMuns: 4,
-    registrationNumber: "MUN-4091-X9K2",
-    registrationType: "individual",
-    paymentStatus: "verified",
-    feeAmount: 1600,
-    createdAt: "2026-11-01T10:00:00Z",
-    preferences: [
-      {
-        committeeRank: 1,
-        committeeId: "delhi-youth-summit-2026-unsc",
-        portfolioIds: ["delhi-unsc-in", "delhi-unsc-us", "delhi-unsc-gb"],
-      },
-      {
-        committeeRank: 2,
-        committeeId: "delhi-youth-summit-2026-disec",
-        portfolioIds: ["delhi-disec-in", "delhi-disec-us", "delhi-disec-de"],
-      },
-    ],
-  },
-  {
-    id: "reg-delhi-102",
-    eventId: "delhi-youth-summit-2026",
-    delegateName: "Diya Kapoor",
-    email: "diya.k@modern.edu",
-    phone: "98711 22334",
-    school: "Modern School Barakhamba",
-    classYear: "11",
-    experienceMuns: 2,
-    registrationNumber: "MUN-5832-B2M7",
-    registrationType: "individual",
-    paymentStatus: "verified",
-    feeAmount: 1600,
-    createdAt: "2026-11-02T11:30:00Z",
-    preferences: [
-      {
-        committeeRank: 1,
-        committeeId: "delhi-youth-summit-2026-unsc",
-        portfolioIds: ["delhi-unsc-in", "delhi-unsc-fr", "delhi-unsc-ru"],
-      },
-      {
-        committeeRank: 2,
-        committeeId: "delhi-youth-summit-2026-disec",
-        portfolioIds: ["delhi-disec-de", "delhi-disec-jp", "delhi-disec-fr"],
-      },
-    ],
-  },
-];
-
-// Deterministic mock seed data for Organizer 2
-const MOCK_CONF_ORG2: EventModel = {
-  id: "national-diplomacy-conclave-2026",
-  ownerId: "org_user_2",
-  slug: "national-diplomacy-conclave-2026",
-  organizationId: "org-2",
-  type: "mun",
-  name: "National Diplomacy Conclave 2026",
-  dates: "April 18-20, 2026",
-  dateFrom: "2026-04-18",
-  dateTo: "2026-04-20",
-  venue: "Convention Centre, Pragati Maidan",
-  fee: 2200,
-  schoolFeePerStudent: 1600,
-  deadline: "April 08, 2026",
-  deadlineDate: "2026-04-08",
-  status: "published",
-  rules: {
-    allowSchoolTeams: true,
-    askPaymentProof: true,
-    showTakenPortfoliosLive: true,
-    firstComeFirstServed: true,
-    allotmentsPublished: false,
-  },
-};
-
-const MOCK_COMMS_ORG2: MunCommittee[] = [
-  {
-    id: "national-conclave-unhrc",
-    eventId: "national-diplomacy-conclave-2026",
-    name: "UNHRC",
-    agenda: "Human rights protections in displacement corridors",
-    totalSeats: 30,
-  },
-  {
-    id: "national-conclave-unep",
-    eventId: "national-diplomacy-conclave-2026",
-    name: "UNEP",
-    agenda: "Cross-border water treaties and global plastic conventions",
-    totalSeats: 25,
-  },
-];
-
-const MOCK_PORTS_ORG2: MunPortfolio[] = [
-  { id: "nat-unhrc-in", committeeId: "national-conclave-unhrc", countryName: "India", code: "IN", status: "open" },
-  { id: "nat-unhrc-us", committeeId: "national-conclave-unhrc", countryName: "United States", code: "US", status: "open" },
-  { id: "nat-unhrc-za", committeeId: "national-conclave-unhrc", countryName: "South Africa", code: "ZA", status: "open" },
-  { id: "nat-unhrc-de", committeeId: "national-conclave-unhrc", countryName: "Germany", code: "DE", status: "open" },
-  { id: "nat-unep-br", committeeId: "national-conclave-unep", countryName: "Brazil", code: "BR", status: "open" },
-  { id: "nat-unep-ke", committeeId: "national-conclave-unep", countryName: "Kenya", code: "KE", status: "open" },
-  { id: "nat-unep-no", committeeId: "national-conclave-unep", countryName: "Norway", code: "NO", status: "open" },
-];
-
-const MOCK_REGS_ORG2: Registration[] = [
-  {
-    id: "reg-nat-201",
-    eventId: "national-diplomacy-conclave-2026",
-    delegateName: "Rohan Varma",
-    email: "rohan.v@springdales.edu",
-    phone: "98101 99887",
-    school: "Springdales School Dhaula Kuan",
-    classYear: "12",
-    experienceMuns: 5,
-    registrationNumber: "MUN-9281-Z7T4",
-    registrationType: "individual",
-    paymentStatus: "verified",
-    feeAmount: 2200,
-    createdAt: "2026-11-03T09:00:00Z",
-    preferences: [
-      {
-        committeeRank: 1,
-        committeeId: "national-conclave-unhrc",
-        portfolioIds: ["nat-unhrc-in", "nat-unhrc-us", "nat-unhrc-za"],
-      },
-      {
-        committeeRank: 2,
-        committeeId: "national-conclave-unep",
-        portfolioIds: ["nat-unep-br", "nat-unep-ke", "nat-unep-no"],
-      },
-    ],
-  },
-];
-
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthLoaded, setIsAuthLoaded] = useState(false);
@@ -275,12 +76,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [autoAllotIncludeUnpaid, setAutoAllotIncludeUnpaid] = useState(false);
 
-  // 1. Initial Authentication Check
+  // 1. Initial Authentication Check - Real User Only, No Demo Accounts
   useEffect(() => {
+    // Purge any stale legacy demo accounts or mock conferences from browser storage
+    try {
+      if (typeof window !== "undefined") {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key) {
+            const val = localStorage.getItem(key) || "";
+            if (
+              key.includes("organizer1") ||
+              key.includes("organizer2") ||
+              key.includes("org_user_1") ||
+              key.includes("org_user_2") ||
+              val.includes("delhi-youth-summit") ||
+              val.includes("Delhi Youth Summit") ||
+              val.includes("organizer1@delegate.app") ||
+              val.includes("organizer2@delegate.app") ||
+              val.includes("National Conclave")
+            ) {
+              keysToRemove.push(key);
+            }
+          }
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+        localStorage.removeItem("mun_platform_database_clean_v2");
+      }
+    } catch {}
+
     if (isSupabaseConfigured && supabase) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user?.email) {
           setUser({ id: session.user.id, email: session.user.email });
+        } else {
+          setUser(null);
         }
         setIsAuthLoaded(true);
       });
@@ -295,28 +126,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       return () => subscription.unsubscribe();
     } else {
-      // Local mock auth check
+      // Local auth check without any dummy user fallback
       try {
         const stored = localStorage.getItem("delegate_auth_user");
         if (stored) {
           setUser(JSON.parse(stored));
         } else {
-          // Default to Organizer 1 for immediate demo
-          const defaultUser: AuthUser = { id: "org_user_1", email: "organizer1@delegate.app" };
-          setUser(defaultUser);
-          localStorage.setItem("delegate_auth_user", JSON.stringify(defaultUser));
+          setUser(null);
         }
-      } catch {}
+      } catch {
+        setUser(null);
+      }
       setIsAuthLoaded(true);
     }
   }, []);
 
-  // 2. Load Conferences & Data whenever User or URL changes
+  // 2. Load Conferences & Data strictly for the signed-in organizer
   const loadOrganizerData = useCallback(async (activeUserId: string, targetEventId?: string) => {
     // A. Check Supabase
     if (isSupabaseConfigured && supabase) {
       try {
-        // Fetch only events owned by this organizer
+        // Query events owned exclusively by this organizer
         const { data: eventsData, error: evErr } = await supabase
           .from("events")
           .select("*")
@@ -324,7 +154,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           .order("created_at", { ascending: false });
 
         if (!evErr && eventsData) {
-          const parsed: EventModel[] = eventsData.map((ev) => ({
+          const validEvents = eventsData.filter(
+            (ev) =>
+              ev.id !== "delhi-youth-summit-2026" &&
+              ev.id !== "national-conclave-2026" &&
+              !ev.name?.toLowerCase().includes("delhi youth summit")
+          );
+          const parsed: EventModel[] = validEvents.map((ev) => ({
             id: ev.id,
             ownerId: ev.owner_id,
             slug: ev.slug,
@@ -346,15 +182,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setMyConferences(parsed);
           setAllEvents(parsed);
 
-          // Select target conference, or active saved conference, or first conference
-          const chosen =
-            (targetEventId && parsed.find((e) => e.id === targetEventId || e.slug === targetEventId)) ||
-            parsed[0] ||
-            EMPTY_EVENT;
+          if (parsed.length > 0) {
+            const chosen =
+              (targetEventId && parsed.find((e) => e.id === targetEventId || e.slug === targetEventId)) ||
+              parsed[0];
 
-          setEvent(chosen);
+            setEvent(chosen);
 
-          if (chosen.id && chosen.id !== "new-conference") {
             // Load committees for this conference
             const { data: commsData } = await supabase
               .from("committees")
@@ -424,6 +258,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               );
             }
           } else {
+            // New user with 0 conferences: clean slate
+            setEvent(EMPTY_EVENT);
             setCommittees([]);
             setPortfolios([]);
             setRegistrations([]);
@@ -433,58 +269,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return;
         }
       } catch (err) {
-        console.warn("Supabase load failed, falling back to isolated local store:", err);
+        console.warn("Supabase query error:", err);
       }
     }
 
-    // B. Mock Offline Storage with Strict Per-User Isolation
+    // B. Offline Storage strictly isolated per user id (No hardcoded seed conferences)
     const userStorageKey = `delegate_storage_${activeUserId}`;
     try {
       const saved = localStorage.getItem(userStorageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        setMyConferences(parsed.myConferences || []);
-        setAllEvents(parsed.myConferences || []);
-        const chosen =
-          (targetEventId && (parsed.myConferences || []).find((e: EventModel) => e.id === targetEventId)) ||
-          parsed.event ||
-          (parsed.myConferences || [])[0] ||
-          EMPTY_EVENT;
-        setEvent(chosen);
-        setCommittees(parsed.committees || []);
-        setPortfolios(parsed.portfolios || []);
-        setRegistrations(parsed.registrations || []);
+        const cleanConfs: EventModel[] = (parsed.myConferences || []).filter(
+          (c: EventModel) =>
+            c.id !== "delhi-youth-summit-2026" &&
+            c.id !== "national-conclave-2026" &&
+            !c.name?.toLowerCase().includes("delhi youth")
+        );
+        setMyConferences(cleanConfs);
+        setAllEvents(cleanConfs);
+        if (cleanConfs.length > 0) {
+          const chosen =
+            (targetEventId && cleanConfs.find((e: EventModel) => e.id === targetEventId)) ||
+            (parsed.event && parsed.event.id !== "delhi-youth-summit-2026" && !parsed.event.name?.toLowerCase().includes("delhi youth")
+              ? parsed.event
+              : cleanConfs[0]);
+          setEvent(chosen);
+          setCommittees(parsed.committees || []);
+          setPortfolios(parsed.portfolios || []);
+          setRegistrations(parsed.registrations || []);
+        } else {
+          setEvent(EMPTY_EVENT);
+          setCommittees([]);
+          setPortfolios([]);
+          setRegistrations([]);
+        }
         setIsLoaded(true);
         return;
       }
     } catch {}
 
-    // Seed per-user mock defaults if first time
-    if (activeUserId === "org_user_1" || activeUserId.includes("organizer1")) {
-      const confs = [MOCK_CONF_ORG1];
-      setMyConferences(confs);
-      setAllEvents(confs);
-      setEvent(MOCK_CONF_ORG1);
-      setCommittees(MOCK_COMMS_ORG1);
-      setPortfolios(MOCK_PORTS_ORG1);
-      setRegistrations(MOCK_REGS_ORG1);
-    } else if (activeUserId === "org_user_2" || activeUserId.includes("organizer2")) {
-      const confs = [MOCK_CONF_ORG2];
-      setMyConferences(confs);
-      setAllEvents(confs);
-      setEvent(MOCK_CONF_ORG2);
-      setCommittees(MOCK_COMMS_ORG2);
-      setPortfolios(MOCK_PORTS_ORG2);
-      setRegistrations(MOCK_REGS_ORG2);
-    } else {
-      // Brand new user: clean empty state
-      setMyConferences([]);
-      setAllEvents([]);
-      setEvent(EMPTY_EVENT);
-      setCommittees([]);
-      setPortfolios([]);
-      setRegistrations([]);
-    }
+    // Clean initial state for new organizer
+    setMyConferences([]);
+    setAllEvents([]);
+    setEvent(EMPTY_EVENT);
+    setCommittees([]);
+    setPortfolios([]);
+    setRegistrations([]);
     setIsLoaded(true);
   }, []);
 
@@ -494,7 +324,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const targetId = sp?.get("event") || sp?.get("eventId") || sp?.get("id") || "";
       loadOrganizerData(user.id, targetId);
     } else {
-      // For anonymous delegates: load requested conference from query param
+      // For anonymous delegates: load requested conference from URL query param
       const sp = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
       const targetId = sp?.get("event") || sp?.get("eventId") || sp?.get("id") || "";
       if (targetId) {
@@ -504,7 +334,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id, loadOrganizerData]);
 
-  // Sync isolated state to localStorage for offline mode
+  // Sync state to local storage isolated to this user
   useEffect(() => {
     if (user?.id && isLoaded) {
       const userStorageKey = `delegate_storage_${user.id}`;
@@ -523,7 +353,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id, isLoaded, myConferences, event, committees, portfolios, registrations]);
 
-  // Auth Methods
+  // Real Auth Methods
   const signUp = async (email: string, password: string): Promise<{ error?: string }> => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.auth.signUp({ email, password });
@@ -533,7 +363,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return {};
     } else {
-      const id = email.includes("organizer2") ? "org_user_2" : `org_user_${Date.now().toString(36)}`;
+      const id = `user_${Date.now().toString(36)}`;
       const newUser: AuthUser = { id, email };
       setUser(newUser);
       try {
@@ -552,11 +382,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return {};
     } else {
-      const id = email.includes("organizer2")
-        ? "org_user_2"
-        : email.includes("organizer1")
-        ? "org_user_1"
-        : `org_user_${Date.now().toString(36)}`;
+      const id = `user_${Date.now().toString(36)}`;
       const newUser: AuthUser = { id, email };
       setUser(newUser);
       try {
@@ -581,7 +407,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   };
 
-  // Switch the active conference in the organizer portal
+  // Switch active conference in organizer portal
   const selectConference = async (conferenceId: string): Promise<boolean> => {
     if (!conferenceId) return false;
     if (user?.id) {
@@ -625,7 +451,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           };
           setEvent(parsedEvent);
 
-          // Fetch committees for this event
           const { data: commsData } = await supabase
             .from("committees")
             .select("*")
@@ -662,7 +487,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
-          // Fetch registrations for this event
           const { data: regsData } = await supabase
             .from("registrations")
             .select("*")
@@ -694,31 +518,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return true;
         }
       } catch (err) {
-        console.warn("Public loadEventById failed:", err);
+        console.warn("loadEventById error:", err);
       }
     }
 
-    // 2. Fallback check local mock events
-    const allMocks = [MOCK_CONF_ORG1, MOCK_CONF_ORG2];
-    const match = allMocks.find((e) => e.id === eventId || e.slug === eventId);
-    if (match) {
-      setEvent(match);
-      if (match.id === MOCK_CONF_ORG1.id) {
-        setCommittees(MOCK_COMMS_ORG1);
-        setPortfolios(MOCK_PORTS_ORG1);
-        setRegistrations(MOCK_REGS_ORG1);
-      } else {
-        setCommittees(MOCK_COMMS_ORG2);
-        setPortfolios(MOCK_PORTS_ORG2);
-        setRegistrations(MOCK_REGS_ORG2);
-      }
+    // 2. Check if conference is in organizer's loaded conferences
+    const localMatch = myConferences.find((e) => e.id === eventId || e.slug === eventId);
+    if (localMatch) {
+      setEvent(localMatch);
       return true;
     }
 
     return false;
   };
 
-  // Create a brand new conference belonging to this organizer
+  // Create brand new conference belonging to this organizer
   const createNewConference = async (data?: Partial<EventModel>): Promise<EventModel | null> => {
     if (!user) return null;
 
@@ -759,7 +573,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPortfolios([]);
     setRegistrations([]);
 
-    // Save to Supabase if configured
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from("events").insert({
@@ -780,7 +593,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           rules: newConf.rules,
         });
       } catch (err) {
-        console.warn("Supabase insert conference failed:", err);
+        console.warn("Supabase insert conference error:", err);
       }
     }
 
@@ -805,11 +618,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Add Registration with unguessable collision-resistant number
+  // Add registration with collision-resistant random registration number
   const addRegistration = async (
     data: Omit<Registration, "id" | "registrationNumber" | "createdAt">
   ): Promise<Registration> => {
-    // Generate unguessable registration number: e.g. MUN-7842-X9K2
     const randomFourDigit = Math.floor(1000 + Math.random() * 9000);
     const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
     const newRegNum = `MUN-${randomFourDigit}-${randomSuffix}`;
@@ -1111,7 +923,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Atomic Allotment: verifies open status before allotting to prevent double allotment
+  // Atomic Allotment
   const allotDelegateManual = async (
     regId: string,
     committeeId: string,
@@ -1128,7 +940,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    // Try Supabase atomic function if online
     if (isSupabaseConfigured && supabase) {
       try {
         const { data, error } = await supabase.rpc("allot_portfolio_atomic", {
@@ -1142,11 +953,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return false;
         }
       } catch (err) {
-        console.warn("RPC allot_portfolio_atomic unavailable, using transactional client updates:", err);
+        console.warn("RPC allot_portfolio_atomic error, continuing client update:", err);
       }
     }
 
-    // Apply local state updates atomically
     const allotment: MunAllotment = {
       registrationId: regId,
       committeeId,
@@ -1209,7 +1019,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Real dynamic auto-allotment simulation
+  // Real auto allotment simulation
   const autoAllotSimulation = simulateAutoAllotment(
     registrations,
     portfolios,

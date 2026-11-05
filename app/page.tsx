@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
@@ -16,9 +17,11 @@ import { getConferenceRegistrationLink, getConferenceBrowseLink } from "@/lib/re
 type SetupSubStep = "overview" | "basics" | "committees" | "countries" | "rules" | "publish";
 
 export default function SetupLandingPage() {
+  const router = useRouter();
   const {
     user,
     isAuthLoaded,
+    myConferences,
     signOut,
     event,
     committees,
@@ -79,6 +82,18 @@ export default function SetupLandingPage() {
       setActiveCommId(committees[0].id);
     }
   }, [committees, activeCommId]);
+
+  // Auto-route organizers directly to the dashboard if a conference has already been created
+  React.useEffect(() => {
+    if (isAuthLoaded && user) {
+      const hasConference =
+        (myConferences && myConferences.length > 0) ||
+        (event.name && event.name.trim().length > 0 && event.id !== "new-conference");
+      if (hasConference) {
+        router.replace("/organizer");
+      }
+    }
+  }, [isAuthLoaded, user, myConferences, event.name, event.id, router]);
 
   // Helper date formatter
   const formatDateRange = (dFrom: string, dTo: string) => {
@@ -306,7 +321,23 @@ export default function SetupLandingPage() {
   };
 
   if (isAuthLoaded && !user) {
-    return <AuthScreen />;
+    return <AuthScreen onSuccess={() => router.push("/organizer")} />;
+  }
+
+  // If the user already has a conference created, show brief loader while redirecting to dashboard
+  if (
+    isAuthLoaded &&
+    user &&
+    ((myConferences && myConferences.length > 0) ||
+      (event.name && event.name.trim().length > 0 && event.id !== "new-conference"))
+  ) {
+    return (
+      <main className="min-h-screen bg-[#1560BD] flex items-center justify-center text-white">
+        <div className="text-center space-y-3">
+          <div className="text-2xl font-heading font-extrabold">Loading dashboard...</div>
+        </div>
+      </main>
+    );
   }
 
   return (
