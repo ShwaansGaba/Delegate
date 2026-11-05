@@ -9,6 +9,7 @@ import { Row } from "@/components/ui/Row";
 import { PortfolioCombobox } from "@/components/ui/PortfolioCombobox";
 import { CountryPill } from "@/components/ui/CountryPill";
 import { Trash2 } from "lucide-react";
+import { getConferenceRegistrationLink, getConferenceBrowseLink } from "@/lib/registrationLinks";
 
 type SetupStep = "basics" | "committees" | "countries" | "rules" | "publish";
 
@@ -273,16 +274,21 @@ export default function OrganizerSetupPage() {
     setCurrentStep("publish");
   };
 
-  const registrationLink = typeof window !== "undefined" ? `${window.location.origin}/conferences` : "https://delegate-platform.org/conferences";
+  const individualLink = getConferenceRegistrationLink(event.id, "individual");
+  const teamLink = getConferenceRegistrationLink(event.id, "team");
+  const browseLink = getConferenceBrowseLink(event.id);
 
-  const handleCopyLink = () => {
-    navigator.clipboard?.writeText(registrationLink);
-    alert("Registration link copied to clipboard!");
+  const [copiedType, setCopiedType] = useState<string | null>(null);
+
+  const handleCopy = (url: string, typeName: string) => {
+    navigator.clipboard?.writeText(url);
+    setCopiedType(typeName);
+    setTimeout(() => setCopiedType(null), 3000);
   };
 
-  const handleShareWhatsApp = () => {
+  const handleShareWhatsApp = (url: string, label: string) => {
     const text = encodeURIComponent(
-      `Registrations are now open for ${event.name}! Dates: ${event.dates}. Register alone or as a school delegation: ${registrationLink}`
+      `Registrations are now open for ${event.name}! Dates: ${event.dates}. ${label}: ${url}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank");
   };
@@ -730,33 +736,66 @@ export default function OrganizerSetupPage() {
       {currentStep === "publish" && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left Card matching Page 28 */}
-            <div className="lg:col-span-7 bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-6">
-              <div>
-                <h2 className="text-3xl font-heading font-extrabold text-[#0B1B33]">
-                  Your registration link
-                </h2>
-                <p className="text-xl font-heading font-bold text-neutral-700 mt-3 break-all bg-neutral-100 p-4 rounded-2xl">
-                  {registrationLink}
-                </p>
+            {/* Left Card: Distinct links */}
+            <div className="lg:col-span-7 space-y-4">
+              {/* Individual Delegate */}
+              <div className="bg-white text-[#0B1B33] rounded-3xl p-6 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                    Individual Delegate Link
+                  </span>
+                  <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+                    ₹{event.fee || 2500}
+                  </span>
+                </div>
+                <div className="text-sm font-mono text-neutral-700 break-all p-3 bg-neutral-100 rounded-xl">
+                  {individualLink}
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(individualLink, "individual")}
+                    className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl p-3 text-center text-sm font-heading font-extrabold transition-colors cursor-pointer"
+                  >
+                    {copiedType === "individual" ? "✓ Copied!" : "Copy link"}
+                  </button>
+                  <Button
+                    variant="primary"
+                    onClick={() => handleShareWhatsApp(individualLink, "Individual Registration")}
+                  >
+                    WhatsApp
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <Button
-                  variant="primary"
-                  onClick={handleShareWhatsApp}
-                  className="flex-1"
-                >
-                  Share on WhatsApp
-                </Button>
-
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="flex-1 border-2 border-neutral-300 hover:border-neutral-800 text-[#0B1B33] rounded-2xl p-4 text-lg font-heading font-extrabold text-center transition-colors cursor-pointer"
-                >
-                  Copy link
-                </button>
+              {/* School Team */}
+              <div className="bg-white text-[#0B1B33] rounded-3xl p-6 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                    School Delegation Team Link
+                  </span>
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                    ₹{event.schoolFeePerStudent || 1200}/student
+                  </span>
+                </div>
+                <div className="text-sm font-mono text-neutral-700 break-all p-3 bg-neutral-100 rounded-xl">
+                  {teamLink}
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(teamLink, "team")}
+                    className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl p-3 text-center text-sm font-heading font-extrabold transition-colors cursor-pointer"
+                  >
+                    {copiedType === "team" ? "✓ Copied!" : "Copy link"}
+                  </button>
+                  <Button
+                    variant="primary"
+                    onClick={() => handleShareWhatsApp(teamLink, "School Delegation Registration")}
+                  >
+                    WhatsApp
+                  </Button>
+                </div>
               </div>
             </div>
 

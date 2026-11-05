@@ -15,7 +15,22 @@ interface TeamMember {
 
 export default function SchoolTeamRegistrationPage() {
   const router = useRouter();
-  const { event, addRegistration } = useApp();
+  const { event, loadEventById, addRegistration } = useApp();
+
+  // Load conference from URL query param if present
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const evParam = sp.get("event") || sp.get("eventId");
+      if (evParam && evParam !== event.id) {
+        loadEventById(evParam);
+      }
+    }
+  }, [event.id, loadEventById]);
+
+  React.useEffect(() => {
+    document.title = event.name ? `Team Registration - ${event.name} | Delegate` : "School Team Registration | Delegate";
+  }, [event.name]);
 
   const [schoolName, setSchoolName] = useState("Delhi Public School");
   const [headDelegateName, setHeadDelegateName] = useState("Aarav Mehta");
@@ -87,7 +102,7 @@ export default function SchoolTeamRegistrationPage() {
       ],
     });
 
-    router.push(`/register/confirmation?num=${encodeURIComponent(headReg.registrationNumber)}&team=true`);
+    router.push(`/register/confirmation?num=${encodeURIComponent(headReg.registrationNumber)}&team=true&event=${encodeURIComponent(event.id)}`);
   };
 
   return (
@@ -101,6 +116,18 @@ export default function SchoolTeamRegistrationPage() {
             else router.push("/");
           }}
         />
+
+        {/* Conference Header Card */}
+        <div className="bg-white/10 border border-white/20 rounded-xl px-3.5 py-2 mt-2 mb-1 text-white flex items-center justify-between">
+          <div className="truncate mr-2">
+            <span className="text-[11px] sm:text-xs uppercase tracking-wider text-blue-200 block font-bold">School Team for</span>
+            <span className="text-sm sm:text-base font-heading font-extrabold truncate block">{event.name || "MUN Conference"}</span>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-[11px] sm:text-xs uppercase tracking-wider text-blue-200 block font-bold">Per Student</span>
+            <span className="text-sm sm:text-base font-heading font-extrabold text-[#FFD23F]">₹{perStudentFee.toLocaleString()}</span>
+          </div>
+        </div>
 
         {step === "delegates" ? (
           <div className="flex-1 flex flex-col justify-between pt-6">

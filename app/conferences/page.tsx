@@ -272,7 +272,7 @@ export default function AvailableConferencesPage() {
                   {/* Action Buttons */}
                   <div className="pt-4 sm:pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
                     <Link
-                      href="/browse"
+                      href={`/browse?event=${encodeURIComponent(conf.id)}`}
                       className="w-full sm:w-auto text-[#1560BD] hover:text-[#0F4C96] font-heading font-bold text-sm sm:text-base underline flex items-center justify-center gap-1.5 py-1 sm:py-2"
                     >
                       <Award className="w-4 h-4" />
@@ -307,21 +307,21 @@ export default function AvailableConferencesPage() {
       {/* Registration Mode Modal */}
       {selectedConfForModal && (
         <div className="fixed inset-0 z-50 bg-[#0B1B33]/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full text-[#0B1B33] border border-gray-200 animate-slideUp">
-            <h3 className="text-2xl font-heading font-extrabold mb-2 text-[#0B1B33]">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full text-[#0B1B33] border border-gray-200 animate-slideUp">
+            <h3 className="text-2xl font-heading font-extrabold mb-1 text-[#0B1B33]">
               Choose Registration Type
             </h3>
-            <p className="text-gray-600 text-base mb-6 font-medium">
-              Are you registering as an individual delegate or with a school delegation?
+            <p className="text-gray-500 text-sm mb-5 font-medium">
+              Unique link: <span className="font-mono text-xs bg-slate-100 p-1 rounded font-bold text-[#1560BD] break-all">?event={selectedConfForModal}</span>
             </p>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <button
                 type="button"
-                onClick={() => router.push("/register")}
-                className="w-full p-5 text-left border-2 border-gray-200 hover:border-[#1560BD] rounded-2xl transition-all duration-200 hover:bg-blue-50/50 cursor-pointer group"
+                onClick={() => router.push(`/register?event=${encodeURIComponent(selectedConfForModal)}`)}
+                className="w-full p-4 sm:p-5 text-left border-2 border-gray-200 hover:border-[#1560BD] rounded-2xl transition-all duration-200 hover:bg-blue-50/50 cursor-pointer group"
               >
-                <div className="text-xl font-heading font-extrabold text-[#0B1B33] group-hover:text-[#1560BD]">
+                <div className="text-lg sm:text-xl font-heading font-extrabold text-[#0B1B33] group-hover:text-[#1560BD]">
                   Individual Delegate
                 </div>
                 <div className="text-sm text-gray-500 font-medium mt-1">
@@ -331,10 +331,10 @@ export default function AvailableConferencesPage() {
 
               <button
                 type="button"
-                onClick={() => router.push("/register/team")}
-                className="w-full p-5 text-left border-2 border-gray-200 hover:border-[#1560BD] rounded-2xl transition-all duration-200 hover:bg-blue-50/50 cursor-pointer group"
+                onClick={() => router.push(`/register/team?event=${encodeURIComponent(selectedConfForModal)}`)}
+                className="w-full p-4 sm:p-5 text-left border-2 border-gray-200 hover:border-[#1560BD] rounded-2xl transition-all duration-200 hover:bg-blue-50/50 cursor-pointer group"
               >
-                <div className="text-xl font-heading font-extrabold text-[#0B1B33] group-hover:text-[#1560BD]">
+                <div className="text-lg sm:text-xl font-heading font-extrabold text-[#0B1B33] group-hover:text-[#1560BD]">
                   School Delegation Team
                 </div>
                 <div className="text-sm text-gray-500 font-medium mt-1">
@@ -343,11 +343,23 @@ export default function AvailableConferencesPage() {
               </button>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+            <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  const link = `${window.location.origin}${window.location.pathname.startsWith("/Delegate") ? "/Delegate" : ""}/register?event=${encodeURIComponent(selectedConfForModal)}`;
+                  navigator.clipboard?.writeText(link);
+                  alert("Conference registration link copied!");
+                }}
+                className="text-[#1560BD] font-bold text-sm underline cursor-pointer"
+              >
+                Copy registration link
+              </button>
+
               <button
                 type="button"
                 onClick={() => setSelectedConfForModal(null)}
-                className="text-gray-500 hover:text-gray-800 font-bold text-base px-4 py-2 cursor-pointer"
+                className="text-gray-500 hover:text-gray-800 font-bold text-base px-3 py-1.5 cursor-pointer"
               >
                 Cancel
               </button>

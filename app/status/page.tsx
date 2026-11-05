@@ -12,7 +12,7 @@ import { Registration } from "@/lib/types";
 
 export default function StatusPage() {
   const router = useRouter();
-  const { findRegistrationByNumber, committees, portfolios, event, verifyPayment, registrations } = useApp();
+  const { findRegistrationByNumber, committees, portfolios, event, loadEventById, verifyPayment, registrations } = useApp();
 
   const [inputNum, setInputNum] = useState("");
   const [currentReg, setCurrentReg] = useState<Registration | null>(null);
@@ -44,6 +44,9 @@ export default function StatusPage() {
     setSearched(true);
     if (found) {
       setCurrentReg(found);
+      if (found.eventId && found.eventId !== event.id) {
+        loadEventById(found.eventId);
+      }
     } else {
       setCurrentReg(null);
       setErrorMsg(`No registration found for "${cleaned}". Check your confirmation email or try sample number "MUN 2048".`);

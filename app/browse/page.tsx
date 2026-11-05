@@ -8,8 +8,18 @@ import { Button } from "@/components/ui/Button";
 
 export default function BrowseCommitteesPage() {
   const router = useRouter();
-  const { committees, portfolios, event } = useApp();
+  const { committees, portfolios, event, loadEventById } = useApp();
   const [expandedId, setExpandedId] = useState<string>("disec");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const evParam = sp.get("event") || sp.get("eventId");
+      if (evParam && evParam !== event.id) {
+        loadEventById(evParam);
+      }
+    }
+  }, [event.id, loadEventById]);
 
   useEffect(() => {
     document.title = event.name ? `Committees - ${event.name} | Delegate` : "Committees | Delegate";
@@ -22,13 +32,19 @@ export default function BrowseCommitteesPage() {
         <ProgressBar
           currentStep={1}
           totalSteps={1}
-          onBack={() => router.push("/")}
+          onBack={() => router.push("/conferences")}
         />
 
-        <div className="my-6">
-          <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white">
-            Committees
+        <div className="my-5">
+          <div className="text-xs uppercase tracking-wider text-blue-200 font-bold mb-1">
+            {event.name || "Conference Directory"}
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-heading font-extrabold text-white">
+            Committees & Agendas
           </h1>
+          {event.dates && (
+            <p className="text-blue-100 text-sm mt-1 font-medium">{event.dates} • {event.venue || "Campus Venue"}</p>
+          )}
         </div>
 
         {/* Committees List */}
@@ -104,8 +120,8 @@ export default function BrowseCommitteesPage() {
 
         {/* Bottom Yellow Register Button */}
         <div className="pt-8 pb-4">
-          <Button onClick={() => router.push("/register")}>
-            Register
+          <Button onClick={() => router.push(event.id ? `/register?event=${encodeURIComponent(event.id)}` : "/register")}>
+            Register for this MUN
           </Button>
         </div>
       </div>

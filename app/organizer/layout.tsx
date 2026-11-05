@@ -8,7 +8,7 @@ import { Menu, X } from "lucide-react";
 
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { event, user, signOut } = useApp();
+  const { event, allEvents, loadEventById, createNewConference, user, signOut } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   React.useEffect(() => {
@@ -59,6 +59,36 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
       {/* Mobile & Tablet Dropdown Nav */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-[#0F4C96] p-4 space-y-2 border-b border-white/20">
+          {/* Mobile Conference Switcher */}
+          {allEvents && allEvents.length > 0 && (
+            <div className="mb-3 pb-3 border-b border-white/10">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-blue-200 block mb-1">
+                Active Conference
+              </label>
+              <select
+                value={event.id}
+                onChange={(e) => {
+                  if (e.target.value === "__NEW__") {
+                    createNewConference();
+                  } else {
+                    loadEventById(e.target.value);
+                  }
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full bg-[#1560BD] text-white font-heading font-extrabold text-sm rounded-xl p-2.5 outline-none border border-white/30"
+              >
+                {allEvents.map((ev) => (
+                  <option key={ev.id} value={ev.id} className="text-[#0B1B33] bg-white">
+                    {ev.name}
+                  </option>
+                ))}
+                <option value="__NEW__" className="text-[#0B1B33] bg-yellow-100 font-bold">
+                  + Create New MUN...
+                </option>
+              </select>
+            </div>
+          )}
+
           {navLinks.map((link) => {
             const active = isLinkActive(link.href);
             return (
@@ -100,14 +130,45 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
       {/* Desktop Darker Blue Sidebar (#0F4C96) matching Page 22-28 */}
       <aside className="hidden lg:flex flex-col w-64 lg:w-72 bg-[#0F4C96] p-6 lg:p-8 flex-shrink-0 min-h-screen">
         {/* Conference Title */}
-        <div className="mb-10">
+        <div className="mb-6">
           <Link href="/organizer" className="block">
-            <h2 className="text-3xl font-heading font-extrabold text-white leading-tight">
-              {event.name.split(" ")[0]} <br />
-              {event.name.split(" ").slice(1).join(" ")}
+            <h2 className="text-2xl font-heading font-extrabold text-white leading-tight">
+              {event.name}
             </h2>
           </Link>
+          <div className="text-xs text-blue-200 font-bold uppercase tracking-wider mt-1">
+            Organizer Portal
+          </div>
         </div>
+
+        {/* Conference Switcher for Multi-MUN */}
+        {allEvents && allEvents.length > 0 && (
+          <div className="mb-6 bg-blue-950/40 p-3 rounded-2xl border border-white/10">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-blue-200 block mb-1.5">
+              Switch MUN
+            </label>
+            <select
+              value={event.id}
+              onChange={(e) => {
+                if (e.target.value === "__NEW__") {
+                  createNewConference();
+                } else {
+                  loadEventById(e.target.value);
+                }
+              }}
+              className="w-full bg-[#1560BD] text-white font-heading font-bold text-xs rounded-xl p-2 outline-none border border-white/30 cursor-pointer"
+            >
+              {allEvents.map((ev) => (
+                <option key={ev.id} value={ev.id} className="text-[#0B1B33] bg-white">
+                  {ev.name}
+                </option>
+              ))}
+              <option value="__NEW__" className="text-[#0B1B33] bg-yellow-100 font-bold">
+                + New Conference...
+              </option>
+            </select>
+          </div>
+        )}
 
         {/* Navigation Items styled as white active pills */}
         <nav className="space-y-3 flex-1">

@@ -9,7 +9,8 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { PortfolioCombobox } from "@/components/ui/PortfolioCombobox";
 import { CountryPill } from "@/components/ui/CountryPill";
 import { AuthScreen } from "@/components/auth/AuthScreen";
-import { ArrowRight, Check, Trash2, LogOut } from "lucide-react";
+import { ArrowRight, Check, Trash2, LogOut, Copy, ExternalLink } from "lucide-react";
+import { getConferenceRegistrationLink, getConferenceBrowseLink } from "@/lib/registrationLinks";
 
 type SetupSubStep = "overview" | "basics" | "committees" | "countries" | "rules" | "publish";
 
@@ -284,20 +285,21 @@ export default function SetupLandingPage() {
     (p) => p.committeeId === (activeCommId || committees[0]?.id)
   );
 
-  const registrationLink =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/register`
-      : "http://localhost:3000/register";
+  const individualLink = getConferenceRegistrationLink(event.id, "individual");
+  const teamLink = getConferenceRegistrationLink(event.id, "team");
+  const browseLink = getConferenceBrowseLink(event.id);
 
-  const handleCopyLink = () => {
-    navigator.clipboard?.writeText(registrationLink);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 3000);
+  const [copiedLinkType, setCopiedLinkType] = useState<string | null>(null);
+
+  const handleCopyLink = (url: string, typeName: string) => {
+    navigator.clipboard?.writeText(url);
+    setCopiedLinkType(typeName);
+    setTimeout(() => setCopiedLinkType(null), 3000);
   };
 
-  const handleShareWhatsApp = () => {
+  const handleShareWhatsApp = (url: string, label: string) => {
     const text = encodeURIComponent(
-      `Registrations are now open for ${event.name || name || "MUN 2026"}! Dates: ${event.dates || formatDateRange(dateFrom, dateTo)}. Choose your committee and claim your country here: ${registrationLink}`
+      `Registrations are now open for ${event.name || name || "MUN 2026"}! Dates: ${event.dates || formatDateRange(dateFrom, dateTo)}. ${label}: ${url}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank");
   };
@@ -1007,31 +1009,82 @@ export default function SetupLandingPage() {
                 </p>
               </div>
 
-              {/* Link Box */}
-              <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-3 sm:space-y-4">
-                <div className="text-xs sm:text-base text-neutral-500 font-bold uppercase tracking-wider">
-                  Your registration link
-                </div>
-                <div className="text-base sm:text-2xl font-heading font-extrabold text-[#0B1B33] break-all p-3 sm:p-4 bg-neutral-100 rounded-xl sm:rounded-2xl">
-                  {registrationLink}
+              {/* Distinct Registration Links for Multi-MUN */}
+              <div className="space-y-4">
+                {/* Individual Delegate Link */}
+                <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs sm:text-sm text-neutral-500 font-bold uppercase tracking-wider">
+                      Individual Delegate Registration
+                    </span>
+                    <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+                      ₹{event.fee || 2500}
+                    </span>
+                  </div>
+                  <div className="text-sm sm:text-base font-mono text-neutral-700 break-all p-3 bg-neutral-100 rounded-xl">
+                    {individualLink}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyLink(individualLink, "individual")}
+                      className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl p-3 text-center text-sm sm:text-base font-heading font-extrabold transition-colors cursor-pointer"
+                    >
+                      {copiedLinkType === "individual" ? "✓ Copied!" : "Copy link"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleShareWhatsApp(individualLink, "Individual Registration")}
+                      className="w-full bg-[#FFD23F] hover:bg-yellow-400 text-[#0B1B33] rounded-xl p-3 text-center text-sm sm:text-base font-heading font-extrabold transition-colors cursor-pointer"
+                    >
+                      WhatsApp
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-2 sm:space-y-3 pt-1 sm:pt-2">
-                  <button
-                    type="button"
-                    onClick={handleShareWhatsApp}
-                    className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 flex items-center justify-between text-base sm:text-xl font-heading font-extrabold transition-colors cursor-pointer"
-                  >
-                    <span>Share on WhatsApp</span>
-                    <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
-                  </button>
+                {/* School Delegation Link */}
+                <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs sm:text-sm text-neutral-500 font-bold uppercase tracking-wider">
+                      School Delegation (Bulk Team)
+                    </span>
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      ₹{event.schoolFeePerStudent || 1200}/student
+                    </span>
+                  </div>
+                  <div className="text-sm sm:text-base font-mono text-neutral-700 break-all p-3 bg-neutral-100 rounded-xl">
+                    {teamLink}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyLink(teamLink, "team")}
+                      className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl p-3 text-center text-sm sm:text-base font-heading font-extrabold transition-colors cursor-pointer"
+                    >
+                      {copiedLinkType === "team" ? "✓ Copied!" : "Copy link"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleShareWhatsApp(teamLink, "School Delegation Registration")}
+                      className="w-full bg-[#FFD23F] hover:bg-yellow-400 text-[#0B1B33] rounded-xl p-3 text-center text-sm sm:text-base font-heading font-extrabold transition-colors cursor-pointer"
+                    >
+                      WhatsApp
+                    </button>
+                  </div>
+                </div>
 
+                {/* Committee Agenda Browse Link */}
+                <div className="bg-white/10 border border-white/20 rounded-2xl p-4 text-white flex items-center justify-between">
+                  <div className="truncate mr-2">
+                    <span className="text-xs uppercase tracking-wider text-blue-200 block font-bold">Public Committee Matrix</span>
+                    <span className="text-sm font-heading font-bold truncate block">{browseLink}</span>
+                  </div>
                   <button
                     type="button"
-                    onClick={handleCopyLink}
-                    className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 text-center text-base sm:text-xl font-heading font-extrabold transition-colors cursor-pointer"
+                    onClick={() => handleCopyLink(browseLink, "browse")}
+                    className="shrink-0 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer"
                   >
-                    {copiedLink ? "✓ Link Copied!" : "Copy link"}
+                    {copiedLinkType === "browse" ? "✓ Copied" : "Copy"}
                   </button>
                 </div>
               </div>
@@ -1050,7 +1103,7 @@ export default function SetupLandingPage() {
 
               {/* Action Buttons */}
               <div className="space-y-3 pt-2">
-                <Link href="/register" className="block w-full">
+                <Link href={`/register?event=${encodeURIComponent(event.id)}`} className="block w-full">
                   <Button>Open delegate registration →</Button>
                 </Link>
 

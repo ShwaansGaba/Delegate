@@ -26,6 +26,9 @@ interface AppContextType {
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   event: EventModel;
+  allEvents: EventModel[];
+  loadEventById: (eventId: string) => Promise<boolean>;
+  createNewConference: () => void;
   committees: MunCommittee[];
   portfolios: MunPortfolio[];
   registrations: Registration[];
@@ -61,6 +64,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthLoaded, setIsAuthLoaded] = useState(false);
   const [event, setEvent] = useState<EventModel>(EMPTY_EVENT);
+  const [allEvents, setAllEvents] = useState<EventModel[]>([]);
   const [committees, setCommittees] = useState<MunCommittee[]>([]);
   const [portfolios, setPortfolios] = useState<MunPortfolio[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -170,11 +174,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const { data: eventsData, error: evErr } = await supabase
             .from("events")
             .select("*")
-            .limit(1);
+            .order("created_at", { ascending: false });
 
           if (!evErr && eventsData && eventsData.length > 0) {
-            const ev = eventsData[0];
-            const parsedEvent: EventModel = {
+            const parsedEvents: EventModel[] = eventsData.map((ev) => ({
               id: ev.id,
               organizationId: ev.organization_id || "org-1",
               type: ev.type || "mun",
@@ -189,67 +192,88 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               schoolFeePerStudent: Number(ev.school_fee_per_student) || 0,
               status: ev.status,
               rules: ev.rules || EMPTY_EVENT.rules,
-            };
-            setEvent(parsedEvent);
+            }));
+            setAllEvents(parsedEvents);
 
-            const { data: commsData } = await supabase
-              .from("committees")
-              .select("*")
-              .eq("event_id", ev.id);
-
-            if (commsData) {
-              setCommittees(
-                commsData.map((c) => ({
-                  id: c.id,
-                  eventId: c.event_id,
-                  name: c.name,
-                  agenda: c.agenda,
-                  totalSeats: c.total_seats,
-                  backgroundGuideUrl: c.background_guide_url,
-                }))
-              );
+            // Determine if a specific event is requested via URL (?event=... or ?eventId=...)
+            let targetEventId = "";
+            if (typeof window !== "undefined") {
+              const sp = new URLSearchParams(window.location.search);
+              targetEventId = sp.get("event") || sp.get("eventId") || "";
             }
 
-            const { data: portsData } = await supabase.from("portfolios").select("*");
-            if (portsData) {
-              setPortfolios(
-                portsData.map((p) => ({
-                  id: p.id,
-                  committeeId: p.committee_id,
-                  countryName: p.country_name,
-                  code: p.country_code,
-                  status: p.status,
-                  allottedRegistrationId: p.allotted_registration_id || undefined,
-                }))
-              );
-            }
+            const targetEv =
+              (targetEventId && parsedEvents.find((e) => e.id === targetEventId)) ||
+              parsedEvents[0];
 
-            const { data: regsData } = await supabase
-              .from("registrations")
-              .select("*")
-              .eq("event_id", ev.id);
+            if (targetEv) {
+              setEvent(targetEv);
 
-            if (regsData) {
-              setRegistrations(
-                regsData.map((r) => ({
-                  id: r.id,
-                  eventId: r.event_id,
-                  delegateName: r.name || "",
-                  email: r.email || "",
-                  phone: r.phone || "",
-                  school: r.school || "",
-                  classYear: r.class_year || "",
-                  experienceMuns: Number(r.experience_count) || 0,
-                  registrationNumber: r.registration_number,
-                  registrationType: r.type === "school_team" ? "school_team" : "individual",
-                  paymentStatus: (r.payment_status as PaymentStatus) || "unpaid",
-                  paymentProofUrl: r.payment_proof_url || undefined,
-                  feeAmount: Number(r.fee_amount) || 1500,
-                  preferences: r.preferences || [],
-                  allotment: r.allotment || undefined,
-                  createdAt: r.created_at || new Date().toISOString(),
-                }))
-              );
+              const { data: commsData } = await supabase
+                .from("committees")
+                .select("*")
+                .eq("event_id", targetEv.id);
+
+              const mappedComms: MunCommittee[] = (commsData || []).map((c) => ({
+                id: c.id,
+                eventId: c.event_id,
+                name: c.name,
+                agenda: c.agenda,
+                totalSeats: c.total_seats,
+                backgroundGuideUrl: c.background_guide_url,
+              }));
+              setCommittees(mappedComms);
+
+              const commIds = mappedComms.map((c) => c.id);
+              if (commIds.length > 0) {
+                const { data: portsData } = await supabase
+                  .from("portfolios")
+                  .select("*")
+                  .in("committee_id", commIds);
+
+                if (portsData) {
+                  setPortfolios(
+                    portsData.map((p) => ({
+                      id: p.id,
+                      committeeId: p.committee_id,
+                      countryName: p.country_name,
+                      code: p.country_code,
+                      status: p.status,
+                      allottedRegistrationId: p.allotted_registration_id || undefined,
+                    }))
+                  );
+                }
+              } else {
+                setPortfolios([]);
+              }
+
+              const { data: regsData } = await supabase
+                .from("registrations")
+                .select("*")
+                .eq("event_id", targetEv.id);
+
+              if (regsData) {
+                setRegistrations(
+                  regsData.map((r) => ({
+                    id: r.id,
+                    eventId: r.event_id,
+                    delegateName: r.name || "",
+                    email: r.email || "",
+                    phone: r.phone || "",
+                    school: r.school || "",
+                    classYear: r.class_year || "",
+                    experienceMuns: Number(r.experience_count) || 0,
+                    registrationNumber: r.registration_number,
+                    registrationType: r.type === "school_team" ? "school_team" : "individual",
+                    paymentStatus: (r.payment_status as PaymentStatus) || "unpaid",
+                    paymentProofUrl: r.payment_proof_url || undefined,
+                    feeAmount: Number(r.fee_amount) || 1500,
+                    preferences: r.preferences || [],
+                    allotment: r.allotment || undefined,
+                    createdAt: r.created_at || new Date().toISOString(),
+                  }))
+                );
+              }
             }
           }
         } catch (err) {
@@ -283,6 +307,132 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [event, committees, portfolios, registrations, isLoaded]);
 
   const isConfigured = Boolean(event.name && event.status === "published");
+
+  const loadEventById = async (eventId: string): Promise<boolean> => {
+    if (!eventId || eventId === "new-conference") return false;
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: ev, error: evErr } = await supabase
+          .from("events")
+          .select("*")
+          .eq("id", eventId)
+          .maybeSingle();
+
+        if (!evErr && ev) {
+          const parsedEvent: EventModel = {
+            id: ev.id,
+            organizationId: ev.organization_id || "org-1",
+            type: ev.type || "mun",
+            name: ev.name,
+            dates: ev.dates,
+            dateFrom: ev.date_from,
+            dateTo: ev.date_to,
+            deadline: ev.deadline,
+            deadlineDate: ev.deadline_date,
+            venue: ev.venue,
+            fee: Number(ev.fee) || 0,
+            schoolFeePerStudent: Number(ev.school_fee_per_student) || 0,
+            status: ev.status,
+            rules: ev.rules || EMPTY_EVENT.rules,
+          };
+          setEvent(parsedEvent);
+
+          // Fetch committees for this specific event
+          const { data: commsData } = await supabase
+            .from("committees")
+            .select("*")
+            .eq("event_id", ev.id);
+
+          const mappedComms: MunCommittee[] = (commsData || []).map((c) => ({
+            id: c.id,
+            eventId: c.event_id,
+            name: c.name,
+            agenda: c.agenda,
+            totalSeats: c.total_seats,
+            backgroundGuideUrl: c.background_guide_url,
+          }));
+          setCommittees(mappedComms);
+
+          const commIds = mappedComms.map((c) => c.id);
+          if (commIds.length > 0) {
+            const { data: portsData } = await supabase
+              .from("portfolios")
+              .select("*")
+              .in("committee_id", commIds);
+
+            if (portsData) {
+              setPortfolios(
+                portsData.map((p) => ({
+                  id: p.id,
+                  committeeId: p.committee_id,
+                  countryName: p.country_name,
+                  code: p.country_code,
+                  status: p.status,
+                  allottedRegistrationId: p.allotted_registration_id || undefined,
+                }))
+              );
+            }
+          } else {
+            setPortfolios([]);
+          }
+
+          // Fetch registrations for this specific event
+          const { data: regsData } = await supabase
+            .from("registrations")
+            .select("*")
+            .eq("event_id", ev.id);
+
+          if (regsData) {
+            setRegistrations(
+              regsData.map((r) => ({
+                id: r.id,
+                eventId: r.event_id,
+                delegateName: r.name || "",
+                email: r.email || "",
+                phone: r.phone || "",
+                school: r.school || "",
+                classYear: r.class_year || "",
+                experienceMuns: Number(r.experience_count) || 0,
+                registrationNumber: r.registration_number,
+                registrationType: r.type === "school_team" ? "school_team" : "individual",
+                paymentStatus: (r.payment_status as PaymentStatus) || "unpaid",
+                paymentProofUrl: r.payment_proof_url || undefined,
+                feeAmount: Number(r.fee_amount) || 1500,
+                preferences: r.preferences || [],
+                allotment: r.allotment || undefined,
+                createdAt: r.created_at || new Date().toISOString(),
+              }))
+            );
+          }
+
+          return true;
+        }
+      } catch (err) {
+        console.warn("Failed to load event by id:", err);
+      }
+    }
+
+    const localMatch = allEvents.find((e) => e.id === eventId);
+    if (localMatch) {
+      setEvent(localMatch);
+      return true;
+    }
+    return false;
+  };
+
+  const createNewConference = () => {
+    const newConfId = `mun-${Date.now().toString(36)}`;
+    const newConf: EventModel = {
+      ...EMPTY_EVENT,
+      id: newConfId,
+      name: "",
+    };
+    setEvent(newConf);
+    setCommittees([]);
+    setPortfolios([]);
+    setRegistrations([]);
+  };
 
   const addRegistration = (
     data: Omit<Registration, "id" | "registrationNumber" | "createdAt">
@@ -357,12 +507,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateEventBasics = (updates: Partial<EventModel>) => {
+    let newId = event.id;
+    if ((!newId || newId === "new-conference") && updates.name && updates.name.trim()) {
+      const slugBase = updates.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      newId = slugBase || `mun-${Date.now().toString(36)}`;
+    }
+
     const updated = {
       ...event,
       ...updates,
-      id: updates.name ? updates.name.toLowerCase().replace(/[^a-z0-9]/g, "-") : event.id,
+      id: newId,
     };
     setEvent(updated);
+    setAllEvents((prev) => {
+      const idx = prev.findIndex((e) => e.id === updated.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = updated;
+        return copy;
+      }
+      return [updated, ...prev];
+    });
 
     if (isSupabaseConfigured && supabase && updated.name) {
       supabase
@@ -393,7 +558,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     data: Omit<MunCommittee, "id" | "eventId">,
     countries?: { name: string; code: string }[]
   ) => {
-    const newId = data.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const cleanCommSlug = data.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const newId = `${event.id}-${cleanCommSlug}`;
     const newComm: MunCommittee = {
       ...data,
       id: newId,
@@ -459,7 +625,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const newPorts: MunPortfolio[] = [];
 
     STANDARD_TEMPLATES.forEach((tpl) => {
-      const commId = tpl.name.toLowerCase();
+      const commId = `${event.id}-${tpl.name.toLowerCase()}`;
       newComms.push({
         id: commId,
         eventId: event.id || "new-conference",
@@ -744,6 +910,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         signIn,
         signOut,
         event,
+        allEvents,
+        loadEventById,
+        createNewConference,
         committees,
         portfolios,
         registrations,

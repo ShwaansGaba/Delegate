@@ -8,7 +8,7 @@ import { Row } from "@/components/ui/Row";
 
 export default function ConfirmationPage() {
   const router = useRouter();
-  const { event, findRegistrationByNumber, verifyPayment } = useApp();
+  const { event, loadEventById, findRegistrationByNumber, verifyPayment } = useApp();
 
   const [regNum, setRegNum] = useState("MUN 2048");
   const [proofUploaded, setProofUploaded] = useState(false);
@@ -21,8 +21,12 @@ export default function ConfirmationPage() {
       const sp = new URLSearchParams(window.location.search);
       const num = sp.get("num");
       if (num) setRegNum(num);
+      const evParam = sp.get("event") || sp.get("eventId");
+      if (evParam && evParam !== event.id) {
+        loadEventById(evParam);
+      }
     }
-  }, []);
+  }, [event.id, loadEventById]);
 
   const registration = findRegistrationByNumber(regNum);
   const feeAmount = registration?.feeAmount || event.fee;

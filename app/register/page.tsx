@@ -23,7 +23,18 @@ const PRESET_SCHOOLS = [
 
 export default function IndividualRegisterPage() {
   const router = useRouter();
-  const { committees, portfolios, event, addRegistration } = useApp();
+  const { committees, portfolios, event, loadEventById, addRegistration } = useApp();
+
+  // Load conference from URL query param if present
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const evParam = sp.get("event") || sp.get("eventId");
+      if (evParam && evParam !== event.id) {
+        loadEventById(evParam);
+      }
+    }
+  }, [event.id, loadEventById]);
 
   // Wizard steps:
   // Step 1: Name
@@ -191,7 +202,7 @@ export default function IndividualRegisterPage() {
         ],
       });
 
-      const nextUrl = `/register/confirmation?num=${encodeURIComponent(newReg.registrationNumber)}`;
+      const nextUrl = `/register/confirmation?num=${encodeURIComponent(newReg.registrationNumber)}&event=${encodeURIComponent(event.id)}`;
       router.push(nextUrl);
     } catch (err) {
       console.error("Error creating registration:", err);
@@ -233,6 +244,18 @@ export default function IndividualRegisterPage() {
           totalSteps={totalSteps}
           onBack={handleBack}
         />
+
+        {/* Conference Header Card */}
+        <div className="bg-white/10 border border-white/20 rounded-xl px-3.5 py-2 mt-2 mb-1 text-white flex items-center justify-between">
+          <div className="truncate mr-2">
+            <span className="text-[11px] sm:text-xs uppercase tracking-wider text-blue-200 block font-bold">Registering for</span>
+            <span className="text-sm sm:text-base font-heading font-extrabold truncate block">{event.name || "MUN Conference"}</span>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-[11px] sm:text-xs uppercase tracking-wider text-blue-200 block font-bold">Delegate Fee</span>
+            <span className="text-sm sm:text-base font-heading font-extrabold text-[#FFD23F]">₹{(event.fee || 2500).toLocaleString()}</span>
+          </div>
+        </div>
 
         {errorMsg && (
           <div className="bg-[#FFD23F] text-[#0B1B33] p-3.5 sm:p-4 rounded-xl sm:rounded-2xl font-bold mt-2 sm:mt-4 text-sm sm:text-base">
