@@ -18,6 +18,8 @@ export default function OrganizerAllotmentPage() {
     allotDelegateManual,
     unallotDelegate,
     autoAllotSimulation,
+    autoAllotIncludeUnpaid,
+    setAutoAllotIncludeUnpaid,
     executeAutoAllot,
     resolveConflict,
     publishAllotmentsToggle,
@@ -162,7 +164,7 @@ export default function OrganizerAllotmentPage() {
                 : "bg-white/20 text-white hover:bg-white/30"
             }`}
           >
-            {event.rules.allotmentsPublished ? "✓ Published live" : "Publish allotments"}
+            {event.rules.allotmentsPublished ? "Published to delegates" : "Publish allotments"}
           </button>
         </div>
 
@@ -293,16 +295,13 @@ export default function OrganizerAllotmentPage() {
                 {activeCommittee.name}, {takenCount} of {Math.max(activeCommittee.totalSeats, committeePortfolios.length, 1)} filled
               </span>
               <div className="flex items-center gap-2 text-sm font-heading font-bold">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold">
                   {freeCount} Free
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-[#0F4C96] border border-blue-300">
-                  <span className="w-2 h-2 rounded-full bg-[#1560BD]"></span>
+                <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-[#0F4C96] text-xs font-bold">
                   {paidCount} Paid
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                  <span className="w-2 h-2 rounded-full bg-amber-600"></span>
+                <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 text-xs font-bold">
                   {unpaidCount} Unpaid
                 </span>
               </div>
@@ -592,6 +591,24 @@ export default function OrganizerAllotmentPage() {
                   need you
                 </div>
               </div>
+            </div>
+
+            {/* Include Unpaid Toggle */}
+            <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-200 flex items-center justify-between">
+              <div>
+                <div className="text-base font-heading font-extrabold text-[#0B1B33]">
+                  Include unpaid delegates
+                </div>
+                <div className="text-xs text-neutral-600 font-medium mt-0.5">
+                  By default, only delegates with verified payment are allotted
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={autoAllotIncludeUnpaid}
+                onChange={(e) => setAutoAllotIncludeUnpaid(e.target.checked)}
+                className="w-5 h-5 accent-[#1560BD] cursor-pointer"
+              />
             </div>
 
             <p className="text-lg text-neutral-600 font-medium">

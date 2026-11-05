@@ -1,6 +1,6 @@
 /**
- * Helper utility to construct distinct conference registration & browsing links
- * Supports local development (localhost) and GitHub Pages subpath deployment (/Delegate).
+ * Helper utility to construct distinct conference registration & browsing links.
+ * Works seamlessly across local development (localhost) and GitHub Pages subpath deployment (/Delegate).
  */
 
 export function getBaseAppUrl(): string {
@@ -13,16 +13,39 @@ export function getBaseAppUrl(): string {
   return `${origin}${basePath}`;
 }
 
+/**
+ * Public conference portal link (e.g. /c/?id=delhi-mun-2026)
+ */
+export function getConferencePublicLink(slugOrId: string): string {
+  const base = getBaseAppUrl();
+  return `${base}/c/?id=${encodeURIComponent(slugOrId || "conference")}`;
+}
+
+/**
+ * Direct registration link for individual delegates or school delegation teams
+ */
 export function getConferenceRegistrationLink(
   eventId: string,
   type: "individual" | "team" = "individual"
 ): string {
   const base = getBaseAppUrl();
   const route = type === "team" ? "/register/team" : "/register";
-  return `${base}${route}?event=${encodeURIComponent(eventId || "conference")}`;
+  return `${base}${route}/?event=${encodeURIComponent(eventId || "conference")}`;
 }
 
+/**
+ * Direct committee agenda & vacancy matrix link
+ */
 export function getConferenceBrowseLink(eventId: string): string {
   const base = getBaseAppUrl();
-  return `${base}/browse?event=${encodeURIComponent(eventId || "conference")}`;
+  return `${base}/browse/?event=${encodeURIComponent(eventId || "conference")}`;
+}
+
+/**
+ * Direct status check link for a specific conference
+ */
+export function getConferenceStatusLink(eventId: string, registrationNum?: string): string {
+  const base = getBaseAppUrl();
+  const numPart = registrationNum ? `&num=${encodeURIComponent(registrationNum)}` : "";
+  return `${base}/status/?event=${encodeURIComponent(eventId || "conference")}${numPart}`;
 }

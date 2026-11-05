@@ -82,9 +82,9 @@ export default function SchoolTeamRegistrationPage() {
     setEditingName("");
   };
 
-  const handleConfirmTeam = () => {
+  const handleConfirmTeam = async () => {
     // Register head delegate and all delegates
-    const headReg = addRegistration({
+    const headReg = await addRegistration({
       eventId: event.id,
       delegateName: headDelegateName,
       email: "teamhead@example.com",

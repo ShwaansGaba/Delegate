@@ -43,6 +43,8 @@ export interface EventRules {
 
 export interface EventModel {
   id: string;
+  ownerId?: string;
+  slug?: string;
   organizationId: string;
   type: EventType;
   name: string;

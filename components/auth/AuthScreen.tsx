@@ -183,7 +183,7 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 <button
                   type="button"
                   onClick={() => setMode("signup")}
-                  className="text-[#1560BD] font-bold underline ml-1"
+                  className="text-[#1560BD] font-bold underline ml-1 cursor-pointer"
                 >
                   Create an account
                 </button>
@@ -194,12 +194,43 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 <button
                   type="button"
                   onClick={() => setMode("login")}
-                  className="text-[#1560BD] font-bold underline ml-1"
+                  className="text-[#1560BD] font-bold underline ml-1 cursor-pointer"
                 >
                   Log in to your conference
                 </button>
               </p>
             )}
+
+            {/* Quick Mock Organizer Switch for Multi-Tenancy Verification */}
+            <div className="mt-4 pt-3 border-t border-gray-100 space-y-2">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block text-center">
+                Multi-Tenant Demo Accounts
+              </span>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail("organizer1@delegate.app");
+                    setPassword("password123");
+                  }}
+                  className="p-2 rounded-xl bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 text-left font-bold text-[#0B1B33] cursor-pointer transition-colors"
+                >
+                  Organizer 1
+                  <span className="block text-[10px] text-gray-500 font-medium">Delhi Youth MUN</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail("organizer2@delegate.app");
+                    setPassword("password123");
+                  }}
+                  className="p-2 rounded-xl bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 text-left font-bold text-[#0B1B33] cursor-pointer transition-colors"
+                >
+                  Organizer 2
+                  <span className="block text-[10px] text-gray-500 font-medium">National Conclave</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

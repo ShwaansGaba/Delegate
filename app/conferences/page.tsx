@@ -152,8 +152,7 @@ export default function AvailableConferencesPage() {
 
         {/* Title */}
         <div className="mb-4 sm:mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-blue-100 text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 sm:mb-3">
-            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <div className="inline-flex items-center px-3 py-1 rounded-lg bg-white/10 text-blue-100 text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 sm:mb-3">
             Delegate Registration Portal
           </div>
           <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">

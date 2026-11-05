@@ -124,9 +124,14 @@ export default function RegistrationsPage() {
     <div className="space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white">
-          Registrations
-        </h1>
+        <div>
+          <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white">
+            Registrations
+          </h1>
+          <p className="text-blue-100 text-sm font-medium mt-1">
+            {event.name || "Conference Registrations"} • {filteredList.length} total
+          </p>
+        </div>
         <div>
           <button
             type="button"

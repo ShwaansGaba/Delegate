@@ -8,15 +8,22 @@ export interface AutoAllotSimulationResult {
   totalEligible: number;
   proposedAllotments: MunAllotment[];
   conflicts: AllotmentConflict[];
+  unhandledDelegates: Registration[];
 }
 
 export function simulateAutoAllotment(
   registrations: Registration[],
   portfolios: MunPortfolio[],
   committees: MunCommittee[],
-  firstComeFirstServed: boolean = true
+  firstComeFirstServed: boolean = true,
+  includeUnpaid: boolean = false
 ): AutoAllotSimulationResult {
-  if (registrations.length === 0) {
+  // Filter eligible delegates: by default, only verified paid delegates
+  const eligibleDelegates = includeUnpaid
+    ? registrations
+    : registrations.filter((r) => r.paymentStatus === "verified");
+
+  if (eligibleDelegates.length === 0) {
     return {
       firstChoiceCount: 0,
       secondChoiceCount: 0,
@@ -25,17 +32,19 @@ export function simulateAutoAllotment(
       totalEligible: 0,
       proposedAllotments: [],
       conflicts: [],
+      unhandledDelegates: [],
     };
   }
+
   // Sort delegates:
   // If firstComeFirstServed: by registration createdAt ascending
   // If weighted (FCFS is off): by experienceMuns descending, then createdAt ascending
-  const delegates = [...registrations].sort((a, b) => {
+  const delegates = [...eligibleDelegates].sort((a, b) => {
     if (firstComeFirstServed) {
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     } else {
-      if (b.experienceMuns !== a.experienceMuns) {
-        return b.experienceMuns - a.experienceMuns;
+      if ((b.experienceMuns || 0) !== (a.experienceMuns || 0)) {
+        return (b.experienceMuns || 0) - (a.experienceMuns || 0);
       }
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     }
@@ -53,13 +62,16 @@ export function simulateAutoAllotment(
     let allotted = false;
 
     // Try committee preference 1, then 2, then 3
-    for (const pref of delegate.preferences) {
+    for (const pref of delegate.preferences || []) {
       if (allotted) break;
 
-      // Try portfolios 1, 2, 3 in order
-      for (let pIdx = 0; pIdx < pref.portfolioIds.length; pIdx++) {
+      // Try portfolios 1, 2, 3 in ranked order
+      for (let pIdx = 0; pIdx < (pref.portfolioIds || []).length; pIdx++) {
         const portId = pref.portfolioIds[pIdx];
-        if (!takenPortfolioIds.has(portId)) {
+        const port = portfolios.find((p) => p.id === portId && p.committeeId === pref.committeeId);
+
+        // Check if portfolio is valid and open (not currently taken, nor taken in simulation)
+        if (port && port.status !== "taken" && !takenPortfolioIds.has(portId)) {
           takenPortfolioIds.add(portId);
           proposedAllotments.push({
             registrationId: delegate.id,
@@ -90,73 +102,52 @@ export function simulateAutoAllotment(
     }
   }
 
-  // Detect conflicts: where delegates both had top choice for the same portfolio
-  // We identify portfolios that had high contention
+  // Detect genuine portfolio contention conflicts
   const conflicts: AllotmentConflict[] = [];
+  const contestedMap = new Map<string, Registration[]>();
 
-  // Specifically ensure the canonical conflict from page 21 (India in UNSC) is represented
-  const unscIndiaPort = portfolios.find((p) => p.committeeId === "unsc" && p.code === "IN");
-  const unscIndiaRegs = registrations.filter((r) =>
-    r.preferences.some((pref) => pref.committeeId === "unsc" && pref.portfolioIds.includes(unscIndiaPort?.id || "unsc-in"))
-  );
-
-  if (unscIndiaPort) {
-    conflicts.push({
-      portfolioId: unscIndiaPort.id,
-      portfolioName: unscIndiaPort.countryName,
-      committeeId: "unsc",
-      committeeName: "UNSC",
-      competingDelegates: [
-        {
-          registration: unscIndiaRegs[0] || registrations[0],
-          reason: "Registered first, 2 days ago",
-          preferenceTier: "First choice",
-        },
-        {
-          registration: unscIndiaRegs[1] || registrations[1],
-          reason: `Has attended ${unscIndiaRegs[1]?.experienceMuns || 4} MUNs`,
-          preferenceTier: "First choice",
-        },
-      ],
-    });
+  for (const delegate of eligibleDelegates) {
+    for (const pref of delegate.preferences || []) {
+      for (const portId of pref.portfolioIds || []) {
+        if (!contestedMap.has(portId)) {
+          contestedMap.set(portId, []);
+        }
+        contestedMap.get(portId)!.push(delegate);
+      }
+    }
   }
 
-  // Add 4 more realistic conflict groups to match exactly the "5 need your decision" from the design files
-  const otherHighDemand = portfolios.filter(
-    (p) => p.code === "US" || p.code === "RU" || p.code === "CN" || p.code === "GB"
-  ).slice(0, 4);
-
-  otherHighDemand.forEach((port, idx) => {
-    const committee = committees.find((c) => c.id === port.committeeId);
-    const candA = registrations[(idx * 4 + 7) % registrations.length];
-    const candB = registrations[(idx * 4 + 8) % registrations.length];
-    conflicts.push({
-      portfolioId: port.id,
-      portfolioName: port.countryName,
-      committeeId: port.committeeId,
-      committeeName: committee?.name || "UNSC",
-      competingDelegates: [
-        {
-          registration: candA,
-          reason: idx % 2 === 0 ? "Registered 3 days ago" : `Has attended ${candA.experienceMuns || 3} MUNs`,
-          preferenceTier: "First choice",
-        },
-        {
-          registration: candB,
-          reason: idx % 2 === 0 ? `Has attended ${candB.experienceMuns || 5} MUNs` : "Registered 1 day ago",
-          preferenceTier: "First choice",
-        },
-      ],
-    });
+  contestedMap.forEach((competing, portId) => {
+    if (competing.length > 1) {
+      const port = portfolios.find((p) => p.id === portId);
+      if (port) {
+        const comm = committees.find((c) => c.id === port.committeeId);
+        conflicts.push({
+          portfolioId: port.id,
+          portfolioName: port.countryName,
+          committeeId: port.committeeId,
+          committeeName: comm?.name || "Committee",
+          competingDelegates: competing.slice(0, 3).map((reg, idx) => ({
+            registration: reg,
+            reason:
+              idx === 0
+                ? "Registered earlier"
+                : `Attended ${reg.experienceMuns || 0} MUNs`,
+            preferenceTier: "First choice",
+          })),
+        });
+      }
+    }
   });
 
   return {
-    firstChoiceCount: 188,
-    secondChoiceCount: 19,
-    thirdChoiceCount: 0,
-    conflictsCount: 5,
-    totalEligible: 207,
+    firstChoiceCount,
+    secondChoiceCount,
+    thirdChoiceCount,
+    conflictsCount: conflicts.length + unhandledDelegates.length,
+    totalEligible: eligibleDelegates.length,
     proposedAllotments,
     conflicts,
+    unhandledDelegates,
   };
 }

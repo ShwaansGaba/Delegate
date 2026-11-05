@@ -9,17 +9,21 @@ import { Button } from "@/components/ui/Button";
 
 export default function OrganizerDashboardPage() {
   const router = useRouter();
-  const { registrations, committees, portfolios } = useApp();
-  const [filter, setFilter] = useState<"all" | "unpaid" | "unsc">("all");
+  const { event, registrations, committees, portfolios } = useApp();
+  const [filter, setFilter] = useState<"all" | "unpaid" | "first_comm">("all");
 
   const totalRegistered = registrations.length;
   const paidCount = registrations.filter((r) => r.paymentStatus === "verified").length;
   const unpaidCount = registrations.filter((r) => r.paymentStatus !== "verified").length;
   const notAllottedCount = registrations.filter((r) => !r.allotment).length;
 
+  const firstComm = committees[0];
+
   const filteredRegistrations = registrations.filter((r) => {
     if (filter === "unpaid") return r.paymentStatus !== "verified";
-    if (filter === "unsc") return r.preferences.some((p) => p.committeeId === "unsc");
+    if (filter === "first_comm" && firstComm) {
+      return r.preferences.some((p) => p.committeeId === firstComm.id);
+    }
     return true;
   });
 
@@ -27,9 +31,14 @@ export default function OrganizerDashboardPage() {
     <div className="space-y-6 lg:space-y-8">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white">
-          Dashboard
-        </h1>
+        <div>
+          <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white">
+            Dashboard
+          </h1>
+          <p className="text-blue-100 text-sm font-medium mt-1">
+            {event.name || "Conference Overview"}
+          </p>
+        </div>
         <div className="w-full sm:w-auto">
           <Button
             size="md"
@@ -68,20 +77,41 @@ export default function OrganizerDashboardPage() {
 
       {/* Filter Chips for Mobile / quick filter */}
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {(["all", "unpaid", "unsc"] as const).map((f) => (
+        <button
+          type="button"
+          onClick={() => setFilter("all")}
+          className={`px-5 py-2.5 rounded-2xl text-lg font-heading font-extrabold transition-colors cursor-pointer capitalize ${
+            filter === "all"
+              ? "bg-white text-[#0B1B33]"
+              : "border-2 border-white text-white hover:bg-white/10"
+          }`}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilter("unpaid")}
+          className={`px-5 py-2.5 rounded-2xl text-lg font-heading font-extrabold transition-colors cursor-pointer capitalize ${
+            filter === "unpaid"
+              ? "bg-white text-[#0B1B33]"
+              : "border-2 border-white text-white hover:bg-white/10"
+          }`}
+        >
+          Unpaid
+        </button>
+        {firstComm && (
           <button
-            key={f}
             type="button"
-            onClick={() => setFilter(f)}
+            onClick={() => setFilter("first_comm")}
             className={`px-5 py-2.5 rounded-2xl text-lg font-heading font-extrabold transition-colors cursor-pointer capitalize ${
-              filter === f
+              filter === "first_comm"
                 ? "bg-white text-[#0B1B33]"
                 : "border-2 border-white text-white hover:bg-white/10"
             }`}
           >
-            {f === "unsc" ? "UNSC" : f}
+            {firstComm.name}
           </button>
-        ))}
+        )}
       </div>
 
       {/* Main Grid: Latest Registrations (Left) + Seats Filled (Right) */}

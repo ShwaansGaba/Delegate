@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import {
   EventModel,
   MunCommittee,
@@ -26,15 +26,18 @@ interface AppContextType {
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   event: EventModel;
+  myConferences: EventModel[];
   allEvents: EventModel[];
+  selectConference: (conferenceId: string) => Promise<boolean>;
   loadEventById: (eventId: string) => Promise<boolean>;
-  createNewConference: () => void;
+  createNewConference: (data?: Partial<EventModel>) => Promise<EventModel | null>;
+  deleteConference: (conferenceId: string) => Promise<void>;
   committees: MunCommittee[];
   portfolios: MunPortfolio[];
   registrations: Registration[];
   isLoaded: boolean;
   isConfigured: boolean;
-  addRegistration: (newReg: Omit<Registration, "id" | "registrationNumber" | "createdAt">) => Registration;
+  addRegistration: (newReg: Omit<Registration, "id" | "registrationNumber" | "createdAt">) => Promise<Registration>;
   verifyPayment: (regId: string) => void;
   updateEventRules: (newRules: Partial<EventModel["rules"]>) => void;
   updateEventBasics: (updates: Partial<EventModel>) => void;
@@ -42,35 +45,237 @@ interface AppContextType {
   loadTemplateCommittees: () => void;
   editCommittee: (id: string, updates: Partial<MunCommittee>) => void;
   removeCommittee: (id: string) => void;
-  allotDelegateManual: (regId: string, committeeId: string, portfolioId: string) => void;
-  unallotDelegate: (regId: string) => void;
+  allotDelegateManual: (regId: string, committeeId: string, portfolioId: string) => Promise<boolean>;
+  unallotDelegate: (regId: string) => Promise<void>;
   autoAllotSimulation: AutoAllotSimulationResult;
-  executeAutoAllot: () => void;
-  resolveConflict: (portfolioId: string, chosenRegId: string) => void;
+  autoAllotIncludeUnpaid: boolean;
+  setAutoAllotIncludeUnpaid: (val: boolean) => void;
+  executeAutoAllot: () => Promise<void>;
+  resolveConflict: (portfolioId: string, chosenRegId: string) => Promise<void>;
   deletePortfolio: (portfolioId: string) => void;
   deleteMultiplePortfolios: (portfolioIds: string[]) => void;
   addPortfolioToCommittee: (committeeId: string, item: { name: string; code: string }) => void;
-  findRegistrationByNumber: (num: string) => Registration | undefined;
+  findRegistrationByNumber: (num: string, eventId?: string) => Registration | undefined;
   publishAllotmentsToggle: () => void;
   markConferencePublished: () => void;
+  refreshPortfoliosLive: (committeeId?: string) => Promise<MunPortfolio[]>;
   clearDatabase: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
 
-const STORAGE_KEY = "mun_platform_database_clean_v2";
+// Deterministic mock seed data for Organizer 1
+const MOCK_CONF_ORG1: EventModel = {
+  id: "delhi-youth-summit-2026",
+  ownerId: "org_user_1",
+  slug: "delhi-youth-summit-2026",
+  organizationId: "org-1",
+  type: "mun",
+  name: "Delhi Youth Summit MUN 2026",
+  dates: "March 14-16, 2026",
+  dateFrom: "2026-03-14",
+  dateTo: "2026-03-16",
+  venue: "Sanskriti School Auditorium, Chanakyapuri",
+  fee: 1600,
+  schoolFeePerStudent: 1200,
+  deadline: "March 05, 2026",
+  deadlineDate: "2026-03-05",
+  status: "published",
+  rules: {
+    allowSchoolTeams: true,
+    askPaymentProof: true,
+    showTakenPortfoliosLive: true,
+    firstComeFirstServed: true,
+    allotmentsPublished: false,
+  },
+};
+
+const MOCK_COMMS_ORG1: MunCommittee[] = [
+  {
+    id: "delhi-youth-summit-2026-unsc",
+    eventId: "delhi-youth-summit-2026",
+    name: "UNSC",
+    agenda: "Addressing maritime security in international waters",
+    totalSeats: 15,
+  },
+  {
+    id: "delhi-youth-summit-2026-disec",
+    eventId: "delhi-youth-summit-2026",
+    name: "DISEC",
+    agenda: "Non-proliferation of tactical ballistic weapons",
+    totalSeats: 25,
+  },
+];
+
+const MOCK_PORTS_ORG1: MunPortfolio[] = [
+  { id: "delhi-unsc-in", committeeId: "delhi-youth-summit-2026-unsc", countryName: "India", code: "IN", status: "open" },
+  { id: "delhi-unsc-us", committeeId: "delhi-youth-summit-2026-unsc", countryName: "United States", code: "US", status: "open" },
+  { id: "delhi-unsc-gb", committeeId: "delhi-youth-summit-2026-unsc", countryName: "United Kingdom", code: "GB", status: "open" },
+  { id: "delhi-unsc-fr", committeeId: "delhi-youth-summit-2026-unsc", countryName: "France", code: "FR", status: "open" },
+  { id: "delhi-unsc-ru", committeeId: "delhi-youth-summit-2026-unsc", countryName: "Russia", code: "RU", status: "open" },
+  { id: "delhi-unsc-cn", committeeId: "delhi-youth-summit-2026-unsc", countryName: "China", code: "CN", status: "open" },
+  { id: "delhi-unsc-br", committeeId: "delhi-youth-summit-2026-unsc", countryName: "Brazil", code: "BR", status: "open" },
+  { id: "delhi-unsc-jp", committeeId: "delhi-youth-summit-2026-unsc", countryName: "Japan", code: "JP", status: "open" },
+  { id: "delhi-disec-in", committeeId: "delhi-youth-summit-2026-disec", countryName: "India", code: "IN", status: "open" },
+  { id: "delhi-disec-us", committeeId: "delhi-youth-summit-2026-disec", countryName: "United States", code: "US", status: "open" },
+  { id: "delhi-disec-de", committeeId: "delhi-youth-summit-2026-disec", countryName: "Germany", code: "DE", status: "open" },
+  { id: "delhi-disec-fr", committeeId: "delhi-youth-summit-2026-disec", countryName: "France", code: "FR", status: "open" },
+  { id: "delhi-disec-jp", committeeId: "delhi-youth-summit-2026-disec", countryName: "Japan", code: "JP", status: "open" },
+];
+
+const MOCK_REGS_ORG1: Registration[] = [
+  {
+    id: "reg-delhi-101",
+    eventId: "delhi-youth-summit-2026",
+    delegateName: "Aarav Mehta",
+    email: "aarav.mehta@dps.edu",
+    phone: "98112 34567",
+    school: "Delhi Public School RK Puram",
+    classYear: "12",
+    experienceMuns: 4,
+    registrationNumber: "MUN-4091-X9K2",
+    registrationType: "individual",
+    paymentStatus: "verified",
+    feeAmount: 1600,
+    createdAt: "2026-11-01T10:00:00Z",
+    preferences: [
+      {
+        committeeRank: 1,
+        committeeId: "delhi-youth-summit-2026-unsc",
+        portfolioIds: ["delhi-unsc-in", "delhi-unsc-us", "delhi-unsc-gb"],
+      },
+      {
+        committeeRank: 2,
+        committeeId: "delhi-youth-summit-2026-disec",
+        portfolioIds: ["delhi-disec-in", "delhi-disec-us", "delhi-disec-de"],
+      },
+    ],
+  },
+  {
+    id: "reg-delhi-102",
+    eventId: "delhi-youth-summit-2026",
+    delegateName: "Diya Kapoor",
+    email: "diya.k@modern.edu",
+    phone: "98711 22334",
+    school: "Modern School Barakhamba",
+    classYear: "11",
+    experienceMuns: 2,
+    registrationNumber: "MUN-5832-B2M7",
+    registrationType: "individual",
+    paymentStatus: "verified",
+    feeAmount: 1600,
+    createdAt: "2026-11-02T11:30:00Z",
+    preferences: [
+      {
+        committeeRank: 1,
+        committeeId: "delhi-youth-summit-2026-unsc",
+        portfolioIds: ["delhi-unsc-in", "delhi-unsc-fr", "delhi-unsc-ru"],
+      },
+      {
+        committeeRank: 2,
+        committeeId: "delhi-youth-summit-2026-disec",
+        portfolioIds: ["delhi-disec-de", "delhi-disec-jp", "delhi-disec-fr"],
+      },
+    ],
+  },
+];
+
+// Deterministic mock seed data for Organizer 2
+const MOCK_CONF_ORG2: EventModel = {
+  id: "national-diplomacy-conclave-2026",
+  ownerId: "org_user_2",
+  slug: "national-diplomacy-conclave-2026",
+  organizationId: "org-2",
+  type: "mun",
+  name: "National Diplomacy Conclave 2026",
+  dates: "April 18-20, 2026",
+  dateFrom: "2026-04-18",
+  dateTo: "2026-04-20",
+  venue: "Convention Centre, Pragati Maidan",
+  fee: 2200,
+  schoolFeePerStudent: 1600,
+  deadline: "April 08, 2026",
+  deadlineDate: "2026-04-08",
+  status: "published",
+  rules: {
+    allowSchoolTeams: true,
+    askPaymentProof: true,
+    showTakenPortfoliosLive: true,
+    firstComeFirstServed: true,
+    allotmentsPublished: false,
+  },
+};
+
+const MOCK_COMMS_ORG2: MunCommittee[] = [
+  {
+    id: "national-conclave-unhrc",
+    eventId: "national-diplomacy-conclave-2026",
+    name: "UNHRC",
+    agenda: "Human rights protections in displacement corridors",
+    totalSeats: 30,
+  },
+  {
+    id: "national-conclave-unep",
+    eventId: "national-diplomacy-conclave-2026",
+    name: "UNEP",
+    agenda: "Cross-border water treaties and global plastic conventions",
+    totalSeats: 25,
+  },
+];
+
+const MOCK_PORTS_ORG2: MunPortfolio[] = [
+  { id: "nat-unhrc-in", committeeId: "national-conclave-unhrc", countryName: "India", code: "IN", status: "open" },
+  { id: "nat-unhrc-us", committeeId: "national-conclave-unhrc", countryName: "United States", code: "US", status: "open" },
+  { id: "nat-unhrc-za", committeeId: "national-conclave-unhrc", countryName: "South Africa", code: "ZA", status: "open" },
+  { id: "nat-unhrc-de", committeeId: "national-conclave-unhrc", countryName: "Germany", code: "DE", status: "open" },
+  { id: "nat-unep-br", committeeId: "national-conclave-unep", countryName: "Brazil", code: "BR", status: "open" },
+  { id: "nat-unep-ke", committeeId: "national-conclave-unep", countryName: "Kenya", code: "KE", status: "open" },
+  { id: "nat-unep-no", committeeId: "national-conclave-unep", countryName: "Norway", code: "NO", status: "open" },
+];
+
+const MOCK_REGS_ORG2: Registration[] = [
+  {
+    id: "reg-nat-201",
+    eventId: "national-diplomacy-conclave-2026",
+    delegateName: "Rohan Varma",
+    email: "rohan.v@springdales.edu",
+    phone: "98101 99887",
+    school: "Springdales School Dhaula Kuan",
+    classYear: "12",
+    experienceMuns: 5,
+    registrationNumber: "MUN-9281-Z7T4",
+    registrationType: "individual",
+    paymentStatus: "verified",
+    feeAmount: 2200,
+    createdAt: "2026-11-03T09:00:00Z",
+    preferences: [
+      {
+        committeeRank: 1,
+        committeeId: "national-conclave-unhrc",
+        portfolioIds: ["nat-unhrc-in", "nat-unhrc-us", "nat-unhrc-za"],
+      },
+      {
+        committeeRank: 2,
+        committeeId: "national-conclave-unep",
+        portfolioIds: ["nat-unep-br", "nat-unep-ke", "nat-unep-no"],
+      },
+    ],
+  },
+];
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthLoaded, setIsAuthLoaded] = useState(false);
   const [event, setEvent] = useState<EventModel>(EMPTY_EVENT);
+  const [myConferences, setMyConferences] = useState<EventModel[]>([]);
   const [allEvents, setAllEvents] = useState<EventModel[]>([]);
   const [committees, setCommittees] = useState<MunCommittee[]>([]);
   const [portfolios, setPortfolios] = useState<MunPortfolio[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [autoAllotIncludeUnpaid, setAutoAllotIncludeUnpaid] = useState(false);
 
-  // Authentication: Supabase integration with seamless mock fallback
+  // 1. Initial Authentication Check
   useEffect(() => {
     if (isSupabaseConfigured && supabase) {
       supabase.auth.getSession().then(({ data: { session } }) => {
@@ -80,9 +285,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setIsAuthLoaded(true);
       });
 
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session?.user?.email) {
           setUser({ id: session.user.id, email: session.user.email });
         } else {
@@ -92,18 +295,235 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       return () => subscription.unsubscribe();
     } else {
+      // Local mock auth check
       try {
         const stored = localStorage.getItem("delegate_auth_user");
         if (stored) {
           setUser(JSON.parse(stored));
+        } else {
+          // Default to Organizer 1 for immediate demo
+          const defaultUser: AuthUser = { id: "org_user_1", email: "organizer1@delegate.app" };
+          setUser(defaultUser);
+          localStorage.setItem("delegate_auth_user", JSON.stringify(defaultUser));
         }
-      } catch {
-        // ignore
-      }
+      } catch {}
       setIsAuthLoaded(true);
     }
   }, []);
 
+  // 2. Load Conferences & Data whenever User or URL changes
+  const loadOrganizerData = useCallback(async (activeUserId: string, targetEventId?: string) => {
+    // A. Check Supabase
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // Fetch only events owned by this organizer
+        const { data: eventsData, error: evErr } = await supabase
+          .from("events")
+          .select("*")
+          .eq("owner_id", activeUserId)
+          .order("created_at", { ascending: false });
+
+        if (!evErr && eventsData) {
+          const parsed: EventModel[] = eventsData.map((ev) => ({
+            id: ev.id,
+            ownerId: ev.owner_id,
+            slug: ev.slug,
+            organizationId: ev.organization_id || "org-1",
+            type: ev.type || "mun",
+            name: ev.name,
+            dates: ev.dates,
+            dateFrom: ev.date_from,
+            dateTo: ev.date_to,
+            deadline: ev.deadline,
+            deadlineDate: ev.deadline_date,
+            venue: ev.venue,
+            fee: Number(ev.fee) || 0,
+            schoolFeePerStudent: Number(ev.school_fee_per_student) || 0,
+            status: ev.status,
+            rules: ev.rules || EMPTY_EVENT.rules,
+          }));
+
+          setMyConferences(parsed);
+          setAllEvents(parsed);
+
+          // Select target conference, or active saved conference, or first conference
+          const chosen =
+            (targetEventId && parsed.find((e) => e.id === targetEventId || e.slug === targetEventId)) ||
+            parsed[0] ||
+            EMPTY_EVENT;
+
+          setEvent(chosen);
+
+          if (chosen.id && chosen.id !== "new-conference") {
+            // Load committees for this conference
+            const { data: commsData } = await supabase
+              .from("committees")
+              .select("*")
+              .eq("event_id", chosen.id);
+
+            const mappedComms: MunCommittee[] = (commsData || []).map((c) => ({
+              id: c.id,
+              eventId: c.event_id,
+              name: c.name,
+              agenda: c.agenda,
+              totalSeats: c.total_seats,
+              backgroundGuideUrl: c.background_guide_url,
+            }));
+            setCommittees(mappedComms);
+
+            const commIds = mappedComms.map((c) => c.id);
+            if (commIds.length > 0) {
+              const { data: portsData } = await supabase
+                .from("portfolios")
+                .select("*")
+                .in("committee_id", commIds);
+
+              if (portsData) {
+                setPortfolios(
+                  portsData.map((p) => ({
+                    id: p.id,
+                    committeeId: p.committee_id,
+                    countryName: p.country_name,
+                    code: p.country_code,
+                    status: p.status,
+                    allottedRegistrationId: p.allotted_registration_id || undefined,
+                  }))
+                );
+              }
+            } else {
+              setPortfolios([]);
+            }
+
+            // Load registrations for this conference
+            const { data: regsData } = await supabase
+              .from("registrations")
+              .select("*")
+              .eq("event_id", chosen.id)
+              .order("created_at", { ascending: false });
+
+            if (regsData) {
+              setRegistrations(
+                regsData.map((r) => ({
+                  id: r.id,
+                  eventId: r.event_id,
+                  delegateName: r.name || "",
+                  email: r.email || "",
+                  phone: r.phone || "",
+                  school: r.school || "",
+                  classYear: r.class_year || "",
+                  experienceMuns: Number(r.experience_count) || 0,
+                  registrationNumber: r.registration_number,
+                  registrationType: r.type === "school_team" ? "school_team" : "individual",
+                  paymentStatus: (r.payment_status as PaymentStatus) || "unpaid",
+                  paymentProofUrl: r.payment_proof_url || undefined,
+                  feeAmount: Number(r.fee_amount) || 1500,
+                  preferences: r.preferences || [],
+                  allotment: r.allotment || undefined,
+                  createdAt: r.created_at || new Date().toISOString(),
+                }))
+              );
+            }
+          } else {
+            setCommittees([]);
+            setPortfolios([]);
+            setRegistrations([]);
+          }
+
+          setIsLoaded(true);
+          return;
+        }
+      } catch (err) {
+        console.warn("Supabase load failed, falling back to isolated local store:", err);
+      }
+    }
+
+    // B. Mock Offline Storage with Strict Per-User Isolation
+    const userStorageKey = `delegate_storage_${activeUserId}`;
+    try {
+      const saved = localStorage.getItem(userStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setMyConferences(parsed.myConferences || []);
+        setAllEvents(parsed.myConferences || []);
+        const chosen =
+          (targetEventId && (parsed.myConferences || []).find((e: EventModel) => e.id === targetEventId)) ||
+          parsed.event ||
+          (parsed.myConferences || [])[0] ||
+          EMPTY_EVENT;
+        setEvent(chosen);
+        setCommittees(parsed.committees || []);
+        setPortfolios(parsed.portfolios || []);
+        setRegistrations(parsed.registrations || []);
+        setIsLoaded(true);
+        return;
+      }
+    } catch {}
+
+    // Seed per-user mock defaults if first time
+    if (activeUserId === "org_user_1" || activeUserId.includes("organizer1")) {
+      const confs = [MOCK_CONF_ORG1];
+      setMyConferences(confs);
+      setAllEvents(confs);
+      setEvent(MOCK_CONF_ORG1);
+      setCommittees(MOCK_COMMS_ORG1);
+      setPortfolios(MOCK_PORTS_ORG1);
+      setRegistrations(MOCK_REGS_ORG1);
+    } else if (activeUserId === "org_user_2" || activeUserId.includes("organizer2")) {
+      const confs = [MOCK_CONF_ORG2];
+      setMyConferences(confs);
+      setAllEvents(confs);
+      setEvent(MOCK_CONF_ORG2);
+      setCommittees(MOCK_COMMS_ORG2);
+      setPortfolios(MOCK_PORTS_ORG2);
+      setRegistrations(MOCK_REGS_ORG2);
+    } else {
+      // Brand new user: clean empty state
+      setMyConferences([]);
+      setAllEvents([]);
+      setEvent(EMPTY_EVENT);
+      setCommittees([]);
+      setPortfolios([]);
+      setRegistrations([]);
+    }
+    setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (user?.id) {
+      const sp = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const targetId = sp?.get("event") || sp?.get("eventId") || sp?.get("id") || "";
+      loadOrganizerData(user.id, targetId);
+    } else {
+      // For anonymous delegates: load requested conference from query param
+      const sp = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const targetId = sp?.get("event") || sp?.get("eventId") || sp?.get("id") || "";
+      if (targetId) {
+        loadEventById(targetId);
+      }
+      setIsLoaded(true);
+    }
+  }, [user?.id, loadOrganizerData]);
+
+  // Sync isolated state to localStorage for offline mode
+  useEffect(() => {
+    if (user?.id && isLoaded) {
+      const userStorageKey = `delegate_storage_${user.id}`;
+      try {
+        localStorage.setItem(
+          userStorageKey,
+          JSON.stringify({
+            myConferences,
+            event,
+            committees,
+            portfolios,
+            registrations,
+          })
+        );
+      } catch {}
+    }
+  }, [user?.id, isLoaded, myConferences, event, committees, portfolios, registrations]);
+
+  // Auth Methods
   const signUp = async (email: string, password: string): Promise<{ error?: string }> => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.auth.signUp({ email, password });
@@ -113,7 +533,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return {};
     } else {
-      const newUser = { id: `user_${Date.now()}`, email };
+      const id = email.includes("organizer2") ? "org_user_2" : `org_user_${Date.now().toString(36)}`;
+      const newUser: AuthUser = { id, email };
       setUser(newUser);
       try {
         localStorage.setItem("delegate_auth_user", JSON.stringify(newUser));
@@ -131,7 +552,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return {};
     } else {
-      const newUser = { id: `user_${Date.now()}`, email };
+      const id = email.includes("organizer2")
+        ? "org_user_2"
+        : email.includes("organizer1")
+        ? "org_user_1"
+        : `org_user_${Date.now().toString(36)}`;
+      const newUser: AuthUser = { id, email };
       setUser(newUser);
       try {
         localStorage.setItem("delegate_auth_user", JSON.stringify(newUser));
@@ -145,183 +571,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await supabase.auth.signOut();
     }
     setUser(null);
+    setMyConferences([]);
+    setEvent(EMPTY_EVENT);
+    setCommittees([]);
+    setPortfolios([]);
+    setRegistrations([]);
     try {
       localStorage.removeItem("delegate_auth_user");
     } catch {}
   };
 
-  useEffect(() => {
-    async function loadInitialData() {
-      // 1. Initial load from localStorage for immediate local rendering
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.event && Array.isArray(parsed.registrations)) {
-            setEvent(parsed.event);
-            setCommittees(parsed.committees || []);
-            setPortfolios(parsed.portfolios || []);
-            setRegistrations(parsed.registrations);
-          }
-        }
-      } catch {
-        // Ignore
-      }
-
-      // 2. Fetch live data from Supabase if configured and tables exist
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const { data: eventsData, error: evErr } = await supabase
-            .from("events")
-            .select("*")
-            .order("created_at", { ascending: false });
-
-          if (!evErr && eventsData && eventsData.length > 0) {
-            const parsedEvents: EventModel[] = eventsData.map((ev) => ({
-              id: ev.id,
-              organizationId: ev.organization_id || "org-1",
-              type: ev.type || "mun",
-              name: ev.name,
-              dates: ev.dates,
-              dateFrom: ev.date_from,
-              dateTo: ev.date_to,
-              deadline: ev.deadline,
-              deadlineDate: ev.deadline_date,
-              venue: ev.venue,
-              fee: Number(ev.fee) || 0,
-              schoolFeePerStudent: Number(ev.school_fee_per_student) || 0,
-              status: ev.status,
-              rules: ev.rules || EMPTY_EVENT.rules,
-            }));
-            setAllEvents(parsedEvents);
-
-            // Determine if a specific event is requested via URL (?event=... or ?eventId=...)
-            let targetEventId = "";
-            if (typeof window !== "undefined") {
-              const sp = new URLSearchParams(window.location.search);
-              targetEventId = sp.get("event") || sp.get("eventId") || "";
-            }
-
-            const targetEv =
-              (targetEventId && parsedEvents.find((e) => e.id === targetEventId)) ||
-              parsedEvents[0];
-
-            if (targetEv) {
-              setEvent(targetEv);
-
-              const { data: commsData } = await supabase
-                .from("committees")
-                .select("*")
-                .eq("event_id", targetEv.id);
-
-              const mappedComms: MunCommittee[] = (commsData || []).map((c) => ({
-                id: c.id,
-                eventId: c.event_id,
-                name: c.name,
-                agenda: c.agenda,
-                totalSeats: c.total_seats,
-                backgroundGuideUrl: c.background_guide_url,
-              }));
-              setCommittees(mappedComms);
-
-              const commIds = mappedComms.map((c) => c.id);
-              if (commIds.length > 0) {
-                const { data: portsData } = await supabase
-                  .from("portfolios")
-                  .select("*")
-                  .in("committee_id", commIds);
-
-                if (portsData) {
-                  setPortfolios(
-                    portsData.map((p) => ({
-                      id: p.id,
-                      committeeId: p.committee_id,
-                      countryName: p.country_name,
-                      code: p.country_code,
-                      status: p.status,
-                      allottedRegistrationId: p.allotted_registration_id || undefined,
-                    }))
-                  );
-                }
-              } else {
-                setPortfolios([]);
-              }
-
-              const { data: regsData } = await supabase
-                .from("registrations")
-                .select("*")
-                .eq("event_id", targetEv.id);
-
-              if (regsData) {
-                setRegistrations(
-                  regsData.map((r) => ({
-                    id: r.id,
-                    eventId: r.event_id,
-                    delegateName: r.name || "",
-                    email: r.email || "",
-                    phone: r.phone || "",
-                    school: r.school || "",
-                    classYear: r.class_year || "",
-                    experienceMuns: Number(r.experience_count) || 0,
-                    registrationNumber: r.registration_number,
-                    registrationType: r.type === "school_team" ? "school_team" : "individual",
-                    paymentStatus: (r.payment_status as PaymentStatus) || "unpaid",
-                    paymentProofUrl: r.payment_proof_url || undefined,
-                    feeAmount: Number(r.fee_amount) || 1500,
-                    preferences: r.preferences || [],
-                    allotment: r.allotment || undefined,
-                    createdAt: r.created_at || new Date().toISOString(),
-                  }))
-                );
-              }
-            }
-          }
-        } catch (err) {
-          console.warn("Supabase load skipped or tables not yet created:", err);
-        }
-      }
-
-      setIsLoaded(true);
+  // Switch the active conference in the organizer portal
+  const selectConference = async (conferenceId: string): Promise<boolean> => {
+    if (!conferenceId) return false;
+    if (user?.id) {
+      await loadOrganizerData(user.id, conferenceId);
+      return true;
     }
+    return false;
+  };
 
-    loadInitialData();
-  }, []);
-
-  // Sync to localStorage
-  useEffect(() => {
-    if (isLoaded) {
-      try {
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({
-            event,
-            committees,
-            portfolios,
-            registrations,
-          })
-        );
-      } catch (err) {
-        console.warn("Could not save to localStorage", err);
-      }
-    }
-  }, [event, committees, portfolios, registrations, isLoaded]);
-
-  const isConfigured = Boolean(event.name && event.status === "published");
-
+  // Delegate / Public loader: Load any published conference by ID or slug
   const loadEventById = async (eventId: string): Promise<boolean> => {
     if (!eventId || eventId === "new-conference") return false;
 
+    // 1. Check Supabase
     if (isSupabaseConfigured && supabase) {
       try {
         const { data: ev, error: evErr } = await supabase
           .from("events")
           .select("*")
-          .eq("id", eventId)
+          .or(`id.eq.${eventId},slug.eq.${eventId}`)
           .maybeSingle();
 
         if (!evErr && ev) {
           const parsedEvent: EventModel = {
             id: ev.id,
+            ownerId: ev.owner_id,
+            slug: ev.slug,
             organizationId: ev.organization_id || "org-1",
             type: ev.type || "mun",
             name: ev.name,
@@ -338,7 +625,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           };
           setEvent(parsedEvent);
 
-          // Fetch committees for this specific event
+          // Fetch committees for this event
           const { data: commsData } = await supabase
             .from("committees")
             .select("*")
@@ -373,11 +660,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }))
               );
             }
-          } else {
-            setPortfolios([]);
           }
 
-          // Fetch registrations for this specific event
+          // Fetch registrations for this event
           const { data: regsData } = await supabase
             .from("registrations")
             .select("*")
@@ -409,52 +694,141 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return true;
         }
       } catch (err) {
-        console.warn("Failed to load event by id:", err);
+        console.warn("Public loadEventById failed:", err);
       }
     }
 
-    const localMatch = allEvents.find((e) => e.id === eventId);
-    if (localMatch) {
-      setEvent(localMatch);
+    // 2. Fallback check local mock events
+    const allMocks = [MOCK_CONF_ORG1, MOCK_CONF_ORG2];
+    const match = allMocks.find((e) => e.id === eventId || e.slug === eventId);
+    if (match) {
+      setEvent(match);
+      if (match.id === MOCK_CONF_ORG1.id) {
+        setCommittees(MOCK_COMMS_ORG1);
+        setPortfolios(MOCK_PORTS_ORG1);
+        setRegistrations(MOCK_REGS_ORG1);
+      } else {
+        setCommittees(MOCK_COMMS_ORG2);
+        setPortfolios(MOCK_PORTS_ORG2);
+        setRegistrations(MOCK_REGS_ORG2);
+      }
       return true;
     }
+
     return false;
   };
 
-  const createNewConference = () => {
-    const newConfId = `mun-${Date.now().toString(36)}`;
+  // Create a brand new conference belonging to this organizer
+  const createNewConference = async (data?: Partial<EventModel>): Promise<EventModel | null> => {
+    if (!user) return null;
+
+    const baseName = data?.name?.trim() || "New MUN Conference";
+    const slugBase = baseName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const randomSuffix = Math.random().toString(36).substring(2, 6);
+    const uniqueId = `mun-${slugBase}-${randomSuffix}`;
+    const uniqueSlug = `${slugBase}-${randomSuffix}`;
+
     const newConf: EventModel = {
       ...EMPTY_EVENT,
-      id: newConfId,
-      name: "",
+      id: uniqueId,
+      ownerId: user.id,
+      slug: uniqueSlug,
+      name: baseName,
+      dates: data?.dates || "November 20-22, 2026",
+      dateFrom: data?.dateFrom || "2026-11-20",
+      dateTo: data?.dateTo || "2026-11-22",
+      venue: data?.venue || "Main Auditorium",
+      fee: data?.fee ?? 1800,
+      schoolFeePerStudent: data?.schoolFeePerStudent ?? 1400,
+      deadline: data?.deadline || "November 15, 2026",
+      deadlineDate: data?.deadlineDate || "2026-11-15",
+      status: "draft",
+      rules: {
+        allowSchoolTeams: true,
+        askPaymentProof: true,
+        showTakenPortfoliosLive: true,
+        firstComeFirstServed: true,
+        allotmentsPublished: false,
+      },
     };
+
     setEvent(newConf);
+    setMyConferences((prev) => [newConf, ...prev]);
+    setAllEvents((prev) => [newConf, ...prev]);
     setCommittees([]);
     setPortfolios([]);
     setRegistrations([]);
+
+    // Save to Supabase if configured
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from("events").insert({
+          id: newConf.id,
+          owner_id: user.id,
+          slug: newConf.slug,
+          type: newConf.type,
+          name: newConf.name,
+          dates: newConf.dates,
+          date_from: newConf.dateFrom,
+          date_to: newConf.dateTo,
+          deadline: newConf.deadline,
+          deadline_date: newConf.deadlineDate,
+          venue: newConf.venue,
+          fee: newConf.fee,
+          school_fee_per_student: newConf.schoolFeePerStudent,
+          status: newConf.status,
+          rules: newConf.rules,
+        });
+      } catch (err) {
+        console.warn("Supabase insert conference failed:", err);
+      }
+    }
+
+    return newConf;
   };
 
-  const addRegistration = (
+  const deleteConference = async (conferenceId: string) => {
+    setMyConferences((prev) => prev.filter((c) => c.id !== conferenceId));
+    setAllEvents((prev) => prev.filter((c) => c.id !== conferenceId));
+
+    if (event.id === conferenceId) {
+      const remaining = myConferences.filter((c) => c.id !== conferenceId);
+      if (remaining.length > 0) {
+        setEvent(remaining[0]);
+      } else {
+        setEvent(EMPTY_EVENT);
+      }
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from("events").delete().eq("id", conferenceId);
+    }
+  };
+
+  // Add Registration with unguessable collision-resistant number
+  const addRegistration = async (
     data: Omit<Registration, "id" | "registrationNumber" | "createdAt">
-  ): Registration => {
-    const nextSeq = registrations.length + 2048;
-    const newRegNum = `MUN ${nextSeq}`;
+  ): Promise<Registration> => {
+    // Generate unguessable registration number: e.g. MUN-7842-X9K2
+    const randomFourDigit = Math.floor(1000 + Math.random() * 9000);
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const newRegNum = `MUN-${randomFourDigit}-${randomSuffix}`;
+    const newId = `reg-${Date.now()}-${randomSuffix.toLowerCase()}`;
+
     const newReg: Registration = {
       ...data,
-      id: `reg-${nextSeq}`,
+      id: newId,
       registrationNumber: newRegNum,
       createdAt: new Date().toISOString(),
     };
 
-    const updatedRegs = [newReg, ...registrations];
-    setRegistrations(updatedRegs);
+    setRegistrations((prev) => [newReg, ...prev]);
 
     if (isSupabaseConfigured && supabase) {
-      supabase
-        .from("registrations")
-        .insert({
+      try {
+        await supabase.from("registrations").insert({
           id: newReg.id,
-          event_id: newReg.eventId || event.id || "conference-1",
+          event_id: newReg.eventId || event.id,
           registration_number: newReg.registrationNumber,
           type: newReg.registrationType,
           name: newReg.delegateName,
@@ -467,10 +841,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           payment_status: newReg.paymentStatus,
           payment_proof_url: newReg.paymentProofUrl || null,
           allotment: newReg.allotment || null,
-        })
-        .then(({ error }) => {
-          if (error) console.warn("Supabase insert registration:", error);
         });
+      } catch (err) {
+        console.warn("Supabase insert registration error:", err);
+      }
     }
 
     return newReg;
@@ -496,6 +870,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       rules: { ...event.rules, ...newRules },
     };
     setEvent(updated);
+    setMyConferences((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
 
     if (isSupabaseConfigured && supabase && updated.id) {
       supabase
@@ -507,35 +882,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateEventBasics = (updates: Partial<EventModel>) => {
-    let newId = event.id;
-    if ((!newId || newId === "new-conference") && updates.name && updates.name.trim()) {
-      const slugBase = updates.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-      newId = slugBase || `mun-${Date.now().toString(36)}`;
-    }
-
     const updated = {
       ...event,
       ...updates,
-      id: newId,
+      ownerId: event.ownerId || user?.id,
     };
     setEvent(updated);
-    setAllEvents((prev) => {
-      const idx = prev.findIndex((e) => e.id === updated.id);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = updated;
-        return copy;
-      }
-      return [updated, ...prev];
-    });
+    setMyConferences((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
 
-    if (isSupabaseConfigured && supabase && updated.name) {
+    if (isSupabaseConfigured && supabase && updated.id) {
       supabase
         .from("events")
-        .upsert({
-          id: updated.id,
-          organization_id: updated.organizationId,
-          type: updated.type,
+        .update({
           name: updated.name,
           dates: updated.dates,
           date_from: updated.dateFrom,
@@ -548,9 +906,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           status: updated.status,
           rules: updated.rules,
         })
-        .then(({ error }) => {
-          if (error) console.warn("Supabase upsert event:", error);
-        });
+        .eq("id", updated.id)
+        .then();
     }
   };
 
@@ -567,7 +924,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     setCommittees((prev) => [...prev.filter((c) => c.id !== newId), newComm]);
 
-    // Add portfolio countries
     const countriesToAdd = countries || [
       { name: "India", code: "IN" },
       { name: "United States", code: "US" },
@@ -628,7 +984,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const commId = `${event.id}-${tpl.name.toLowerCase()}`;
       newComms.push({
         id: commId,
-        eventId: event.id || "new-conference",
+        eventId: event.id,
         name: tpl.name,
         agenda: tpl.agenda,
         totalSeats: tpl.totalSeats,
@@ -682,9 +1038,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const editCommittee = (id: string, updates: Partial<MunCommittee>) => {
     setCommittees((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
-
     if (isSupabaseConfigured && supabase) {
       supabase.from("committees").update(updates).eq("id", id).then();
+    }
+  };
+
+  const removeCommittee = (id: string) => {
+    setCommittees((prev) => prev.filter((c) => c.id !== id));
+    setPortfolios((prev) => prev.filter((p) => p.committeeId !== id));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from("committees").delete().eq("id", id).then();
     }
   };
 
@@ -700,7 +1063,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return r;
       })
     );
-
     if (isSupabaseConfigured && supabase) {
       supabase.from("portfolios").delete().eq("id", portfolioId).then();
     }
@@ -719,7 +1081,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return r;
       })
     );
-
     if (isSupabaseConfigured && supabase) {
       supabase.from("portfolios").delete().in("id", portfolioIds).then();
     }
@@ -750,75 +1111,114 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const removeCommittee = (id: string) => {
-    setCommittees((prev) => prev.filter((c) => c.id !== id));
-    setPortfolios((prev) => prev.filter((p) => p.committeeId !== id));
+  // Atomic Allotment: verifies open status before allotting to prevent double allotment
+  const allotDelegateManual = async (
+    regId: string,
+    committeeId: string,
+    portfolioId: string
+  ): Promise<boolean> => {
+    const targetPort = portfolios.find((p) => p.id === portfolioId);
+    if (!targetPort) {
+      alert("Selected portfolio does not exist.");
+      return false;
+    }
+
+    if (targetPort.status === "taken" && targetPort.allottedRegistrationId !== regId) {
+      alert(`Cannot allot: ${targetPort.countryName} is already allotted to another delegate.`);
+      return false;
+    }
+
+    // Try Supabase atomic function if online
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase.rpc("allot_portfolio_atomic", {
+          p_portfolio_id: portfolioId,
+          p_registration_id: regId,
+          p_committee_id: committeeId,
+        });
+
+        if (error || data === false) {
+          alert("Allotment collision: this country was just taken by another transaction.");
+          return false;
+        }
+      } catch (err) {
+        console.warn("RPC allot_portfolio_atomic unavailable, using transactional client updates:", err);
+      }
+    }
+
+    // Apply local state updates atomically
+    const allotment: MunAllotment = {
+      registrationId: regId,
+      committeeId,
+      portfolioId,
+      matchedPreferenceRank: 1,
+      matchedPortfolioRank: 1,
+      allottedAt: new Date().toISOString(),
+      status: "tentative",
+    };
+
+    setPortfolios((prev) =>
+      prev.map((p) => {
+        if (p.id === portfolioId) {
+          return { ...p, status: "taken", allottedRegistrationId: regId };
+        }
+        if (p.allottedRegistrationId === regId) {
+          return { ...p, status: "open", allottedRegistrationId: undefined };
+        }
+        return p;
+      })
+    );
+
+    setRegistrations((prev) =>
+      prev.map((r) => (r.id === regId ? { ...r, allotment } : r))
+    );
+
+    return true;
+  };
+
+  const unallotDelegate = async (regId: string) => {
+    setPortfolios((prev) =>
+      prev.map((p) =>
+        p.allottedRegistrationId === regId
+          ? { ...p, status: "open", allottedRegistrationId: undefined }
+          : p
+      )
+    );
+
+    setRegistrations((prev) =>
+      prev.map((r) => {
+        if (r.id === regId) {
+          const copy = { ...r };
+          delete copy.allotment;
+          return copy;
+        }
+        return r;
+      })
+    );
 
     if (isSupabaseConfigured && supabase) {
-      supabase.from("committees").delete().eq("id", id).then();
+      await supabase
+        .from("portfolios")
+        .update({ status: "open", allotted_registration_id: null })
+        .eq("allotted_registration_id", regId);
+
+      await supabase
+        .from("registrations")
+        .update({ allotment: null })
+        .eq("id", regId);
     }
   };
 
-  const allotDelegateManual = (regId: string, committeeId: string, portfolioId: string) => {
-    const updatedPorts = portfolios.map((p) => {
-      if (p.id === portfolioId) {
-        return { ...p, status: "taken" as const, allottedRegistrationId: regId };
-      }
-      if (p.allottedRegistrationId === regId) {
-        return { ...p, status: "open" as const, allottedRegistrationId: undefined };
-      }
-      return p;
-    });
-
-    const updatedRegs = registrations.map((r) => {
-      if (r.id === regId) {
-        const allotment: MunAllotment = {
-          registrationId: regId,
-          committeeId,
-          portfolioId,
-          matchedPreferenceRank: 1,
-          matchedPortfolioRank: 1,
-          allottedAt: new Date().toISOString(),
-          status: "tentative",
-        };
-        return { ...r, allotment };
-      }
-      return r;
-    });
-
-    setPortfolios(updatedPorts);
-    setRegistrations(updatedRegs);
-  };
-
-  const unallotDelegate = (regId: string) => {
-    const updatedPorts = portfolios.map((p) => {
-      if (p.allottedRegistrationId === regId) {
-        return { ...p, status: "open" as const, allottedRegistrationId: undefined };
-      }
-      return p;
-    });
-
-    const updatedRegs = registrations.map((r) => {
-      if (r.id === regId) {
-        const copy = { ...r };
-        delete copy.allotment;
-        return copy;
-      }
-      return r;
-    });
-
-    setPortfolios(updatedPorts);
-    setRegistrations(updatedRegs);
-  };
-
+  // Real dynamic auto-allotment simulation
   const autoAllotSimulation = simulateAutoAllotment(
     registrations,
     portfolios,
     committees,
-    event.rules.firstComeFirstServed
+    event.rules.firstComeFirstServed,
+    autoAllotIncludeUnpaid
   );
 
-  const executeAutoAllot = () => {
+  const executeAutoAllot = async () => {
     const sim = autoAllotSimulation;
     const allotmentMap = new Map<string, MunAllotment>();
     sim.proposedAllotments.forEach((allot) => {
@@ -833,73 +1233,109 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     const updatedPorts = portfolios.map((p) => {
-      const regId = Object.entries(allotmentMap).find(([_, a]) => a.portfolioId === p.id)?.[0];
-      if (regId) {
-        return { ...p, status: "taken" as const, allottedRegistrationId: regId };
+      const match = sim.proposedAllotments.find((a) => a.portfolioId === p.id);
+      if (match) {
+        return { ...p, status: "taken" as const, allottedRegistrationId: match.registrationId };
       }
       return p;
     });
 
     setRegistrations(updatedRegs);
     setPortfolios(updatedPorts);
+
+    if (isSupabaseConfigured && supabase) {
+      for (const allot of sim.proposedAllotments) {
+        await supabase
+          .from("portfolios")
+          .update({ status: "taken", allotted_registration_id: allot.registrationId })
+          .eq("id", allot.portfolioId);
+
+        await supabase
+          .from("registrations")
+          .update({ allotment: allot })
+          .eq("id", allot.registrationId);
+      }
+    }
   };
 
-  const resolveConflict = (portfolioId: string, chosenRegId: string) => {
+  const resolveConflict = async (portfolioId: string, chosenRegId: string) => {
     const port = portfolios.find((p) => p.id === portfolioId);
     if (!port) return;
-    allotDelegateManual(chosenRegId, port.committeeId, portfolioId);
+    await allotDelegateManual(chosenRegId, port.committeeId, portfolioId);
   };
 
-  const findRegistrationByNumber = (num: string): Registration | undefined => {
-    const cleaned = num.trim().toUpperCase().replace(/\s+/g, " ");
-    return registrations.find(
-      (r) =>
-        r.registrationNumber.toUpperCase().replace(/\s+/g, " ") === cleaned ||
-        r.registrationNumber.toUpperCase().replace(/\s+/g, "") === cleaned.replace(/\s+/g, "")
-    );
-  };
+  // Check status verifies both registration number AND conference
+  const findRegistrationByNumber = (num: string, conferenceId?: string): Registration | undefined => {
+    const cleaned = num.trim().toUpperCase().replace(/\s+/g, "");
+    const targetEvent = conferenceId || event.id;
 
-  const publishAllotmentsToggle = () => {
-    setEvent((prev) => ({
-      ...prev,
-      rules: {
-        ...prev.rules,
-        allotmentsPublished: !prev.rules.allotmentsPublished,
-      },
-    }));
-  };
-
-  const markConferencePublished = () => {
-    setEvent((prev) => {
-      const updated = {
-        ...prev,
-        status: "published" as const,
-      };
-      if (isSupabaseConfigured && supabase && updated.id) {
-        supabase
-          .from("events")
-          .update({ status: "published" })
-          .eq("id", updated.id)
-          .then();
+    return registrations.find((r) => {
+      const regCleaned = r.registrationNumber.toUpperCase().replace(/\s+/g, "");
+      const matchesNum = regCleaned === cleaned;
+      if (!matchesNum) return false;
+      if (targetEvent && targetEvent !== "new-conference") {
+        return r.eventId === targetEvent;
       }
-      return updated;
+      return true;
     });
   };
 
-  const clearDatabase = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    setEvent(EMPTY_EVENT);
-    setCommittees([]);
-    setPortfolios([]);
-    setRegistrations([]);
+  const publishAllotmentsToggle = () => {
+    const newState = !event.rules.allotmentsPublished;
+    updateEventRules({ allotmentsPublished: newState });
+  };
 
-    if (isSupabaseConfigured && supabase) {
-      supabase.from("registrations").delete().neq("id", "_none_").then();
-      supabase.from("portfolios").delete().neq("id", "_none_").then();
-      supabase.from("committees").delete().neq("id", "_none_").then();
-      supabase.from("events").delete().neq("id", "_none_").then();
+  const markConferencePublished = () => {
+    const updated = {
+      ...event,
+      status: "published" as const,
+    };
+    setEvent(updated);
+    setMyConferences((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+
+    if (isSupabaseConfigured && supabase && updated.id) {
+      supabase.from("events").update({ status: "published" }).eq("id", updated.id).then();
     }
   };
+
+  const refreshPortfoliosLive = async (committeeId?: string): Promise<MunPortfolio[]> => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        let query = supabase.from("portfolios").select("*");
+        if (committeeId) {
+          query = query.eq("committee_id", committeeId);
+        } else if (committees.length > 0) {
+          query = query.in("committee_id", committees.map((c) => c.id));
+        }
+        const { data } = await query;
+        if (data) {
+          const fresh = data.map((p) => ({
+            id: p.id,
+            committeeId: p.committee_id,
+            countryName: p.country_name,
+            code: p.country_code,
+            status: p.status as "open" | "taken",
+            allottedRegistrationId: p.allotted_registration_id || undefined,
+          }));
+          setPortfolios((prev) => {
+            const freshMap = new Map(fresh.map((f) => [f.id, f]));
+            return prev.map((p) => freshMap.get(p.id) || p);
+          });
+          return fresh;
+        }
+      } catch (err) {
+        console.warn("Live portfolio fetch error:", err);
+      }
+    }
+    return portfolios;
+  };
+
+  const clearDatabase = () => {
+    setRegistrations([]);
+    setPortfolios((prev) => prev.map((p) => ({ ...p, status: "open", allottedRegistrationId: undefined })));
+  };
+
+  const isConfigured = Boolean(event.name && event.status === "published");
 
   return (
     <AppContext.Provider
@@ -910,9 +1346,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         signIn,
         signOut,
         event,
+        myConferences,
         allEvents,
+        selectConference,
         loadEventById,
         createNewConference,
+        deleteConference,
         committees,
         portfolios,
         registrations,
@@ -926,17 +1365,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         loadTemplateCommittees,
         editCommittee,
         removeCommittee,
-        deletePortfolio,
-        deleteMultiplePortfolios,
-        addPortfolioToCommittee,
         allotDelegateManual,
         unallotDelegate,
         autoAllotSimulation,
+        autoAllotIncludeUnpaid,
+        setAutoAllotIncludeUnpaid,
         executeAutoAllot,
         resolveConflict,
+        deletePortfolio,
+        deleteMultiplePortfolios,
+        addPortfolioToCommittee,
         findRegistrationByNumber,
         publishAllotmentsToggle,
         markConferencePublished,
+        refreshPortfoliosLive,
         clearDatabase,
       }}
     >

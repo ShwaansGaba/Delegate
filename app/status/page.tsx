@@ -1,38 +1,45 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useApp } from "@/lib/AppContext";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Button } from "@/components/ui/Button";
-import { Row } from "@/components/ui/Row";
 import { PlacardCard } from "@/components/mun/PlacardCard";
 import { Registration } from "@/lib/types";
 
 export default function StatusPage() {
   const router = useRouter();
-  const { findRegistrationByNumber, committees, portfolios, event, loadEventById, verifyPayment, registrations } = useApp();
+  const { findRegistrationByNumber, committees, portfolios, event, loadEventById } = useApp();
 
   const [inputNum, setInputNum] = useState("");
   const [currentReg, setCurrentReg] = useState<Registration | null>(null);
   const [searched, setSearched] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [showChoicesModal, setShowChoicesModal] = useState(false);
+  const [scopedEventId, setScopedEventId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Registration Status | Delegate";
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
+      const ev = sp.get("event") || sp.get("eventId");
+      if (ev) {
+        setScopedEventId(ev);
+        if (ev !== event.id) {
+          loadEventById(ev);
+        }
+      }
       const queryNum = sp.get("num") || "";
       if (queryNum) {
         setInputNum(queryNum);
-        handleLookup(queryNum);
+        handleLookup(queryNum, ev || undefined);
       }
     }
-  }, []);
+  }, [event.id, loadEventById]);
 
-  const handleLookup = (numberToLookup: string) => {
+  const handleLookup = (numberToLookup: string, forceEventId?: string) => {
     setErrorMsg("");
     const cleaned = numberToLookup.trim();
     if (!cleaned) {
@@ -40,16 +47,25 @@ export default function StatusPage() {
       return;
     }
 
-    const found = findRegistrationByNumber(cleaned);
+    const targetEv = forceEventId || scopedEventId || (event.id !== "new-conference" ? event.id : undefined);
+    const found = findRegistrationByNumber(cleaned, targetEv);
+
     setSearched(true);
     if (found) {
+      // Check if registration belongs to the scoped conference
+      if (targetEv && found.eventId !== targetEv) {
+        setCurrentReg(null);
+        setErrorMsg("This registration number does not belong to this conference.");
+        return;
+      }
+
       setCurrentReg(found);
       if (found.eventId && found.eventId !== event.id) {
         loadEventById(found.eventId);
       }
     } else {
       setCurrentReg(null);
-      setErrorMsg(`No registration found for "${cleaned}". Check your confirmation email or try sample number "MUN 2048".`);
+      setErrorMsg(`No registration found matching "${cleaned}". Please check the number from your confirmation email.`);
     }
   };
 
@@ -59,11 +75,11 @@ export default function StatusPage() {
       setCurrentReg(null);
       setErrorMsg("");
     } else {
-      router.push("/");
+      router.push(scopedEventId ? `/c/?id=${scopedEventId}` : "/");
     }
   };
 
-  // State 1: Input form (Page 11)
+  // State 1: Input form
   if (!currentReg) {
     return (
       <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition">
@@ -72,12 +88,15 @@ export default function StatusPage() {
             <ProgressBar currentStep={1} totalSteps={1} onBack={handleBack} />
 
             <div className="pt-3 sm:pt-6 space-y-2 sm:space-y-3">
+              <div className="text-xs uppercase tracking-wider font-bold text-blue-200">
+                {event.name || "Conference Portal"}
+              </div>
               <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
                 Check your <br />
                 status
               </h1>
-              <p className="text-base sm:text-xl text-white font-medium">
-                Enter the number from your confirmation email.
+              <p className="text-base sm:text-lg text-white font-medium">
+                Enter your unique registration number (e.g. MUN-4091-X9K2).
               </p>
 
               <div className="pt-4 sm:pt-6">
@@ -85,10 +104,10 @@ export default function StatusPage() {
                   type="text"
                   value={inputNum}
                   onChange={(e) => setInputNum(e.target.value)}
-                  placeholder="MUN 2048"
+                  placeholder="MUN-4091-X9K2"
                   autoFocus
                   onKeyDown={(e) => e.key === "Enter" && handleLookup(inputNum)}
-                  className="w-full bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 text-xl sm:text-3xl font-heading font-extrabold outline-none uppercase placeholder:text-neutral-400 input-smooth focus:ring-4 focus:ring-blue-300"
+                  className="w-full bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 text-xl sm:text-2xl font-mono font-extrabold outline-none uppercase placeholder:text-neutral-400 input-smooth focus:ring-4 focus:ring-blue-300"
                 />
               </div>
 
@@ -100,36 +119,12 @@ export default function StatusPage() {
 
               <div className="pt-3 sm:pt-4">
                 <a
-                  href="mailto:contact@delegate.app"
-                  className="text-base sm:text-lg font-heading font-bold text-[#FFD23F] hover:underline"
+                  href="mailto:secretariat@delegate.app"
+                  className="text-sm sm:text-base font-heading font-bold text-[#FFD23F] hover:underline"
                 >
-                  Lost your number? Contact the organizers
+                  Lost your number? Contact the conference secretariat
                 </a>
               </div>
-
-              {/* Helper for quick lookup if registrations exist */}
-              {registrations.length > 0 && (
-                <div className="pt-4 sm:pt-8 space-y-1.5 sm:space-y-2">
-                  <p className="text-xs sm:text-sm uppercase tracking-wider text-white/70 font-bold">
-                    Registered numbers in system:
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                    {registrations.slice(0, 3).map((r) => (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => {
-                          setInputNum(r.registrationNumber);
-                          handleLookup(r.registrationNumber);
-                        }}
-                        className="bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-sm sm:text-base font-bold cursor-pointer"
-                      >
-                        {r.registrationNumber} ({r.delegateName.split(" ")[0]})
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -141,11 +136,12 @@ export default function StatusPage() {
     );
   }
 
-  // Determine if delegate is allotted and if allotments are published OR if it's already allotted
-  const isAllotted = !!currentReg.allotment;
+  // Allotment publication status: Allotments are only visible if the organizer published them!
+  const areAllotmentsPublished = Boolean(event.rules?.allotmentsPublished);
+  const isAllotted = !!currentReg.allotment && areAllotmentsPublished;
   const isPaymentPending = currentReg.paymentStatus !== "verified";
 
-  // State 2: Allotted Placard (Page 10)
+  // State 2: Published Allotment Placard
   if (isAllotted && !isPaymentPending) {
     const comm = committees.find((c) => c.id === currentReg.allotment?.committeeId);
     const port = portfolios.find((p) => p.id === currentReg.allotment?.portfolioId);
@@ -171,8 +167,8 @@ export default function StatusPage() {
             </div>
 
             <PlacardCard
-              committeeName={comm?.name || "UNSC"}
-              countryName={port?.countryName || "INDIA"}
+              committeeName={comm?.name || "Committee"}
+              countryName={port?.countryName || "Allotted Portfolio"}
               delegateName={currentReg.delegateName}
               schoolName={currentReg.school}
               guideUrl={comm?.backgroundGuideUrl}
@@ -195,12 +191,20 @@ export default function StatusPage() {
               <div className="space-y-2.5 sm:space-y-3 text-base sm:text-lg font-medium">
                 {currentReg.preferences.map((p, i) => (
                   <div key={i} className="border-b border-neutral-200 pb-2">
-                    <span className="font-bold">{i + 1}. {committees.find(c => c.id === p.committeeId)?.name || p.committeeId.toUpperCase()}: </span>
-                    <span>{p.portfolioIds.map(pid => portfolios.find(port => port.id === pid)?.countryName || pid).join(", ")}</span>
+                    <span className="font-bold">
+                      {i + 1}. {committees.find((c) => c.id === p.committeeId)?.name || p.committeeId.toUpperCase()}:{" "}
+                    </span>
+                    <span>
+                      {p.portfolioIds
+                        .map((pid) => portfolios.find((port) => port.id === pid)?.countryName || pid)
+                        .join(", ")}
+                    </span>
                   </div>
                 ))}
               </div>
-              <Button onClick={() => setShowChoicesModal(false)}>Close</Button>
+              <div className="pt-2">
+                <Button onClick={() => setShowChoicesModal(false)}>Close</Button>
+              </div>
             </div>
           </div>
         )}
@@ -208,85 +212,145 @@ export default function StatusPage() {
     );
   }
 
-  // State 3: Payment Pending (Page 12)
+  // State 3: Payment Verified, but Allotments are NOT yet published
+  if (!isPaymentPending && !areAllotmentsPublished) {
+    return (
+      <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition">
+        <div className="max-w-[360px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
+          <div className="space-y-6">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="text-white hover:opacity-80 active:opacity-60 cursor-pointer p-1 font-bold text-base sm:text-lg flex items-center gap-2"
+            >
+              ← Back
+            </button>
+
+            <div>
+              <div className="text-xs uppercase tracking-wider font-bold text-blue-200 mb-1">
+                {event.name}
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-heading font-extrabold text-white leading-tight">
+                Choices Under Review
+              </h1>
+            </div>
+
+            <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
+                <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                  Registration Number
+                </span>
+                <span className="font-mono font-extrabold text-base text-[#1560BD]">
+                  {currentReg.registrationNumber}
+                </span>
+              </div>
+
+              <div>
+                <div className="text-xl font-heading font-extrabold text-[#0B1B33]">
+                  {currentReg.delegateName}
+                </div>
+                <div className="text-sm font-medium text-neutral-600 mt-0.5">
+                  {currentReg.school}
+                </div>
+              </div>
+
+              <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 text-sm font-medium text-blue-900">
+                Payment status: <strong>Verified</strong>
+              </div>
+
+              <p className="text-neutral-700 text-base font-medium leading-relaxed">
+                Your portfolio choices have been registered. The secretariat will publish final allotments after the registration deadline.
+              </p>
+
+              <div className="pt-2 border-t border-neutral-100">
+                <span className="text-xs uppercase font-extrabold text-neutral-500 block mb-2">
+                  Submitted Choices
+                </span>
+                <div className="space-y-1.5 text-sm text-neutral-800">
+                  {currentReg.preferences.map((p, i) => (
+                    <div key={i} className="font-medium">
+                      <strong className="font-extrabold">Pref {i + 1}:</strong>{" "}
+                      {committees.find((c) => c.id === p.committeeId)?.name || p.committeeId.toUpperCase()}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 pb-2">
+            <Button variant="white" onClick={handleBack}>
+              Look up another number
+            </Button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // State 4: Unpaid / Payment Pending
   return (
     <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition">
       <div className="max-w-[360px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
-        <div className="space-y-4 sm:space-y-6">
-          <ProgressBar currentStep={1} totalSteps={2} onBack={handleBack} />
+        <div className="space-y-6">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="text-white hover:opacity-80 p-1 font-bold text-base flex items-center gap-2"
+          >
+            ← Back
+          </button>
 
           <div>
-            <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
-              Payment <br />
-              pending.
+            <h1 className="text-3xl sm:text-4xl font-heading font-extrabold text-white leading-tight">
+              Payment Pending
             </h1>
-            <p className="text-lg sm:text-2xl text-white font-medium mt-1 sm:mt-2">
-              {currentReg.registrationNumber}, {currentReg.delegateName}
+          </div>
+
+          <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
+              <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                Registration Number
+              </span>
+              <span className="font-mono font-extrabold text-base text-[#1560BD]">
+                {currentReg.registrationNumber}
+              </span>
+            </div>
+
+            <div>
+              <div className="text-xl font-heading font-extrabold text-[#0B1B33]">
+                {currentReg.delegateName}
+              </div>
+              <div className="text-sm font-medium text-neutral-600 mt-0.5">
+                {currentReg.school}
+              </div>
+            </div>
+
+            <div className="p-3 bg-red-50 text-red-800 rounded-xl border border-red-100 text-sm font-medium">
+              Payment status: <strong>Unpaid (₹{(currentReg.feeAmount || 1500).toLocaleString()})</strong>
+            </div>
+
+            <p className="text-neutral-700 text-base font-medium leading-relaxed">
+              Your choices are held pending payment verification. Please complete your payment to hold your seat.
             </p>
-          </div>
 
-          {/* Three-stage Status Card matching Page 12 */}
-          <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-5 sm:p-8 space-y-3 sm:space-y-4">
-            <div className="flex items-center gap-3 text-lg sm:text-xl font-heading font-bold text-emerald-700">
-              <span className="text-xl sm:text-2xl">✓</span>
-              <span>Registration received</span>
+            <div className="pt-2">
+              <Link
+                href={`/register/confirmation?num=${encodeURIComponent(currentReg.registrationNumber)}&event=${encodeURIComponent(currentReg.eventId)}`}
+                className="block w-full bg-[#FFD23F] hover:bg-yellow-400 text-[#0B1B33] p-3.5 rounded-xl font-heading font-extrabold text-center text-base transition-colors"
+              >
+                Upload payment proof or pay →
+              </Link>
             </div>
-
-            <div className="flex items-center gap-3 text-lg sm:text-xl font-heading font-bold text-[#0B1B33]">
-              <span className="text-xl sm:text-2xl text-amber-500">○</span>
-              <span>Payment, Rs {currentReg.feeAmount.toLocaleString()}</span>
-            </div>
-
-            <div className="flex items-center gap-3 text-lg sm:text-xl font-heading font-bold text-neutral-400">
-              <span className="text-xl sm:text-2xl">○</span>
-              <span>Allotment</span>
-            </div>
-          </div>
-
-          <p className="text-base sm:text-xl text-white font-medium leading-relaxed">
-            Allotments are published after payment closes on {event.deadline}.
-          </p>
-
-          <div className="space-y-2.5 sm:space-y-3 pt-1 sm:pt-2">
-            <Row
-              title="Upload payment proof"
-              onClick={() => {
-                verifyPayment(currentReg.id);
-                alert("Payment verified! Reloading status...");
-                setCurrentReg({ ...currentReg, paymentStatus: "verified" });
-              }}
-            />
-
-            <Row
-              title="View my choices"
-              onClick={() => setShowChoicesModal(true)}
-            />
           </div>
         </div>
 
-        <div className="pt-8 pb-4">
+        <div className="pt-4 pb-2">
           <Button variant="white" onClick={handleBack}>
             Look up another number
           </Button>
         </div>
       </div>
-
-      {showChoicesModal && (
-        <div className="fixed inset-0 z-50 bg-[#1560BD]/90 flex items-center justify-center p-6">
-          <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-4">
-            <h3 className="text-2xl font-heading font-extrabold">Your Preferences</h3>
-            <div className="space-y-3 text-lg font-medium">
-              {currentReg.preferences.map((p, i) => (
-                <div key={i} className="border-b border-neutral-200 pb-2">
-                  <span className="font-bold">{i + 1}. {committees.find(c => c.id === p.committeeId)?.name || p.committeeId.toUpperCase()}: </span>
-                  <span>{p.portfolioIds.map(pid => portfolios.find(port => port.id === pid)?.countryName || pid).join(", ")}</span>
-                </div>
-              ))}
-            </div>
-            <Button onClick={() => setShowChoicesModal(false)}>Close</Button>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

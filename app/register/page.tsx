@@ -23,7 +23,7 @@ const PRESET_SCHOOLS = [
 
 export default function IndividualRegisterPage() {
   const router = useRouter();
-  const { committees, portfolios, event, loadEventById, addRegistration } = useApp();
+  const { committees, portfolios, event, loadEventById, refreshPortfoliosLive, addRegistration } = useApp();
 
   // Load conference from URL query param if present
   React.useEffect(() => {
@@ -131,6 +131,7 @@ export default function IndividualRegisterPage() {
         return;
       }
       setStep(3);
+      refreshPortfoliosLive();
     } else if (step === 3) {
       if (!pref1Comm || !pref1Port1 || !pref1Port2 || !pref1Port3) {
         setErrorMsg("Please select all 3 portfolio choices for Committee 1.");
@@ -169,10 +170,10 @@ export default function IndividualRegisterPage() {
     }
   };
 
-  const handleConfirmRegistration = () => {
+  const handleConfirmRegistration = async () => {
     setIsSubmitting(true);
     try {
-      const newReg = addRegistration({
+      const newReg = await addRegistration({
         eventId: event.id || "conference",
         delegateName: name.trim(),
         email: email.trim(),

@@ -9,6 +9,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { PortfolioCombobox } from "@/components/ui/PortfolioCombobox";
 import { CountryPill } from "@/components/ui/CountryPill";
 import { AuthScreen } from "@/components/auth/AuthScreen";
+import { AccountMenu } from "@/components/auth/AccountMenu";
 import { ArrowRight, Check, Trash2, LogOut, Copy, ExternalLink } from "lucide-react";
 import { getConferenceRegistrationLink, getConferenceBrowseLink } from "@/lib/registrationLinks";
 
@@ -314,19 +315,16 @@ export default function SetupLandingPage() {
         {/* Top Header & Progress */}
         <div>
           {user && (
-            <div className="flex items-center justify-between bg-blue-900/40 border border-blue-400/30 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl mb-4 sm:mb-6 text-xs sm:text-base">
-              <div className="flex items-center space-x-2 truncate">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
-                <span className="text-blue-100 font-medium truncate">{user.email}</span>
+            <div className="flex items-center justify-between mb-4 sm:mb-6 pb-2 border-b border-white/10">
+              <div>
+                <span className="text-xs uppercase tracking-wider text-blue-200 font-bold block">
+                  Organizer Platform
+                </span>
+                <span className="text-base sm:text-xl font-heading font-extrabold text-white">
+                  {event.name || "Conference Setup"}
+                </span>
               </div>
-              <button
-                type="button"
-                onClick={signOut}
-                className="text-white hover:text-yellow-300 font-bold underline ml-4 text-xs sm:text-sm shrink-0 flex items-center gap-1.5 cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                Sign out
-              </button>
+              <AccountMenu />
             </div>
           )}
 

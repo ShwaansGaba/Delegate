@@ -2,19 +2,23 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
-import { Menu, X } from "lucide-react";
+import { AccountMenu } from "@/components/auth/AccountMenu";
+import { Menu, X, Plus } from "lucide-react";
 
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { event, allEvents, loadEventById, createNewConference, user, signOut } = useApp();
+  const router = useRouter();
+  const { event, myConferences, selectConference, createNewConference } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   React.useEffect(() => {
     const pageName =
       pathname === "/organizer"
         ? "Dashboard"
+        : pathname === "/organizer/conferences"
+        ? "My Conferences"
         : pathname.split("/").pop() || "Organizer";
     const capitalized = pageName.charAt(0).toUpperCase() + pageName.slice(1);
     document.title = `${capitalized} - ${event.name || "Delegate"}`;
@@ -25,6 +29,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
     { name: "Registrations", href: "/organizer/registrations" },
     { name: "Allotment", href: "/organizer/allotment" },
     { name: "Setup", href: "/organizer/setup" },
+    { name: "My Conferences", href: "/organizer/conferences" },
   ];
 
   const isLinkActive = (href: string) => {
@@ -37,53 +42,61 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-[#1560BD] flex flex-col lg:flex-row text-white">
       {/* Mobile & Tablet Top Bar */}
-      <div className="lg:hidden bg-[#0F4C96] p-4 flex items-center justify-between border-b border-white/10">
-        <div>
-          <div className="text-xl font-heading font-extrabold text-white">
-            {event.name}
-          </div>
-          <div className="text-xs text-white/70 uppercase tracking-wider font-bold">
-            Organizer Portal
+      <div className="lg:hidden bg-[#0F4C96] p-4 flex items-center justify-between border-b border-white/10 sticky top-0 z-40">
+        <div className="flex items-center gap-3 truncate mr-2">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="text-white p-1"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+          <div className="truncate">
+            <div className="text-lg font-heading font-extrabold text-white truncate">
+              {event.name || "My Conferences"}
+            </div>
+            <div className="text-[11px] text-white/70 uppercase tracking-wider font-bold">
+              Organizer Portal
+            </div>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="text-white p-2"
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
-        </button>
+
+        {/* Account Menu Button in top right of mobile header */}
+        <div className="shrink-0 flex items-center">
+          <AccountMenu />
+        </div>
       </div>
 
       {/* Mobile & Tablet Dropdown Nav */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#0F4C96] p-4 space-y-2 border-b border-white/20">
+        <div className="lg:hidden bg-[#0F4C96] p-4 space-y-2 border-b border-white/20 animate-slideDown">
           {/* Mobile Conference Switcher */}
-          {allEvents && allEvents.length > 0 && (
+          {myConferences && myConferences.length > 0 && (
             <div className="mb-3 pb-3 border-b border-white/10">
               <label className="text-[11px] font-bold uppercase tracking-wider text-blue-200 block mb-1">
                 Active Conference
               </label>
               <select
                 value={event.id}
-                onChange={(e) => {
+                onChange={async (e) => {
                   if (e.target.value === "__NEW__") {
-                    createNewConference();
+                    const newC = await createNewConference();
+                    if (newC) router.push("/organizer/setup");
                   } else {
-                    loadEventById(e.target.value);
+                    await selectConference(e.target.value);
                   }
                   setMobileMenuOpen(false);
                 }}
                 className="w-full bg-[#1560BD] text-white font-heading font-extrabold text-sm rounded-xl p-2.5 outline-none border border-white/30"
               >
-                {allEvents.map((ev) => (
+                {myConferences.map((ev) => (
                   <option key={ev.id} value={ev.id} className="text-[#0B1B33] bg-white">
                     {ev.name}
                   </option>
                 ))}
                 <option value="__NEW__" className="text-[#0B1B33] bg-yellow-100 font-bold">
-                  + Create New MUN...
+                  + Create New Conference...
                 </option>
               </select>
             </div>
@@ -104,36 +117,16 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
               </Link>
             );
           })}
-          <div className="pt-2 border-t border-white/10 space-y-2">
-            {user && (
-              <div className="px-5 py-2 text-sm text-white/90">
-                Signed in as <span className="font-bold text-white">{user.email}</span>
-                <button
-                  type="button"
-                  onClick={signOut}
-                  className="block text-yellow-300 font-bold underline mt-1"
-                >
-                  Sign out
-                </button>
-              </div>
-            )}
-            <Link
-              href="/"
-              className="block px-5 py-2 text-base text-white/80 hover:text-white font-medium"
-            >
-              ← Back to conference setup
-            </Link>
-          </div>
         </div>
       )}
 
-      {/* Desktop Darker Blue Sidebar (#0F4C96) matching Page 22-28 */}
+      {/* Desktop Darker Blue Sidebar (#0F4C96) */}
       <aside className="hidden lg:flex flex-col w-64 lg:w-72 bg-[#0F4C96] p-6 lg:p-8 flex-shrink-0 min-h-screen">
         {/* Conference Title */}
         <div className="mb-6">
           <Link href="/organizer" className="block">
             <h2 className="text-2xl font-heading font-extrabold text-white leading-tight">
-              {event.name}
+              {event.name || "Delegate MUN"}
             </h2>
           </Link>
           <div className="text-xs text-blue-200 font-bold uppercase tracking-wider mt-1">
@@ -142,23 +135,32 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Conference Switcher for Multi-MUN */}
-        {allEvents && allEvents.length > 0 && (
+        {myConferences && myConferences.length > 0 && (
           <div className="mb-6 bg-blue-950/40 p-3 rounded-2xl border border-white/10">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-blue-200 block mb-1.5">
-              Switch MUN
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-blue-200 block">
+                Active Conference
+              </label>
+              <Link
+                href="/organizer/conferences"
+                className="text-[11px] text-yellow-300 font-bold hover:underline"
+              >
+                All ({myConferences.length})
+              </Link>
+            </div>
             <select
               value={event.id}
-              onChange={(e) => {
+              onChange={async (e) => {
                 if (e.target.value === "__NEW__") {
-                  createNewConference();
+                  const newC = await createNewConference();
+                  if (newC) router.push("/organizer/setup");
                 } else {
-                  loadEventById(e.target.value);
+                  await selectConference(e.target.value);
                 }
               }}
               className="w-full bg-[#1560BD] text-white font-heading font-bold text-xs rounded-xl p-2 outline-none border border-white/30 cursor-pointer"
             >
-              {allEvents.map((ev) => (
+              {myConferences.map((ev) => (
                 <option key={ev.id} value={ev.id} className="text-[#0B1B33] bg-white">
                   {ev.name}
                 </option>
@@ -171,14 +173,14 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         )}
 
         {/* Navigation Items styled as white active pills */}
-        <nav className="space-y-3 flex-1">
+        <nav className="space-y-2.5 flex-1">
           {navLinks.map((link) => {
             const active = isLinkActive(link.href);
             return (
               <Link
                 key={link.name}
                 href={link.href}
-                className={`block px-6 py-4 rounded-2xl text-xl font-heading font-extrabold transition-all duration-200 hover:translate-x-1.5 active:scale-95 select-none ${
+                className={`block px-5 py-3.5 rounded-2xl text-lg font-heading font-extrabold transition-all duration-200 hover:translate-x-1.5 active:scale-95 select-none ${
                   active
                     ? "bg-white text-[#0B1B33]"
                     : "text-white hover:bg-white/10 active:bg-white/20"
@@ -190,35 +192,29 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        {/* Footer info & link */}
+        {/* Desktop Sidebar Footer */}
         <div className="pt-6 border-t border-white/10 space-y-3">
-          {user && (
-            <div className="bg-white/10 rounded-xl p-3">
-              <div className="text-xs text-white/70 font-semibold uppercase">Signed in as</div>
-              <div className="text-sm text-white font-bold truncate">{user.email}</div>
-              <button
-                type="button"
-                onClick={signOut}
-                className="text-xs text-yellow-300 hover:underline mt-1 font-bold"
-              >
-                Sign out
-              </button>
-            </div>
-          )}
           <Link
-            href="/"
-            className="block text-base text-white/80 hover:text-white underline font-medium hover:translate-x-1 transition-transform"
+            href={`/c/?id=${event.slug || event.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-sm text-yellow-300 hover:underline font-bold"
           >
-            ← View conference setup
+            ↗ Open public registration portal
           </Link>
-          <div className="text-sm text-white/60 font-medium">
-            Delegate Conference Suite v1.0
+          <div className="text-xs text-white/50 font-medium">
+            Multi-Tenant Conference Platform
           </div>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl w-full mx-auto overflow-y-auto page-transition">
+      <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl w-full mx-auto overflow-y-auto page-transition relative">
+        {/* Desktop Top-Right Overlay Account Button */}
+        <div className="hidden lg:flex justify-end mb-4">
+          <AccountMenu />
+        </div>
+
         {children}
       </main>
     </div>
