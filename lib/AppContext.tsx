@@ -19,9 +19,35 @@ export interface AuthUser {
   email: string;
 }
 
+export type BackgroundEffect = "none" | "polka-dots" | "lines" | "grid" | "blur";
+
+export interface AccountTheme {
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundEffect: BackgroundEffect;
+}
+
+export const DEFAULT_THEME: AccountTheme = {
+  primaryColor: "#1560BD",
+  secondaryColor: "#FFD23F",
+  backgroundEffect: "none",
+};
+
+export function adjustHexBrightness(hex: string, percent: number): string {
+  if (!hex || !hex.startsWith("#")) return hex;
+  const num = parseInt(hex.replace("#", ""), 16);
+  if (isNaN(num)) return hex;
+  const r = Math.max(0, Math.min(255, (num >> 16) + percent));
+  const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00ff) + percent));
+  const b = Math.max(0, Math.min(255, (num & 0x0000ff) + percent));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
 interface AppContextType {
   user: AuthUser | null;
   isAuthLoaded: boolean;
+  theme: AccountTheme;
+  updateTheme: (newTheme: Partial<AccountTheme>) => void;
   signUp: (email: string, password: string) => Promise<{ error?: string }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
@@ -75,6 +101,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [autoAllotIncludeUnpaid, setAutoAllotIncludeUnpaid] = useState(false);
+  const [theme, setTheme] = useState<AccountTheme>(DEFAULT_THEME);
+
+  // Load user theme preference
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const key = user?.id ? `delegate_theme_${user.id}` : "delegate_theme_default";
+      try {
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          setTheme(JSON.parse(saved));
+        } else {
+          setTheme(DEFAULT_THEME);
+        }
+      } catch {
+        setTheme(DEFAULT_THEME);
+      }
+    }
+  }, [user?.id]);
+
+  // Apply theme to CSS variables and body attributes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const root = document.documentElement;
+      root.style.setProperty("--un-blue", theme.primaryColor);
+      root.style.setProperty("--un-blue-dark", adjustHexBrightness(theme.primaryColor, -25));
+      root.style.setProperty("--un-yellow", theme.secondaryColor);
+      document.body.setAttribute("data-bg-effect", theme.backgroundEffect);
+    }
+  }, [theme]);
+
+  const updateTheme = (newTheme: Partial<AccountTheme>) => {
+    setTheme((prev) => {
+      const updated = { ...prev, ...newTheme };
+      if (typeof window !== "undefined") {
+        const key = user?.id ? `delegate_theme_${user.id}` : "delegate_theme_default";
+        try {
+          localStorage.setItem(key, JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
+  };
 
   // 1. Initial Authentication Check - Real User Only, No Demo Accounts
   useEffect(() => {
@@ -601,20 +669,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteConference = async (conferenceId: string) => {
-    setMyConferences((prev) => prev.filter((c) => c.id !== conferenceId));
-    setAllEvents((prev) => prev.filter((c) => c.id !== conferenceId));
+    const remaining = myConferences.filter((c) => c.id !== conferenceId);
+    setMyConferences(remaining);
+    setAllEvents(remaining);
 
     if (event.id === conferenceId) {
-      const remaining = myConferences.filter((c) => c.id !== conferenceId);
       if (remaining.length > 0) {
         setEvent(remaining[0]);
+        if (user?.id) {
+          await loadOrganizerData(user.id, remaining[0].id);
+        }
       } else {
         setEvent(EMPTY_EVENT);
+        setCommittees([]);
+        setPortfolios([]);
+        setRegistrations([]);
       }
     }
 
     if (isSupabaseConfigured && supabase) {
-      await supabase.from("events").delete().eq("id", conferenceId);
+      try {
+        await supabase.from("events").delete().eq("id", conferenceId);
+      } catch (err) {
+        console.warn("Delete conference error:", err);
+      }
     }
   };
 
@@ -858,6 +936,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const removeCommittee = (id: string) => {
     setCommittees((prev) => prev.filter((c) => c.id !== id));
     setPortfolios((prev) => prev.filter((p) => p.committeeId !== id));
+    setRegistrations((prev) =>
+      prev.map((r) => {
+        if (r.allotment?.committeeId === id) {
+          const copy = { ...r };
+          delete copy.allotment;
+          return copy;
+        }
+        return r;
+      })
+    );
     if (isSupabaseConfigured && supabase) {
       supabase.from("committees").delete().eq("id", id).then();
     }
@@ -1152,6 +1240,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         isAuthLoaded,
+        theme,
+        updateTheme,
         signUp,
         signIn,
         signOut,

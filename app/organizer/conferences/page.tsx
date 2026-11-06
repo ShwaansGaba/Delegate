@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { EventModel } from "@/lib/types";
 import { getConferencePublicLink } from "@/lib/registrationLinks";
-import { Plus, ArrowRight, Copy, Check, Calendar, MapPin, Users, Settings } from "lucide-react";
+import { Plus, ArrowRight, Copy, Check, Calendar, MapPin, Users, Settings, Trash2 } from "lucide-react";
 
 export default function MyConferencesPage() {
   const router = useRouter();
@@ -19,14 +19,8 @@ export default function MyConferencesPage() {
   } = useApp();
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newDateFrom, setNewDateFrom] = useState("2026-11-20");
-  const [newDateTo, setNewDateTo] = useState("2026-11-22");
-  const [newVenue, setNewVenue] = useState("Campus Auditorium");
-  const [newFee, setNewFee] = useState("1800");
-  const [newSchoolFee, setNewSchoolFee] = useState("1400");
-  const [newDeadline, setNewDeadline] = useState("2026-11-15");
+  const [confToDelete, setConfToDelete] = useState<EventModel | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleCopyLink = (conf: EventModel) => {
     const link = getConferencePublicLink(conf.slug || conf.id);
@@ -35,29 +29,22 @@ export default function MyConferencesPage() {
     setTimeout(() => setCopiedId(null), 2500);
   };
 
-  const handleOpenConference = async (confId: string) => {
-    await selectConference(confId);
-    router.push("/organizer");
+  const handleOpenConference = async (conf: EventModel) => {
+    await selectConference(conf.id);
+    if (conf.status === "published") {
+      router.push("/organizer");
+    } else {
+      router.push("/organizer/setup");
+    }
   };
 
-  const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim()) return;
-
+  const handleCreateNew = async () => {
+    setIsCreating(true);
     const newConf = await createNewConference({
-      name: newName.trim(),
-      dateFrom: newDateFrom,
-      dateTo: newDateTo,
-      dates: `${newDateFrom} to ${newDateTo}`,
-      venue: newVenue.trim(),
-      fee: Number(newFee) || 1500,
-      schoolFeePerStudent: Number(newSchoolFee) || 1200,
-      deadline: newDeadline,
-      deadlineDate: newDeadline,
+      name: "",
+      status: "draft",
     });
-
-    setShowCreateModal(false);
-    setNewName("");
+    setIsCreating(false);
     if (newConf) {
       router.push("/organizer/setup");
     }
@@ -78,11 +65,12 @@ export default function MyConferencesPage() {
 
         <button
           type="button"
-          onClick={() => setShowCreateModal(true)}
+          onClick={handleCreateNew}
+          disabled={isCreating}
           className="bg-[#FFD23F] hover:bg-yellow-400 text-[#0B1B33] px-5 py-3 rounded-2xl font-heading font-extrabold text-base flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-md cursor-pointer shrink-0"
         >
           <Plus className="w-5 h-5" strokeWidth={3} />
-          <span>Create New Conference</span>
+          <span>{isCreating ? "Creating..." : "Create New Conference"}</span>
         </button>
       </div>
 
@@ -95,10 +83,11 @@ export default function MyConferencesPage() {
           </p>
           <button
             type="button"
-            onClick={() => setShowCreateModal(true)}
+            onClick={handleCreateNew}
+            disabled={isCreating}
             className="bg-[#1560BD] hover:bg-[#0F4C96] text-white px-6 py-3.5 rounded-2xl font-heading font-extrabold text-base transition-colors cursor-pointer"
           >
-            Create Conference Now
+            Create Your First Conference
           </button>
         </div>
       ) : (
@@ -196,10 +185,10 @@ export default function MyConferencesPage() {
                 <div className="pt-2 border-t border-neutral-100 flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    onClick={() => handleOpenConference(conf.id)}
+                    onClick={() => handleOpenConference(conf)}
                     className="flex-1 bg-[#1560BD] hover:bg-[#0F4C96] text-white py-2.5 px-4 rounded-xl font-heading font-extrabold text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
-                    <span>Open Dashboard</span>
+                    <span>{conf.status === "published" ? "Open Dashboard" : "Resume Setup"}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
 
@@ -214,6 +203,15 @@ export default function MyConferencesPage() {
                   >
                     <Settings className="w-4 h-4" />
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setConfToDelete(conf)}
+                    className="p-2.5 rounded-xl border border-red-200 hover:bg-red-50 text-red-600 font-bold text-sm cursor-pointer transition-colors"
+                    title="Delete Conference"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             );
@@ -221,134 +219,48 @@ export default function MyConferencesPage() {
         </div>
       )}
 
-      {/* Create New Conference Modal */}
-      {showCreateModal && (
+      {/* Delete Conference Confirmation Modal */}
+      {confToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white text-[#0B1B33] rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-white text-[#0B1B33] rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl relative">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-              <div>
-                <h3 className="text-2xl font-heading font-extrabold text-[#0B1B33]">
-                  Create New MUN Conference
-                </h3>
-                <p className="text-neutral-500 text-sm font-medium mt-0.5">
-                  This conference will be isolated to your organizer account.
-                </p>
-              </div>
+              <h3 className="text-2xl font-heading font-extrabold text-red-600">
+                Delete Conference?
+              </h3>
               <button
                 type="button"
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => setConfToDelete(null)}
                 className="text-neutral-400 hover:text-black p-1 text-2xl font-bold cursor-pointer"
               >
                 ×
               </button>
             </div>
 
-            <form onSubmit={handleCreateSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs uppercase font-extrabold text-neutral-600 mb-1 tracking-wider">
-                  Conference Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Model UN 2026"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="w-full p-3.5 rounded-xl border border-neutral-200 text-base font-bold outline-none focus:border-[#1560BD]"
-                />
-              </div>
+            <p className="text-neutral-600 font-medium text-base leading-relaxed">
+              Are you sure you want to delete <strong className="text-[#0B1B33]">{confToDelete.name || "this conference"}</strong>?
+              This will permanently delete all its committees, country portfolios, and delegate registrations. This action cannot be undone.
+            </p>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs uppercase font-extrabold text-neutral-600 mb-1 tracking-wider">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={newDateFrom}
-                    onChange={(e) => setNewDateFrom(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-neutral-200 text-sm font-bold outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs uppercase font-extrabold text-neutral-600 mb-1 tracking-wider">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={newDateTo}
-                    onChange={(e) => setNewDateTo(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-neutral-200 text-sm font-bold outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase font-extrabold text-neutral-600 mb-1 tracking-wider">
-                  Venue
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Main Auditorium, City Campus"
-                  value={newVenue}
-                  onChange={(e) => setNewVenue(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-neutral-200 text-sm font-bold outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs uppercase font-extrabold text-neutral-600 mb-1 tracking-wider">
-                    Individual Fee (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={newFee}
-                    onChange={(e) => setNewFee(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-neutral-200 text-sm font-bold outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs uppercase font-extrabold text-neutral-600 mb-1 tracking-wider">
-                    School Fee (₹/student)
-                  </label>
-                  <input
-                    type="number"
-                    value={newSchoolFee}
-                    onChange={(e) => setNewSchoolFee(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-neutral-200 text-sm font-bold outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase font-extrabold text-neutral-600 mb-1 tracking-wider">
-                  Registration Deadline
-                </label>
-                <input
-                  type="date"
-                  value={newDeadline}
-                  onChange={(e) => setNewDeadline(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-neutral-200 text-sm font-bold outline-none"
-                />
-              </div>
-
-              <div className="pt-3 flex items-center justify-end gap-3 border-t border-neutral-100">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2.5 rounded-xl font-bold text-sm text-neutral-600 hover:text-neutral-900 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-[#1560BD] hover:bg-[#0F4C96] text-white px-6 py-2.5 rounded-xl font-heading font-extrabold text-sm transition-colors cursor-pointer"
-                >
-                  Create Conference
-                </button>
-              </div>
-            </form>
+            <div className="pt-2 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfToDelete(null)}
+                className="px-4 py-2.5 rounded-xl font-bold text-sm text-neutral-600 hover:text-neutral-900 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = confToDelete.id;
+                  setConfToDelete(null);
+                  await deleteConference(id);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-heading font-extrabold text-sm transition-colors cursor-pointer"
+              >
+                Delete permanently
+              </button>
+            </div>
           </div>
         </div>
       )}

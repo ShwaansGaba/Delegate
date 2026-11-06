@@ -8,7 +8,7 @@ import { Toggle } from "@/components/ui/Toggle";
 import { Row } from "@/components/ui/Row";
 import { PortfolioCombobox } from "@/components/ui/PortfolioCombobox";
 import { CountryPill } from "@/components/ui/CountryPill";
-import { Trash2 } from "lucide-react";
+import { Trash2, Lock, ArrowRight, Check } from "lucide-react";
 import { getConferenceRegistrationLink, getConferenceBrowseLink } from "@/lib/registrationLinks";
 
 type SetupStep = "basics" | "committees" | "countries" | "rules" | "publish";
@@ -31,13 +31,17 @@ export default function OrganizerSetupPage() {
     updateEventRules,
     updateEventBasics,
     addCommittee,
+    editCommittee,
+    removeCommittee,
+    deleteConference,
     deletePortfolio,
     deleteMultiplePortfolios,
     addPortfolioToCommittee,
     markConferencePublished,
   } = useApp();
 
-  const [currentStep, setCurrentStep] = useState<SetupStep>("committees");
+  const [currentStep, setCurrentStep] = useState<SetupStep>("basics");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Basics state with date inputs and separate fees
   const [name, setName] = useState(event.name);
@@ -86,7 +90,8 @@ export default function OrganizerSetupPage() {
     dateTo &&
     dateTo >= dateFrom &&
     deadlineDate &&
-    deadlineDate <= dateFrom
+    deadlineDate <= dateFrom &&
+    venue.trim().length > 0
   );
 
   const isCommitteesDone = committees.length > 0;
@@ -117,6 +122,10 @@ export default function OrganizerSetupPage() {
       setValidationError("Registration deadline cannot be after the conference start date.");
       return;
     }
+    if (!venue.trim()) {
+      setValidationError("Please enter the conference venue.");
+      return;
+    }
 
     const computedDates = `${dateFrom} to ${dateTo}`;
     updateEventBasics({
@@ -124,7 +133,7 @@ export default function OrganizerSetupPage() {
       dates: computedDates,
       dateFrom,
       dateTo,
-      venue: venue.trim() || "Main Auditorium",
+      venue: venue.trim(),
       fee: Math.max(0, Number(fee) || 0),
       schoolFeePerStudent: Math.max(0, Number(schoolFee) || 0),
       deadline: deadlineDate,
@@ -329,17 +338,17 @@ export default function OrganizerSetupPage() {
             type="button"
             onClick={() => {
               setValidationError(null);
+              if (st.id !== "basics" && !isBasicsDone) {
+                setValidationError("Please fill in Conference Basics (Name, Dates, Venue, Deadline) first before proceeding.");
+                setCurrentStep("basics");
+                return;
+              }
               if (st.id === "countries" && committees.length === 0) {
                 setValidationError("Please add at least one committee first before configuring countries.");
                 setCurrentStep("committees");
                 return;
               }
               if (st.id === "publish") {
-                if (!isBasicsDone) {
-                  setValidationError("Please complete Conference Basics first (Name, Dates, and Deadline).");
-                  setCurrentStep("basics");
-                  return;
-                }
                 if (!isCommitteesDone) {
                   setValidationError("Please add at least one committee before publishing.");
                   setCurrentStep("committees");
@@ -469,17 +478,31 @@ export default function OrganizerSetupPage() {
                       {comm.totalSeats} seats, {portfolios.filter(p => p.committeeId === comm.id).length} portfolios
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewCommName(comm.name);
-                      setNewCommAgenda(comm.agenda);
-                      setNewCommSeats(comm.totalSeats.toString());
-                    }}
-                    className="text-xl font-heading font-extrabold text-[#1560BD] hover:underline cursor-pointer"
-                  >
-                    Edit
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewCommName(comm.name);
+                        setNewCommAgenda(comm.agenda);
+                        setNewCommSeats(comm.totalSeats.toString());
+                      }}
+                      className="text-lg font-heading font-extrabold text-[#1560BD] hover:underline cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`Delete committee "${comm.name}" and all its portfolios?`)) {
+                          removeCommittee(comm.id);
+                        }
+                      }}
+                      className="text-lg font-heading font-extrabold text-red-600 hover:text-red-700 hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -735,97 +758,187 @@ export default function OrganizerSetupPage() {
       {/* STEP 5: PUBLISH (Pages 16 & 28) */}
       {currentStep === "publish" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left Card: Distinct links */}
-            <div className="lg:col-span-7 space-y-4">
-              {/* Individual Delegate */}
-              <div className="bg-white text-[#0B1B33] rounded-3xl p-6 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                    Individual Delegate Link
-                  </span>
-                  <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
-                    ₹{event.fee || 2500}
-                  </span>
-                </div>
-                <div className="text-sm font-mono text-neutral-700 break-all p-3 bg-neutral-100 rounded-xl">
-                  {individualLink}
-                </div>
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(individualLink, "individual")}
-                    className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl p-3 text-center text-sm font-heading font-extrabold transition-colors cursor-pointer"
-                  >
-                    {copiedType === "individual" ? "✓ Copied!" : "Copy link"}
-                  </button>
-                  <Button
-                    variant="primary"
-                    onClick={() => handleShareWhatsApp(individualLink, "Individual Registration")}
-                  >
-                    WhatsApp
-                  </Button>
-                </div>
+          {event.status !== "published" ? (
+            <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-5 border-2 border-yellow-400">
+              <div className="flex items-center gap-2 text-yellow-800">
+                <Lock className="w-5 h-5 text-yellow-600" />
+                <span className="text-xs uppercase font-extrabold tracking-wider">Registration Links Locked</span>
               </div>
-
-              {/* School Team */}
-              <div className="bg-white text-[#0B1B33] rounded-3xl p-6 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                    School Delegation Team Link
-                  </span>
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                    ₹{event.schoolFeePerStudent || 1200}/student
-                  </span>
-                </div>
-                <div className="text-sm font-mono text-neutral-700 break-all p-3 bg-neutral-100 rounded-xl">
-                  {teamLink}
-                </div>
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(teamLink, "team")}
-                    className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl p-3 text-center text-sm font-heading font-extrabold transition-colors cursor-pointer"
-                  >
-                    {copiedType === "team" ? "✓ Copied!" : "Copy link"}
-                  </button>
-                  <Button
-                    variant="primary"
-                    onClick={() => handleShareWhatsApp(teamLink, "School Delegation Registration")}
-                  >
-                    WhatsApp
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Card: What happens next (Page 28) */}
-            <div className="lg:col-span-5 bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-4">
               <h3 className="text-2xl font-heading font-extrabold text-[#0B1B33]">
-                What happens next
+                Setup In Progress
               </h3>
+              <p className="text-neutral-600 font-medium text-base leading-relaxed max-w-xl">
+                This conference is currently in <strong>Draft</strong>. Delegate registration links are locked until you officially publish the conference.
+              </p>
+              <div className="pt-2">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleOpenRegistrations}
+                  className="font-heading font-extrabold"
+                >
+                  Publish Conference &amp; Open Registrations
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Card: Distinct links */}
+              <div className="lg:col-span-7 space-y-4">
+                {/* Individual Delegate */}
+                <div className="bg-white text-[#0B1B33] rounded-3xl p-6 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                      Individual Delegate Link
+                    </span>
+                    <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+                      ₹{event.fee || 2500}
+                    </span>
+                  </div>
+                  <div className="text-sm font-mono text-neutral-700 break-all p-3 bg-neutral-100 rounded-xl">
+                    {individualLink}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(individualLink, "individual")}
+                      className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl p-3 text-center text-sm font-heading font-extrabold transition-colors cursor-pointer"
+                    >
+                      {copiedType === "individual" ? "✓ Copied!" : "Copy link"}
+                    </button>
+                    <Button
+                      variant="primary"
+                      onClick={() => handleShareWhatsApp(individualLink, "Individual Registration")}
+                    >
+                      WhatsApp
+                    </Button>
+                  </div>
+                </div>
 
-              <div className="space-y-4 text-xl font-medium text-neutral-800">
-                <div className="flex gap-3">
-                  <span className="font-heading font-extrabold text-[#0B1B33]">1.</span>
-                  <span>Delegates register and pick preferences</span>
+                {/* School Team */}
+                <div className="bg-white text-[#0B1B33] rounded-3xl p-6 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                      School Delegation Team Link
+                    </span>
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      ₹{event.schoolFeePerStudent || 1200}/student
+                    </span>
+                  </div>
+                  <div className="text-sm font-mono text-neutral-700 break-all p-3 bg-neutral-100 rounded-xl">
+                    {teamLink}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(teamLink, "team")}
+                      className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl p-3 text-center text-sm font-heading font-extrabold transition-colors cursor-pointer"
+                    >
+                      {copiedType === "team" ? "✓ Copied!" : "Copy link"}
+                    </button>
+                    <Button
+                      variant="primary"
+                      onClick={() => handleShareWhatsApp(teamLink, "School Delegation Registration")}
+                    >
+                      WhatsApp
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-3">
-                  <span className="font-heading font-extrabold text-[#0B1B33]">2.</span>
-                  <span>You verify payments</span>
-                </div>
-                <div className="flex gap-3">
-                  <span className="font-heading font-extrabold text-[#0B1B33]">3.</span>
-                  <span>You allot and publish</span>
+              </div>
+
+              {/* Right Card: What happens next (Page 28) */}
+              <div className="lg:col-span-5 bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-4">
+                <h3 className="text-2xl font-heading font-extrabold text-[#0B1B33]">
+                  What happens next
+                </h3>
+
+                <div className="space-y-4 text-xl font-medium text-neutral-800">
+                  <div className="flex gap-3">
+                    <span className="font-heading font-extrabold text-[#0B1B33]">1.</span>
+                    <span>Delegates register and pick preferences</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="font-heading font-extrabold text-[#0B1B33]">2.</span>
+                    <span>You verify payments</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="font-heading font-extrabold text-[#0B1B33]">3.</span>
+                    <span>You allot and publish</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="max-w-md pt-4">
             <Button onClick={() => router.push("/organizer")}>
               Go to dashboard
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Danger Zone: Delete Conference */}
+      <div className="pt-8 mt-12 border-t border-white/20">
+        <div className="bg-red-950/40 border border-red-500/30 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h4 className="text-lg font-heading font-extrabold text-white">Delete Conference</h4>
+            <p className="text-sm text-red-200/80 font-medium mt-0.5">
+              Permanently delete this conference and all associated committees, country portfolios, and delegate registrations.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDeleteModal(true)}
+            className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-heading font-extrabold text-sm transition-colors cursor-pointer shrink-0"
+          >
+            Delete Conference
+          </button>
+        </div>
+      </div>
+
+      {/* Delete Conference Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white text-[#0B1B33] rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+              <h3 className="text-2xl font-heading font-extrabold text-red-600">
+                Delete Conference?
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="text-neutral-400 hover:text-black p-1 text-2xl font-bold cursor-pointer"
+              >
+                ×
+              </button>
+            </div>
+
+            <p className="text-neutral-600 font-medium text-base leading-relaxed">
+              Are you sure you want to delete <strong className="text-[#0B1B33]">{event.name || "this conference"}</strong>?
+              This will permanently delete all its committees, country portfolios, and delegate registrations. This cannot be undone.
+            </p>
+
+            <div className="pt-2 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2.5 rounded-xl font-bold text-sm text-neutral-600 hover:text-neutral-900 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setShowDeleteModal(false);
+                  await deleteConference(event.id);
+                  router.push("/organizer/conferences");
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-heading font-extrabold text-sm transition-colors cursor-pointer"
+              >
+                Delete permanently
+              </button>
+            </div>
           </div>
         </div>
       )}

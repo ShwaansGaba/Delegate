@@ -72,6 +72,27 @@ export default function OrganizerDashboardPage() {
         </div>
       </div>
 
+      {/* Draft Setup Warning Banner */}
+      {event.status !== "published" && (
+        <div className="bg-yellow-500/20 border-2 border-yellow-400/40 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
+          <div>
+            <div className="text-base font-heading font-extrabold text-yellow-200">
+              Conference Setup in Progress (Draft)
+            </div>
+            <div className="text-xs sm:text-sm text-white/80 font-medium">
+              Complete setup and publish this conference to open delegate registrations and unlock shareable links.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push("/organizer/setup")}
+            className="bg-[#FFD23F] hover:bg-yellow-400 text-[#0B1B33] px-4 py-2 rounded-xl text-sm font-heading font-extrabold shrink-0 cursor-pointer"
+          >
+            Finish Setup →
+          </button>
+        </div>
+      )}
+
       {/* 4 Stat Cards matching Page 17 & 22 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard

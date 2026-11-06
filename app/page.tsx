@@ -83,17 +83,12 @@ export default function SetupLandingPage() {
     }
   }, [committees, activeCommId]);
 
-  // Auto-route organizers directly to the dashboard if a conference has already been created
+  // Auto-route organizers directly to My Conferences hub upon opening
   React.useEffect(() => {
     if (isAuthLoaded && user) {
-      const hasConference =
-        (myConferences && myConferences.length > 0) ||
-        (event.name && event.name.trim().length > 0 && event.id !== "new-conference");
-      if (hasConference) {
-        router.replace("/organizer");
-      }
+      router.replace("/organizer/conferences");
     }
-  }, [isAuthLoaded, user, myConferences, event.name, event.id, router]);
+  }, [isAuthLoaded, user, router]);
 
   // Helper date formatter
   const formatDateRange = (dFrom: string, dTo: string) => {
@@ -321,20 +316,15 @@ export default function SetupLandingPage() {
   };
 
   if (isAuthLoaded && !user) {
-    return <AuthScreen onSuccess={() => router.push("/organizer")} />;
+    return <AuthScreen onSuccess={() => router.push("/organizer/conferences")} />;
   }
 
-  // If the user already has a conference created, show brief loader while redirecting to dashboard
-  if (
-    isAuthLoaded &&
-    user &&
-    ((myConferences && myConferences.length > 0) ||
-      (event.name && event.name.trim().length > 0 && event.id !== "new-conference"))
-  ) {
+  // Redirecting authenticated organizer to My Conferences
+  if (isAuthLoaded && user) {
     return (
       <main className="min-h-screen bg-[#1560BD] flex items-center justify-center text-white">
         <div className="text-center space-y-3">
-          <div className="text-2xl font-heading font-extrabold">Loading dashboard...</div>
+          <div className="text-2xl font-heading font-extrabold">Loading conferences...</div>
         </div>
       </main>
     );
