@@ -13,7 +13,9 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   const { event, myConferences, selectConference, createNewConference } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const isSetup = pathname === "/organizer/setup";
   const isConferencesHub = pathname === "/organizer/conferences";
+  const isStandalone = isConferencesHub || isSetup;
 
   React.useEffect(() => {
     const pageName =
@@ -21,6 +23,8 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         ? "Dashboard"
         : pathname === "/organizer/conferences"
         ? "My Conferences"
+        : pathname === "/organizer/setup"
+        ? "Conference Setup"
         : pathname.split("/").pop() || "Organizer";
     const capitalized = pageName.charAt(0).toUpperCase() + pageName.slice(1);
     document.title = `${capitalized} - ${event.name || "Delegate"}`;
@@ -40,26 +44,36 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
     return pathname.startsWith(href);
   };
 
-  // If on My Conferences hub: NO SIDEBAR IS SHOWN
-  if (isConferencesHub) {
+  // If on My Conferences hub OR during Setup: NO SIDEBAR IS SHOWN
+  if (isStandalone) {
     return (
       <div className="min-h-screen bg-[#1560BD] flex flex-col text-white">
         <header className="bg-[#0F4C96] border-b border-white/10 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-40">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white text-[#1560BD] font-heading font-extrabold flex items-center justify-center text-lg shadow-sm">
-              UN
-            </div>
-            <div>
-              <div className="text-xl font-heading font-extrabold text-white leading-tight">
-                Delegate
+            <Link href="/organizer/conferences" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+              <div className="w-10 h-10 rounded-full bg-white text-[#1560BD] font-heading font-extrabold flex items-center justify-center text-lg shadow-sm">
+                UN
               </div>
-              <div className="text-[11px] text-blue-200 font-bold uppercase tracking-wider">
-                Conference Management Hub
+              <div>
+                <div className="text-xl font-heading font-extrabold text-white leading-tight">
+                  Delegate
+                </div>
+                <div className="text-[11px] text-blue-200 font-bold uppercase tracking-wider">
+                  {isSetup ? "Conference Setup" : "My Conferences"}
+                </div>
               </div>
-            </div>
+            </Link>
           </div>
 
           <div className="flex items-center gap-4">
+            {isSetup && (
+              <Link
+                href="/organizer/conferences"
+                className="text-xs sm:text-sm font-heading font-extrabold text-yellow-300 hover:text-yellow-200 uppercase tracking-wider py-1.5 px-3 rounded-xl border border-yellow-300/30 hover:border-yellow-300/60 transition-colors"
+              >
+                ← My Conferences
+              </Link>
+            )}
             <AccountMenu />
           </div>
         </header>
@@ -71,7 +85,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Inside a selected conference workspace: SIDEBAR APPEARS
+  // Inside an entered conference workspace: SIDEBAR APPEARS
   return (
     <div className="min-h-screen bg-[#1560BD] flex flex-col lg:flex-row text-white">
       {/* Mobile & Tablet Top Bar */}
@@ -150,17 +164,13 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
               {event.name || "Conference"}
             </h2>
           </Link>
-          <div className="mt-2 flex items-center gap-2">
-            <span
-              className={`text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-lg ${
-                event.status === "published"
-                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
-                  : "bg-yellow-500/20 text-yellow-200 border border-yellow-400/30"
-              }`}
-            >
-              {event.status === "published" ? "Published" : "Draft Setup"}
-            </span>
-          </div>
+          {event.status === "published" && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                Published
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Navigation Items styled as white active pills */}
@@ -199,9 +209,6 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
               Registration link locked until published
             </div>
           )}
-          <div className="text-xs text-white/50 font-medium">
-            Multi-Tenant Conference Platform
-          </div>
         </div>
       </aside>
 

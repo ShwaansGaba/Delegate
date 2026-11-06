@@ -33,15 +33,33 @@ export default function OrganizerSetupPage() {
     addCommittee,
     editCommittee,
     removeCommittee,
-    deleteConference,
     deletePortfolio,
     deleteMultiplePortfolios,
     addPortfolioToCommittee,
     markConferencePublished,
   } = useApp();
 
+  // Step persistence across reloads
   const [currentStep, setCurrentStep] = useState<SetupStep>("basics");
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && event.id) {
+      const savedStep = localStorage.getItem(`delegate_setup_step_${event.id}`);
+      if (savedStep && ["basics", "committees", "countries", "rules", "publish"].includes(savedStep)) {
+        setCurrentStep(savedStep as SetupStep);
+      }
+    }
+  }, [event.id]);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && event.id) {
+      localStorage.setItem(`delegate_setup_step_${event.id}`, currentStep);
+    }
+    // Scroll to top on every step change
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    const mainEl = document.querySelector("main");
+    if (mainEl) mainEl.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentStep, event.id]);
 
   // Basics state with date inputs and separate fees
   const [name, setName] = useState(event.name);
@@ -53,6 +71,24 @@ export default function OrganizerSetupPage() {
   const [schoolFee, setSchoolFee] = useState(
     event.schoolFeePerStudent ? event.schoolFeePerStudent.toString() : "1200"
   );
+
+  // Auto-sync basics draft live so reloads never lose typed data
+  React.useEffect(() => {
+    if (event.id && (name || dateFrom || dateTo || venue)) {
+      const computedDates = dateFrom && dateTo ? `${dateFrom} to ${dateTo}` : event.dates;
+      updateEventBasics({
+        name: name.trim() || event.name,
+        dates: computedDates,
+        dateFrom,
+        dateTo,
+        venue: venue.trim() || event.venue,
+        fee: Math.max(0, Number(fee) || 0),
+        schoolFeePerStudent: Math.max(0, Number(schoolFee) || 0),
+        deadline: deadlineDate,
+        deadlineDate,
+      });
+    }
+  }, [name, dateFrom, dateTo, deadlineDate, venue, fee, schoolFee, event.id]);
 
   // New committee form
   const [newCommName, setNewCommName] = useState("");
@@ -511,9 +547,11 @@ export default function OrganizerSetupPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const t = COMMITTEE_TEMPLATES[committees.length % COMMITTEE_TEMPLATES.length];
+                  const t =
+                    COMMITTEE_TEMPLATES.find((item) => !committees.some((c) => c.name.toUpperCase() === item.name.toUpperCase())) ||
+                    COMMITTEE_TEMPLATES[committees.length % COMMITTEE_TEMPLATES.length];
                   addCommittee({
-                    name: `${t.name} (Copy)`,
+                    name: t.name,
                     agenda: t.agenda,
                     totalSeats: t.totalSeats,
                   });
@@ -870,75 +908,22 @@ export default function OrganizerSetupPage() {
             </div>
           )}
 
-          <div className="max-w-md pt-4">
-            <Button onClick={() => router.push("/organizer")}>
-              Go to dashboard
+          <div className="flex flex-col sm:flex-row items-center gap-3 pt-6 border-t border-neutral-100">
+            <button
+              type="button"
+              onClick={() => router.push("/organizer/conferences")}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] font-heading font-extrabold text-base transition-colors cursor-pointer text-center"
+            >
+              ← Return to My Conferences
+            </button>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => router.push("/organizer")}
+              className="w-full sm:w-auto px-8"
+            >
+              Open Dashboard →
             </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Danger Zone: Delete Conference */}
-      <div className="pt-8 mt-12 border-t border-white/20">
-        <div className="bg-red-950/40 border border-red-500/30 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h4 className="text-lg font-heading font-extrabold text-white">Delete Conference</h4>
-            <p className="text-sm text-red-200/80 font-medium mt-0.5">
-              Permanently delete this conference and all associated committees, country portfolios, and delegate registrations.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowDeleteModal(true)}
-            className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-heading font-extrabold text-sm transition-colors cursor-pointer shrink-0"
-          >
-            Delete Conference
-          </button>
-        </div>
-      </div>
-
-      {/* Delete Conference Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white text-[#0B1B33] rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl relative">
-            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-              <h3 className="text-2xl font-heading font-extrabold text-red-600">
-                Delete Conference?
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                className="text-neutral-400 hover:text-black p-1 text-2xl font-bold cursor-pointer"
-              >
-                ×
-              </button>
-            </div>
-
-            <p className="text-neutral-600 font-medium text-base leading-relaxed">
-              Are you sure you want to delete <strong className="text-[#0B1B33]">{event.name || "this conference"}</strong>?
-              This will permanently delete all its committees, country portfolios, and delegate registrations. This cannot be undone.
-            </p>
-
-            <div className="pt-2 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2.5 rounded-xl font-bold text-sm text-neutral-600 hover:text-neutral-900 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  setShowDeleteModal(false);
-                  await deleteConference(event.id);
-                  router.push("/organizer/conferences");
-                }}
-                className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-heading font-extrabold text-sm transition-colors cursor-pointer"
-              >
-                Delete permanently
-              </button>
-            </div>
           </div>
         </div>
       )}

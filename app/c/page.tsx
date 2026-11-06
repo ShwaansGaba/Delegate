@@ -256,7 +256,7 @@ export default function PublicConferencePage() {
 
         {/* Footer */}
         <div className="text-center text-xs text-blue-200">
-          Powered by Delegate Multi-Tenant MUN Platform
+          Powered by Delegate MUN Platform
         </div>
       </div>
     </main>

@@ -31,11 +31,7 @@ export default function MyConferencesPage() {
 
   const handleOpenConference = async (conf: EventModel) => {
     await selectConference(conf.id);
-    if (conf.status === "published") {
-      router.push("/organizer");
-    } else {
-      router.push("/organizer/setup");
-    }
+    router.push("/organizer");
   };
 
   const handleCreateNew = async () => {
@@ -119,7 +115,7 @@ export default function MyConferencesPage() {
                         ? "Published"
                         : conf.status === "closed"
                         ? "Closed"
-                        : "Draft"}
+                        : "In Setup"}
                     </span>
                     {isActive && (
                       <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
@@ -188,7 +184,7 @@ export default function MyConferencesPage() {
                     onClick={() => handleOpenConference(conf)}
                     className="flex-1 bg-[#1560BD] hover:bg-[#0F4C96] text-white py-2.5 px-4 rounded-xl font-heading font-extrabold text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
-                    <span>{conf.status === "published" ? "Open Dashboard" : "Resume Setup"}</span>
+                    <span>Open Dashboard</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
 
@@ -207,10 +203,11 @@ export default function MyConferencesPage() {
                   <button
                     type="button"
                     onClick={() => setConfToDelete(conf)}
-                    className="p-2.5 rounded-xl border border-red-200 hover:bg-red-50 text-red-600 font-bold text-sm cursor-pointer transition-colors"
+                    className="p-2.5 px-3 rounded-xl border border-red-200 hover:bg-red-50 text-red-600 font-heading font-extrabold text-sm flex items-center gap-1.5 cursor-pointer transition-colors"
                     title="Delete Conference"
                   >
                     <Trash2 className="w-4 h-4" />
+                    <span>Delete</span>
                   </button>
                 </div>
               </div>

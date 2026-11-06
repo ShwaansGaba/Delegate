@@ -77,7 +77,7 @@ export default function OrganizerDashboardPage() {
         <div className="bg-yellow-500/20 border-2 border-yellow-400/40 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
           <div>
             <div className="text-base font-heading font-extrabold text-yellow-200">
-              Conference Setup in Progress (Draft)
+              Conference Setup in Progress
             </div>
             <div className="text-xs sm:text-sm text-white/80 font-medium">
               Complete setup and publish this conference to open delegate registrations and unlock shareable links.
