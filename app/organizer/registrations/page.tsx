@@ -1,12 +1,22 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { Button } from "@/components/ui/Button";
 
 export default function RegistrationsPage() {
+  const router = useRouter();
   const { registrations, committees, portfolios, verifyPayment, event } = useApp();
+
+  // If conference is still in setup/draft, disallow access
+  useEffect(() => {
+    if (!event.name || event.id === "new-conference") {
+      router.replace("/organizer/conferences");
+    } else if (event.status !== "published") {
+      router.replace("/organizer/setup?step=basics");
+    }
+  }, [event.name, event.id, event.status, router]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<string>("all");
@@ -119,6 +129,10 @@ export default function RegistrationsPage() {
   const getPortName = (id: string) => {
     return portfolios.find((p) => p.id === id)?.countryName || id;
   };
+
+  if (!event.name || event.id === "new-conference" || event.status !== "published") {
+    return null;
+  }
 
   return (
     <div className="space-y-6">

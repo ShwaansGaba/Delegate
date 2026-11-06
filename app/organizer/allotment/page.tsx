@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { CountryMonogram } from "@/components/ui/CountryMonogram";
 import { CountryPill, AllotmentStatus } from "@/components/ui/CountryPill";
@@ -10,6 +11,7 @@ import { Registration } from "@/lib/types";
 import { Trash2, CheckSquare, Square, ArrowUpDown, UserCheck, UserX } from "lucide-react";
 
 export default function OrganizerAllotmentPage() {
+  const router = useRouter();
   const {
     committees,
     portfolios,
@@ -27,6 +29,15 @@ export default function OrganizerAllotmentPage() {
     deleteMultiplePortfolios,
     addPortfolioToCommittee,
   } = useApp();
+
+  // If conference is still in setup/draft, disallow allotment access
+  useEffect(() => {
+    if (!event.name || event.id === "new-conference") {
+      router.replace("/organizer/conferences");
+    } else if (event.status !== "published") {
+      router.replace("/organizer/setup?step=basics");
+    }
+  }, [event.name, event.id, event.status, router]);
 
   const [activeCommitteeId, setActiveCommitteeId] = useState<string>("unsc");
   const [mobileTab, setMobileTab] = useState<"unallotted" | "committees">("unallotted");
@@ -146,6 +157,10 @@ export default function OrganizerAllotmentPage() {
       setSelectedPortfolioIds((prev) => prev.filter((item) => item !== id));
     }
   };
+
+  if (!event.name || event.id === "new-conference" || event.status !== "published") {
+    return null;
+  }
 
   return (
     <div className="space-y-6">

@@ -1135,13 +1135,15 @@ export default function OrganizerSetupPage() {
             >
               ← My Conferences
             </button>
-            <Button
-              variant="primary"
-              onClick={() => router.push("/organizer")}
-              className="w-full sm:w-auto py-2.5 px-6 text-xs sm:text-sm rounded-xl font-bold"
-            >
-              Open Dashboard →
-            </Button>
+            {event.status === "published" && (
+              <Button
+                variant="primary"
+                onClick={() => router.push("/organizer")}
+                className="w-full sm:w-auto py-2.5 px-6 text-xs sm:text-sm rounded-xl font-bold"
+              >
+                Open Dashboard →
+              </Button>
+            )}
           </div>
         </div>
       )}

@@ -12,25 +12,17 @@ export default function OrganizerDashboardPage() {
   const { event, myConferences, registrations, committees, portfolios } = useApp();
   const [filter, setFilter] = useState<"all" | "unpaid" | "first_comm">("all");
 
-  const hasConference = Boolean(event.name && event.name.trim().length > 0 && event.id !== "new-conference") || (myConferences && myConferences.length > 0);
+  // If conference is still in setup/draft, disallow dashboard access completely
+  React.useEffect(() => {
+    if (!event.name || event.id === "new-conference") {
+      router.replace("/organizer/conferences");
+    } else if (event.status !== "published") {
+      router.replace("/organizer/setup?step=basics");
+    }
+  }, [event.name, event.id, event.status, router]);
 
-  if (!hasConference) {
-    return (
-      <div className="bg-white rounded-3xl p-8 sm:p-12 text-[#0B1B33] text-center max-w-xl mx-auto my-12 shadow-xl border border-blue-200">
-        <h2 className="text-3xl font-heading font-extrabold mb-3">No Conference Created Yet</h2>
-        <p className="text-gray-600 text-base sm:text-lg mb-8 leading-relaxed">
-          Create your first Model UN conference with committees, country portfolios, fees, and rules to start receiving delegate registrations.
-        </p>
-        <Button
-          size="lg"
-          variant="primary"
-          onClick={() => router.push("/organizer/setup")}
-          className="px-8 font-heading font-extrabold"
-        >
-          Create your first conference
-        </Button>
-      </div>
-    );
+  if (!event.name || event.id === "new-conference" || event.status !== "published") {
+    return null;
   }
 
   const totalRegistered = registrations.length;
