@@ -110,6 +110,7 @@ export default function OrganizerSetupPage() {
   }, [name, dateFrom, dateTo, deadlineDate, venue, fee, schoolFee, event.id]);
 
   // New committee form
+  const [editingCommId, setEditingCommId] = useState<string | null>(null);
   const [newCommName, setNewCommName] = useState("");
   const [newCommAgenda, setNewCommAgenda] = useState("");
   const [newCommSeats, setNewCommSeats] = useState("40");
@@ -229,6 +230,46 @@ export default function OrganizerSetupPage() {
     setNewCommAgenda("");
     setNewCommSeats("30");
     setGuideUploaded(false);
+  };
+
+  const handleSaveCommitteeEdit = () => {
+    if (!editingCommId) return;
+    setValidationError(null);
+    const cleanName = newCommName.trim().toUpperCase();
+    if (!cleanName) {
+      setValidationError("Please enter a committee name (e.g. UNSC, DISEC).");
+      return;
+    }
+    // Only check duplicates against OTHER committees!
+    if (committees.some((c) => c.id !== editingCommId && c.name.toUpperCase() === cleanName)) {
+      setValidationError(`Committee "${cleanName}" already exists. Please choose a unique name.`);
+      return;
+    }
+    const seats = Number(newCommSeats);
+    if (isNaN(seats) || seats <= 0) {
+      setValidationError("Seats must be a positive number.");
+      return;
+    }
+
+    editCommittee(editingCommId, {
+      name: cleanName,
+      agenda: newCommAgenda.trim() || "Addressing contemporary international affairs",
+      totalSeats: seats,
+    });
+    setEditingCommId(null);
+    setNewCommName("");
+    setNewCommAgenda("");
+    setNewCommSeats("30");
+    setGuideUploaded(false);
+  };
+
+  const handleCancelCommitteeEdit = () => {
+    setEditingCommId(null);
+    setNewCommName("");
+    setNewCommAgenda("");
+    setNewCommSeats("30");
+    setGuideUploaded(false);
+    setValidationError(null);
   };
 
   const handleContinueToCountries = () => {
@@ -526,9 +567,12 @@ export default function OrganizerSetupPage() {
                     <button
                       type="button"
                       onClick={() => {
+                        setEditingCommId(comm.id);
                         setNewCommName(comm.name);
                         setNewCommAgenda(comm.agenda);
                         setNewCommSeats(comm.totalSeats.toString());
+                        setGuideUploaded(Boolean(comm.backgroundGuideUrl));
+                        setValidationError(null);
                       }}
                       className="text-lg font-heading font-extrabold text-[#1560BD] hover:underline cursor-pointer"
                     >
@@ -539,6 +583,9 @@ export default function OrganizerSetupPage() {
                       onClick={() => {
                         if (confirm(`Delete committee "${comm.name}" and all its portfolios?`)) {
                           removeCommittee(comm.id);
+                          if (editingCommId === comm.id) {
+                            handleCancelCommitteeEdit();
+                          }
                         }
                       }}
                       className="text-lg font-heading font-extrabold text-red-600 hover:text-red-700 hover:underline cursor-pointer flex items-center gap-1"
@@ -571,9 +618,22 @@ export default function OrganizerSetupPage() {
             </div>
           </div>
 
-          {/* Right Column: Add a committee form (Page 26) */}
+          {/* Right Column: Add or Edit a committee form */}
           <div className="lg:col-span-5 bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-5">
-            <h2 className="text-3xl font-heading font-extrabold">Add a committee</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-heading font-extrabold">
+                {editingCommId ? "Edit committee" : "Add a committee"}
+              </h2>
+              {editingCommId && (
+                <button
+                  type="button"
+                  onClick={handleCancelCommitteeEdit}
+                  className="text-sm font-heading font-bold text-[#1560BD] hover:underline cursor-pointer"
+                >
+                  + Add new
+                </button>
+              )}
+            </div>
 
             <div className="space-y-4">
               <div>
@@ -620,7 +680,22 @@ export default function OrganizerSetupPage() {
               </div>
 
               <div className="pt-2">
-                <Button onClick={handleAddCommittee}>Add committee</Button>
+                {editingCommId ? (
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button onClick={handleSaveCommitteeEdit} className="flex-1">
+                      Save committee
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={handleCancelCommitteeEdit}
+                      className="px-5 py-3 rounded-2xl border-2 border-neutral-200 hover:bg-neutral-50 text-neutral-700 font-heading font-bold text-base transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <Button onClick={handleAddCommittee}>Add committee</Button>
+                )}
               </div>
 
               <div className="pt-4">

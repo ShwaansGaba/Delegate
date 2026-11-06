@@ -68,7 +68,7 @@ const CARD_STYLES = [
 
 export default function OrganizerAccountPage() {
   const router = useRouter();
-  const { user, signOut, theme, updateTheme, event, myConferences, updateEventBasics } = useApp();
+  const { user, signOut, theme, updateTheme, event, myConferences, updateEventBasics, clearDatabase } = useApp();
 
   // Profile state
   const [organizerName, setOrganizerName] = useState("Secretary-General");
@@ -778,6 +778,37 @@ export default function OrganizerAccountPage() {
           </button>
         </div>
       </form>
+
+      {/* Danger Zone: Wipe Database & Reset */}
+      <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 shadow-xl border border-red-200 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-heading font-extrabold text-red-600">
+              Danger Zone: Wipe All Data & Reset
+            </h3>
+            <p className="text-neutral-500 text-xs sm:text-sm font-medium mt-1">
+              Purges all conferences, committees, portfolios, and delegate registrations from your database and local storage.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              if (
+                confirm(
+                  "Are you sure you want to completely wipe all conference and registration data from database and storage? This cannot be undone."
+                )
+              ) {
+                await clearDatabase();
+                alert("Database and storage have been completely wiped.");
+                router.push("/organizer/conferences");
+              }
+            }}
+            className="px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-heading font-extrabold text-sm transition-colors cursor-pointer shrink-0"
+          >
+            Wipe Database Now
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

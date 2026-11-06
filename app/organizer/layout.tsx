@@ -53,6 +53,15 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
       <div className="min-h-screen theme-bg-primary flex flex-col text-white transition-colors duration-300">
         <header className="theme-bg-sidebar border-b border-white/10 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
           <div className="flex items-center gap-3">
+            {isSetup && (
+              <Link
+                href="/organizer/conferences"
+                className="text-xs sm:text-sm font-heading font-extrabold text-yellow-300 hover:text-yellow-200 uppercase tracking-wider py-1.5 px-3 rounded-xl border border-yellow-300/40 hover:border-yellow-300/80 transition-colors flex items-center gap-1.5 mr-1"
+                title="Return to My Conferences"
+              >
+                <span>← My Conferences</span>
+              </Link>
+            )}
             <Link href="/organizer/conferences" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
               <div className="w-10 h-10 rounded-full bg-white text-[#1560BD] font-heading font-extrabold flex items-center justify-center text-lg shadow-sm">
                 UN

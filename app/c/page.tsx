@@ -86,17 +86,44 @@ export default function PublicConferencePage() {
         }
       }
 
-      // 2. Fallback: check localStorage mock store
+      // 2. Fallback: check localStorage for public conference data
       try {
-        const localData = localStorage.getItem("mun_platform_database_clean_v2");
-        if (localData) {
-          const parsed = JSON.parse(localData);
-          if (parsed.event && (parsed.event.id === queryId || parsed.event.slug === queryId)) {
-            setConference(parsed.event);
-            setCommittees(parsed.committees || []);
-            document.title = `${parsed.event.name} | Delegate`;
-            setLoading(false);
-            return;
+        const directPublicConf = localStorage.getItem(`delegate_public_conf_${queryId}`);
+        if (directPublicConf) {
+          const parsed = JSON.parse(directPublicConf);
+          setConference(parsed);
+          document.title = `${parsed.name} | Delegate`;
+          const savedData = localStorage.getItem(`delegate_conf_data_${parsed.id}`);
+          if (savedData) {
+            const parsedData = JSON.parse(savedData);
+            setCommittees(parsedData.committees || []);
+          }
+          setLoading(false);
+          return;
+        }
+
+        // Search through all local organizer store keys
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith("delegate_storage_")) {
+            const val = localStorage.getItem(k);
+            if (val) {
+              const parsedStore = JSON.parse(val);
+              const found = (parsedStore.myConferences || []).find(
+                (c: EventModel) => c.id === queryId || c.slug === queryId
+              );
+              if (found) {
+                setConference(found);
+                document.title = `${found.name} | Delegate`;
+                const savedData = localStorage.getItem(`delegate_conf_data_${found.id}`);
+                if (savedData) {
+                  const parsedData = JSON.parse(savedData);
+                  setCommittees(parsedData.committees || []);
+                }
+                setLoading(false);
+                return;
+              }
+            }
           }
         }
       } catch {}

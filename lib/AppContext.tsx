@@ -246,12 +246,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             schoolFeePerStudent: Number(ev.school_fee_per_student) || 0,
             status: ev.status,
             rules: ev.rules || EMPTY_EVENT.rules,
+            branding: ev.branding || ev.rules?.branding || undefined,
           }));
 
-          setMyConferences(parsed);
-          setAllEvents(parsed);
-
           if (parsed.length > 0) {
+            setMyConferences(parsed);
+            setAllEvents(parsed);
+
             const chosen =
               (targetEventId && parsed.find((e) => e.id === targetEventId || e.slug === targetEventId)) ||
               parsed[0];
@@ -326,16 +327,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }))
               );
             }
-          } else {
-            // New user with 0 conferences: clean slate
-            setEvent(EMPTY_EVENT);
-            setCommittees([]);
-            setPortfolios([]);
-            setRegistrations([]);
+            setIsLoaded(true);
+            return;
           }
-
-          setIsLoaded(true);
-          return;
+          // If Supabase returned 0 events for this owner, fall through to localStorage so created conferences persist!
         }
       } catch (err) {
         console.warn("Supabase query error:", err);
@@ -652,11 +647,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const createNewConference = async (data?: Partial<EventModel>): Promise<EventModel | null> => {
     if (!user) return null;
 
+    const accountHandle = (user.email || "org")
+      .split("@")[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
     const baseName = data?.name?.trim() || "New MUN Conference";
-    const slugBase = baseName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const slugBase = baseName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
     const randomSuffix = Math.random().toString(36).substring(2, 6);
-    const uniqueId = `mun-${slugBase}-${randomSuffix}`;
-    const uniqueSlug = `${slugBase}-${randomSuffix}`;
+    const uniqueSlug = `${accountHandle}-${slugBase || "mun"}-${randomSuffix}`;
+    const uniqueId = `mun-${uniqueSlug}`;
 
     const newConf: EventModel = {
       ...EMPTY_EVENT,
@@ -680,6 +682,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         firstComeFirstServed: true,
         allotmentsPublished: false,
       },
+      branding: {
+        primaryColor: theme.primaryColor || "#1560BD",
+        accentColor: theme.secondaryColor || "#FFD23F",
+        backgroundEffect: theme.backgroundEffect || "none",
+        cardStyle: "solid",
+        monogram: "UN",
+      },
     };
 
     setEvent(newConf);
@@ -688,6 +697,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCommittees([]);
     setPortfolios([]);
     setRegistrations([]);
+
+    // Immediately persist in offline storage so it never disappears
+    try {
+      const userStorageKey = `delegate_storage_${user.id}`;
+      const existing = localStorage.getItem(userStorageKey);
+      const parsedExisting = existing ? JSON.parse(existing) : {};
+      const updatedConfs = [newConf, ...(parsedExisting.myConferences || [])];
+      localStorage.setItem(
+        userStorageKey,
+        JSON.stringify({
+          ...parsedExisting,
+          myConferences: updatedConfs,
+          event: newConf,
+        })
+      );
+      localStorage.setItem(`delegate_public_conf_${uniqueSlug}`, JSON.stringify(newConf));
+      localStorage.setItem(`delegate_public_conf_${uniqueId}`, JSON.stringify(newConf));
+    } catch {}
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -706,7 +733,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           fee: newConf.fee,
           school_fee_per_student: newConf.schoolFeePerStudent,
           status: newConf.status,
-          rules: newConf.rules,
+          rules: {
+            ...newConf.rules,
+            branding: newConf.branding,
+          },
+          branding: newConf.branding,
         });
       } catch (err) {
         console.warn("Supabase insert conference error:", err);
@@ -820,19 +851,61 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateEventBasics = (updates: Partial<EventModel>) => {
+    let updatedSlug = event.slug;
+    if (updates.name && updates.name.trim() && updates.name !== event.name) {
+      const accountHandle = (user?.email || "org")
+        .split("@")[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+      const newSlugBase = updates.name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      const suffix = (event.slug || "").split("-").pop() || Math.random().toString(36).substring(2, 6);
+      updatedSlug = `${accountHandle}-${newSlugBase}-${suffix}`;
+    }
+
     const updated = {
       ...event,
       ...updates,
+      slug: updatedSlug,
       ownerId: event.ownerId || user?.id,
     };
     setEvent(updated);
     setMyConferences((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+
+    try {
+      if (updated.id) {
+        localStorage.setItem(`delegate_public_conf_${updated.id}`, JSON.stringify(updated));
+      }
+      if (updated.slug) {
+        localStorage.setItem(`delegate_public_conf_${updated.slug}`, JSON.stringify(updated));
+      }
+      if (user?.id) {
+        const userStorageKey = `delegate_storage_${user.id}`;
+        const existing = localStorage.getItem(userStorageKey);
+        const parsedExisting = existing ? JSON.parse(existing) : {};
+        const updatedList = (parsedExisting.myConferences || []).map((c: EventModel) =>
+          c.id === updated.id ? updated : c
+        );
+        localStorage.setItem(
+          userStorageKey,
+          JSON.stringify({
+            ...parsedExisting,
+            myConferences: updatedList,
+            event: updated,
+          })
+        );
+      }
+    } catch {}
 
     if (isSupabaseConfigured && supabase && updated.id) {
       supabase
         .from("events")
         .update({
           name: updated.name,
+          slug: updated.slug,
           dates: updated.dates,
           date_from: updated.dateFrom,
           date_to: updated.dateTo,
@@ -842,7 +915,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           fee: updated.fee,
           school_fee_per_student: updated.schoolFeePerStudent,
           status: updated.status,
-          rules: updated.rules,
+          rules: {
+            ...updated.rules,
+            branding: updated.branding,
+          },
+          branding: updated.branding,
         })
         .eq("id", updated.id)
         .then();
@@ -1276,9 +1353,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return portfolios;
   };
 
-  const clearDatabase = () => {
+  const clearDatabase = async () => {
     setRegistrations([]);
-    setPortfolios((prev) => prev.map((p) => ({ ...p, status: "open", allottedRegistrationId: undefined })));
+    setPortfolios([]);
+    setCommittees([]);
+    setMyConferences([]);
+    setAllEvents([]);
+    setEvent(EMPTY_EVENT);
+
+    if (typeof window !== "undefined") {
+      try {
+        const toDelete: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith("delegate_") || k.startsWith("mun_"))) {
+            toDelete.push(k);
+          }
+        }
+        toDelete.forEach((k) => localStorage.removeItem(k));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from("registrations").delete().neq("id", "none");
+        await supabase.from("portfolios").delete().neq("id", "none");
+        await supabase.from("committees").delete().neq("id", "none");
+        await supabase.from("events").delete().neq("id", "none");
+      } catch (err) {
+        console.warn("Supabase wipe error:", err);
+      }
+    }
   };
 
   const isConfigured = Boolean(event.name && event.status === "published");
