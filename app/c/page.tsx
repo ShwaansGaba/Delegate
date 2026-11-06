@@ -55,6 +55,7 @@ export default function PublicConferencePage() {
               schoolFeePerStudent: Number(data.school_fee_per_student) || 0,
               status: data.status,
               rules: data.rules || {},
+              branding: data.branding || undefined,
             };
             setConference(ev);
             document.title = `${ev.name} | Delegate`;
@@ -146,14 +147,39 @@ export default function PublicConferencePage() {
     );
   }
 
+  const branding = conference.branding || {};
+  const primaryColor = branding.primaryColor || "#1560BD";
+  const accentColor = branding.accentColor || "#FFD23F";
+  const bgEffect = branding.backgroundEffect || "none";
+  const cardStyle = branding.cardStyle || "solid";
+  const monogram = branding.monogram || "UN";
+
   return (
-    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 text-white">
+    <main
+      className="min-h-screen flex flex-col justify-between px-4 py-6 sm:px-8 sm:py-12 text-white transition-colors duration-300"
+      style={{ backgroundColor: primaryColor }}
+      data-bg-effect={bgEffect}
+    >
       <div className="max-w-xl w-full mx-auto space-y-6 flex-1 flex flex-col justify-between">
         {/* Conference Header Card */}
         <div className="space-y-4">
-          <div className="text-xs uppercase tracking-wider font-bold text-blue-200">
-            Official MUN Registration Portal
+          <div className="flex items-center gap-3">
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center font-heading font-extrabold text-base shadow-sm shrink-0"
+              style={{ backgroundColor: "#FFFFFF", color: primaryColor }}
+            >
+              {monogram}
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wider font-bold text-white/80">
+                Official MUN Registration Portal
+              </div>
+              <div className="text-xs text-white/60 font-medium">
+                Delegate Admissions
+              </div>
+            </div>
           </div>
+
           <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
             {conference.name}
           </h1>
@@ -161,20 +187,20 @@ export default function PublicConferencePage() {
           {/* Details metadata */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             {conference.dates && (
-              <div className="flex items-center gap-2.5 text-blue-100 font-medium text-sm sm:text-base bg-white/10 p-3 rounded-xl border border-white/10">
-                <Calendar className="w-5 h-5 shrink-0 text-yellow-300" />
+              <div className="flex items-center gap-2.5 text-white/90 font-medium text-sm sm:text-base bg-white/10 p-3 rounded-xl border border-white/10 backdrop-blur-sm">
+                <Calendar className="w-5 h-5 shrink-0" style={{ color: accentColor }} />
                 <span>{conference.dates}</span>
               </div>
             )}
             {conference.venue && (
-              <div className="flex items-center gap-2.5 text-blue-100 font-medium text-sm sm:text-base bg-white/10 p-3 rounded-xl border border-white/10">
-                <MapPin className="w-5 h-5 shrink-0 text-yellow-300" />
+              <div className="flex items-center gap-2.5 text-white/90 font-medium text-sm sm:text-base bg-white/10 p-3 rounded-xl border border-white/10 backdrop-blur-sm">
+                <MapPin className="w-5 h-5 shrink-0" style={{ color: accentColor }} />
                 <span className="truncate">{conference.venue}</span>
               </div>
             )}
             {conference.deadline && (
-              <div className="flex items-center gap-2.5 text-blue-100 font-medium text-sm sm:text-base bg-white/10 p-3 rounded-xl border border-white/10 sm:col-span-2">
-                <Clock className="w-5 h-5 shrink-0 text-yellow-300" />
+              <div className="flex items-center gap-2.5 text-white/90 font-medium text-sm sm:text-base bg-white/10 p-3 rounded-xl border border-white/10 backdrop-blur-sm sm:col-span-2">
+                <Clock className="w-5 h-5 shrink-0" style={{ color: accentColor }} />
                 <span>Registration deadline: <strong className="text-white">{conference.deadline}</strong></span>
               </div>
             )}
@@ -182,8 +208,20 @@ export default function PublicConferencePage() {
         </div>
 
         {/* Pricing & Selection Card */}
-        <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-5">
-          <div className="text-xs uppercase tracking-wider text-neutral-500 font-bold">
+        <div
+          className={`rounded-3xl p-6 sm:p-8 space-y-5 transition-all ${
+            cardStyle === "glass"
+              ? "bg-white/15 backdrop-blur-xl border border-white/25 text-white shadow-2xl"
+              : cardStyle === "minimal"
+              ? "bg-[#0B1B33]/90 border border-white/20 text-white shadow-xl"
+              : "bg-white text-[#0B1B33] shadow-xl"
+          }`}
+        >
+          <div
+            className={`text-xs uppercase tracking-wider font-bold ${
+              cardStyle === "solid" ? "text-neutral-500" : "text-white/70"
+            }`}
+          >
             Select Registration Type
           </div>
 
@@ -192,21 +230,42 @@ export default function PublicConferencePage() {
             <button
               type="button"
               onClick={() => router.push(`/register?event=${encodeURIComponent(conference.id)}`)}
-              className="w-full text-left bg-neutral-50 hover:bg-neutral-100 border-2 border-neutral-200 hover:border-[#1560BD] p-4 sm:p-5 rounded-2xl flex items-center justify-between transition-colors cursor-pointer"
+              className={`w-full text-left p-4 sm:p-5 rounded-2xl flex items-center justify-between transition-colors cursor-pointer border-2 ${
+                cardStyle === "solid"
+                  ? "bg-neutral-50 hover:bg-neutral-100 border-neutral-200 hover:border-blue-500"
+                  : "bg-white/10 hover:bg-white/15 border-white/15 hover:border-white/30 text-white"
+              }`}
             >
               <div>
-                <div className="text-lg sm:text-xl font-heading font-extrabold text-[#0B1B33]">
+                <div
+                  className={`text-lg sm:text-xl font-heading font-extrabold ${
+                    cardStyle === "solid" ? "text-[#0B1B33]" : "text-white"
+                  }`}
+                >
                   Individual Delegate
                 </div>
-                <div className="text-sm text-neutral-600 font-medium mt-0.5">
+                <div
+                  className={`text-sm font-medium mt-0.5 ${
+                    cardStyle === "solid" ? "text-neutral-600" : "text-white/80"
+                  }`}
+                >
                   Choose 3 committee preferences & 3 ranked portfolios
                 </div>
               </div>
               <div className="text-right shrink-0 ml-3">
-                <div className="text-xl sm:text-2xl font-heading font-extrabold text-[#1560BD]">
+                <div
+                  className="text-xl sm:text-2xl font-heading font-extrabold"
+                  style={{ color: cardStyle === "solid" ? primaryColor : accentColor }}
+                >
                   ₹{(conference.fee || 2500).toLocaleString()}
                 </div>
-                <div className="text-xs text-neutral-500 font-bold">per delegate</div>
+                <div
+                  className={`text-xs font-bold ${
+                    cardStyle === "solid" ? "text-neutral-500" : "text-white/60"
+                  }`}
+                >
+                  per delegate
+                </div>
               </div>
             </button>
 
@@ -215,31 +274,58 @@ export default function PublicConferencePage() {
               <button
                 type="button"
                 onClick={() => router.push(`/register/team?event=${encodeURIComponent(conference.id)}`)}
-                className="w-full text-left bg-neutral-50 hover:bg-neutral-100 border-2 border-neutral-200 hover:border-[#1560BD] p-4 sm:p-5 rounded-2xl flex items-center justify-between transition-colors cursor-pointer"
+                className={`w-full text-left p-4 sm:p-5 rounded-2xl flex items-center justify-between transition-colors cursor-pointer border-2 ${
+                  cardStyle === "solid"
+                    ? "bg-neutral-50 hover:bg-neutral-100 border-neutral-200 hover:border-emerald-500"
+                    : "bg-white/10 hover:bg-white/15 border-white/15 hover:border-white/30 text-white"
+                }`}
               >
                 <div>
-                  <div className="text-lg sm:text-xl font-heading font-extrabold text-[#0B1B33]">
+                  <div
+                    className={`text-lg sm:text-xl font-heading font-extrabold ${
+                      cardStyle === "solid" ? "text-[#0B1B33]" : "text-white"
+                    }`}
+                  >
                     School Delegation Team
                   </div>
-                  <div className="text-sm text-neutral-600 font-medium mt-0.5">
+                  <div
+                    className={`text-sm font-medium mt-0.5 ${
+                      cardStyle === "solid" ? "text-neutral-600" : "text-white/80"
+                    }`}
+                  >
                     Register multiple students together under one school
                   </div>
                 </div>
                 <div className="text-right shrink-0 ml-3">
-                  <div className="text-xl sm:text-2xl font-heading font-extrabold text-emerald-700">
+                  <div
+                    className="text-xl sm:text-2xl font-heading font-extrabold"
+                    style={{ color: cardStyle === "solid" ? "#047857" : accentColor }}
+                  >
                     ₹{(conference.schoolFeePerStudent || 1200).toLocaleString()}
                   </div>
-                  <div className="text-xs text-neutral-500 font-bold">per student</div>
+                  <div
+                    className={`text-xs font-bold ${
+                      cardStyle === "solid" ? "text-neutral-500" : "text-white/60"
+                    }`}
+                  >
+                    per student
+                  </div>
                 </div>
               </button>
             )}
           </div>
 
           {/* Quick Links */}
-          <div className="pt-2 border-t border-neutral-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm font-medium">
+          <div
+            className={`pt-2 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-sm font-medium ${
+              cardStyle === "solid" ? "border-neutral-100" : "border-white/15"
+            }`}
+          >
             <Link
               href={`/browse?event=${encodeURIComponent(conference.id)}`}
-              className="text-[#1560BD] font-heading font-bold hover:underline flex items-center gap-1.5"
+              className={`font-heading font-bold hover:underline flex items-center gap-1.5 ${
+                cardStyle === "solid" ? "text-[#1560BD]" : "text-white"
+              }`}
             >
               <BookOpen className="w-4 h-4" />
               Browse committees & agendas ({committees.length})
@@ -247,7 +333,9 @@ export default function PublicConferencePage() {
 
             <Link
               href={`/status?event=${encodeURIComponent(conference.id)}`}
-              className="text-neutral-700 hover:text-black font-heading font-bold underline"
+              className={`font-heading font-bold underline ${
+                cardStyle === "solid" ? "text-neutral-700 hover:text-black" : "text-white/90 hover:text-white"
+              }`}
             >
               Already registered? Check status
             </Link>
@@ -255,7 +343,7 @@ export default function PublicConferencePage() {
         </div>
 
         {/* Footer */}
-        <div className="text-center text-xs text-blue-200">
+        <div className="text-center text-xs text-white/70">
           Powered by Delegate MUN Platform
         </div>
       </div>

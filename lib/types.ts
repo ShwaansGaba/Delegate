@@ -41,6 +41,14 @@ export interface EventRules {
   allotmentsPublished: boolean;
 }
 
+export interface ConferenceBranding {
+  primaryColor?: string;
+  accentColor?: string;
+  backgroundEffect?: "none" | "polka-dots" | "lines" | "grid" | "blur";
+  cardStyle?: "solid" | "glass" | "minimal";
+  monogram?: string;
+}
+
 export interface EventModel {
   id: string;
   ownerId?: string;
@@ -58,6 +66,7 @@ export interface EventModel {
   deadlineDate?: string;
   status: "draft" | "published" | "closed";
   rules: EventRules;
+  branding?: ConferenceBranding;
 }
 
 export type PaymentStatus = "unpaid" | "proof_uploaded" | "verified";

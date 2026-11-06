@@ -25,6 +25,8 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         ? "My Conferences"
         : pathname === "/organizer/setup"
         ? "Conference Setup"
+        : pathname === "/organizer/account"
+        ? "Account & Branding"
         : pathname.split("/").pop() || "Organizer";
     const capitalized = pageName.charAt(0).toUpperCase() + pageName.slice(1);
     document.title = `${capitalized} - ${event.name || "Delegate"}`;
@@ -35,6 +37,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
     { name: "Registrations", href: "/organizer/registrations" },
     { name: "Allotment", href: "/organizer/allotment" },
     { name: "Setup", href: "/organizer/setup" },
+    { name: "Account", href: "/organizer/account" },
   ];
 
   const isLinkActive = (href: string) => {
@@ -47,8 +50,8 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   // If on My Conferences hub OR during Setup: NO SIDEBAR IS SHOWN
   if (isStandalone) {
     return (
-      <div className="min-h-screen bg-[#1560BD] flex flex-col text-white">
-        <header className="bg-[#0F4C96] border-b border-white/10 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-40">
+      <div className="min-h-screen theme-bg-primary flex flex-col text-white transition-colors duration-300">
+        <header className="theme-bg-sidebar border-b border-white/10 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
           <div className="flex items-center gap-3">
             <Link href="/organizer/conferences" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
               <div className="w-10 h-10 rounded-full bg-white text-[#1560BD] font-heading font-extrabold flex items-center justify-center text-lg shadow-sm">
@@ -87,9 +90,9 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
 
   // Inside an entered conference workspace: SIDEBAR APPEARS
   return (
-    <div className="min-h-screen bg-[#1560BD] flex flex-col lg:flex-row text-white">
+    <div className="min-h-screen theme-bg-primary flex flex-col lg:flex-row text-white transition-colors duration-300">
       {/* Mobile & Tablet Top Bar */}
-      <div className="lg:hidden bg-[#0F4C96] p-4 flex items-center justify-between border-b border-white/10 sticky top-0 z-40">
+      <div className="lg:hidden theme-bg-sidebar p-4 flex items-center justify-between border-b border-white/10 sticky top-0 z-40 transition-colors duration-300">
         <div className="flex items-center gap-3 truncate mr-2">
           <button
             type="button"
@@ -120,7 +123,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
 
       {/* Mobile & Tablet Dropdown Nav */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#0F4C96] p-4 space-y-2 border-b border-white/20 animate-slideDown">
+        <div className="lg:hidden theme-bg-sidebar p-4 space-y-2 border-b border-white/20 animate-slideDown">
           <Link
             href="/organizer/conferences"
             onClick={() => setMobileMenuOpen(false)}
@@ -148,7 +151,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
       )}
 
       {/* Desktop Darker Blue Sidebar (#0F4C96) with Active Conference Name on Top */}
-      <aside className="hidden lg:flex flex-col w-64 lg:w-72 bg-[#0F4C96] p-6 lg:p-8 flex-shrink-0 min-h-screen">
+      <aside className="hidden lg:flex flex-col w-64 lg:w-72 theme-bg-sidebar p-6 lg:p-8 flex-shrink-0 min-h-screen transition-colors duration-300">
         {/* Back to My Conferences Button */}
         <Link
           href="/organizer/conferences"

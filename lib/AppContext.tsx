@@ -127,6 +127,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       root.style.setProperty("--un-blue", theme.primaryColor);
       root.style.setProperty("--un-blue-dark", adjustHexBrightness(theme.primaryColor, -25));
       root.style.setProperty("--un-yellow", theme.secondaryColor);
+      document.body.style.backgroundColor = theme.primaryColor;
       document.body.setAttribute("data-bg-effect", theme.backgroundEffect);
     }
   }, [theme]);

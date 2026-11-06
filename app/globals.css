@@ -28,45 +28,56 @@ body {
   box-shadow: none !important;
 }
 
-/* Dynamic Account Background Effects */
-body[data-bg-effect="polka-dots"] {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.18) 1.5px, transparent 1.5px) !important;
-  background-size: 24px 24px !important;
+/* Dynamic Theme Classes */
+.theme-bg-primary {
+  background-color: var(--un-blue, #1560BD) !important;
 }
 
-body[data-bg-effect="lines"] {
-  background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.07) 12px, transparent 12px, transparent 24px) !important;
+.theme-bg-sidebar {
+  background-color: var(--un-blue-dark, #0F4C96) !important;
 }
 
-body[data-bg-effect="grid"] {
-  background-image: linear-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.09) 1px, transparent 1px) !important;
-  background-size: 32px 32px !important;
+.theme-bg-accent {
+  background-color: var(--un-yellow, #FFD23F) !important;
 }
 
-body[data-bg-effect="blur"]::before {
-  content: "";
-  position: fixed;
-  top: -10vw;
-  right: -10vw;
-  width: 50vw;
-  height: 50vw;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 210, 63, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
-  pointer-events: none;
-  z-index: 0;
+.theme-text-accent {
+  color: var(--un-yellow, #FFD23F) !important;
 }
 
-body[data-bg-effect="blur"]::after {
-  content: "";
-  position: fixed;
-  bottom: -15vw;
-  left: -15vw;
-  width: 55vw;
-  height: 55vw;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
-  pointer-events: none;
-  z-index: 0;
+.theme-border-accent {
+  border-color: var(--un-yellow, #FFD23F) !important;
+}
+
+.theme-border-primary {
+  border-color: var(--un-blue, #1560BD) !important;
+}
+
+/* Dynamic Account & Public Portal Background Effects */
+body[data-bg-effect="polka-dots"],
+[data-bg-effect="polka-dots"],
+.effect-polka-dots {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1.5px, transparent 1.5px) !important;
+  background-size: 20px 20px !important;
+}
+
+body[data-bg-effect="lines"],
+[data-bg-effect="lines"],
+.effect-lines {
+  background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08) 12px, transparent 12px, transparent 24px) !important;
+}
+
+body[data-bg-effect="grid"],
+[data-bg-effect="grid"],
+.effect-grid {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px) !important;
+  background-size: 28px 28px !important;
+}
+
+body[data-bg-effect="blur"],
+[data-bg-effect="blur"],
+.effect-blur {
+  background-image: radial-gradient(circle at 85% 15%, rgba(255, 210, 63, 0.25) 0%, transparent 45%), radial-gradient(circle at 15% 85%, rgba(255, 255, 255, 0.18) 0%, transparent 50%) !important;
 }
 
 /* Page Level Transitions */
