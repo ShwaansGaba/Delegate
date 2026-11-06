@@ -13,8 +13,9 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   const { event, myConferences, selectConference, createNewConference } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isSetup = pathname.startsWith("/organizer/setup");
-  const isConferencesHub = pathname.startsWith("/organizer/conferences");
+  const currentPath = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
+  const isSetup = currentPath.includes("/organizer/setup");
+  const isConferencesHub = currentPath.includes("/organizer/conferences");
   const isStandalone = isConferencesHub || isSetup;
 
   React.useEffect(() => {
@@ -36,15 +37,16 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
     { name: "Dashboard", href: "/organizer" },
     { name: "Registrations", href: "/organizer/registrations" },
     { name: "Allotment", href: "/organizer/allotment" },
-    { name: "Setup", href: "/organizer/setup" },
+    { name: "Setup", href: "/organizer/setup?step=basics" },
     { name: "Account", href: "/organizer/account" },
   ];
 
   const isLinkActive = (href: string) => {
-    if (href === "/organizer") {
-      return pathname === "/organizer";
+    const cleanHref = href.split("?")[0];
+    if (cleanHref === "/organizer") {
+      return pathname === "/organizer" || pathname === "/Delegate/organizer";
     }
-    return pathname.startsWith(href);
+    return pathname.includes(cleanHref);
   };
 
   // If on My Conferences hub OR during Setup: NO SIDEBAR IS SHOWN

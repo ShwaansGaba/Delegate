@@ -225,9 +225,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!evErr && eventsData) {
           const validEvents = eventsData.filter(
             (ev) =>
+              ev.name &&
+              ev.name.trim().length > 0 &&
               ev.id !== "delhi-youth-summit-2026" &&
               ev.id !== "national-conclave-2026" &&
-              !ev.name?.toLowerCase().includes("delhi youth summit")
+              !ev.name.toLowerCase().includes("delhi youth summit")
           );
           const parsed: EventModel[] = validEvents.map((ev) => ({
             id: ev.id,
@@ -352,6 +354,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const parsed = JSON.parse(saved);
         const cleanConfs: EventModel[] = (parsed.myConferences || []).filter(
           (c: EventModel) =>
+            c.name &&
+            c.name.trim().length > 0 &&
             c.id !== "delhi-youth-summit-2026" &&
             c.id !== "national-conclave-2026" &&
             !c.name?.toLowerCase().includes("delhi youth")
@@ -698,36 +702,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
     };
 
+    // Set as active draft event for setup wizard
     setEvent(newConf);
-    setMyConferences((prev) => [newConf, ...prev]);
-    setAllEvents((prev) => [newConf, ...prev]);
     setCommittees([]);
     setPortfolios([]);
     setRegistrations([]);
 
-    // Immediately persist in offline storage so it never disappears
+    // Clear any previous setup step for this new id
     try {
-      const userStorageKey = `delegate_storage_${user.id}`;
-      const existing = localStorage.getItem(userStorageKey);
-      const parsedExisting = existing ? JSON.parse(existing) : {};
-      const updatedConfs = [newConf, ...(parsedExisting.myConferences || [])];
-      localStorage.setItem(
-        userStorageKey,
-        JSON.stringify({
-          ...parsedExisting,
-          myConferences: updatedConfs,
-          event: newConf,
-        })
-      );
-      localStorage.setItem(`delegate_public_conf_${uniqueSlug}`, JSON.stringify(newConf));
-      localStorage.setItem(`delegate_public_conf_${uniqueId}`, JSON.stringify(newConf));
       localStorage.removeItem(`delegate_setup_step_${uniqueId}`);
       localStorage.removeItem(`delegate_rules_done_${uniqueId}`);
     } catch {}
 
-    if (isSupabaseConfigured && supabase) {
+    // Only if a non-empty name was explicitly provided do we add to myConferences right away
+    if (newConf.name && newConf.name.trim().length > 0) {
+      setMyConferences((prev) => [newConf, ...prev.filter((c) => c.id !== newConf.id)]);
+      setAllEvents((prev) => [newConf, ...prev.filter((c) => c.id !== newConf.id)]);
+
       try {
-        await supabase.from("events").insert({
+        const userStorageKey = `delegate_storage_${user.id}`;
+        const existing = localStorage.getItem(userStorageKey);
+        const parsedExisting = existing ? JSON.parse(existing) : {};
+        const prevList: EventModel[] = parsedExisting.myConferences || [];
+        const updatedConfs = [newConf, ...prevList.filter((c) => c.id !== newConf.id)];
+        localStorage.setItem(
+          userStorageKey,
+          JSON.stringify({
+            ...parsedExisting,
+            myConferences: updatedConfs,
+            event: newConf,
+          })
+        );
+        localStorage.setItem(`delegate_public_conf_${uniqueSlug}`, JSON.stringify(newConf));
+        localStorage.setItem(`delegate_public_conf_${uniqueId}`, JSON.stringify(newConf));
+      } catch {}
+
+      if (isSupabaseConfigured && supabase) {
+        supabase.from("events").upsert({
           id: newConf.id,
           owner_id: user.id,
           slug: newConf.slug,
@@ -747,9 +758,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             branding: newConf.branding,
           },
           branding: newConf.branding,
-        });
-      } catch (err) {
-        console.warn("Supabase insert conference error:", err);
+        }).then();
       }
     }
 
@@ -884,58 +893,81 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ownerId: event.ownerId || user?.id,
     };
     setEvent(updated);
-    setMyConferences((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
 
-    try {
-      if (updated.id) {
-        localStorage.setItem(`delegate_public_conf_${updated.id}`, JSON.stringify(updated));
-      }
-      if (updated.slug) {
-        localStorage.setItem(`delegate_public_conf_${updated.slug}`, JSON.stringify(updated));
-      }
-      if (user?.id) {
-        const userStorageKey = `delegate_storage_${user.id}`;
-        const existing = localStorage.getItem(userStorageKey);
-        const parsedExisting = existing ? JSON.parse(existing) : {};
-        const updatedList = (parsedExisting.myConferences || []).map((c: EventModel) =>
-          c.id === updated.id ? updated : c
-        );
-        localStorage.setItem(
-          userStorageKey,
-          JSON.stringify({
-            ...parsedExisting,
-            myConferences: updatedList,
-            event: updated,
-          })
-        );
-      }
-    } catch {}
+    const hasValidName = Boolean(updated.name && updated.name.trim().length > 0);
+    if (hasValidName && updated.id !== "new-conference") {
+      setMyConferences((prev) => {
+        const exists = prev.some((c) => c.id === updated.id);
+        if (exists) {
+          return prev.map((c) => (c.id === updated.id ? updated : c));
+        }
+        return [updated, ...prev];
+      });
+      setAllEvents((prev) => {
+        const exists = prev.some((c) => c.id === updated.id);
+        if (exists) {
+          return prev.map((c) => (c.id === updated.id ? updated : c));
+        }
+        return [updated, ...prev];
+      });
 
-    if (isSupabaseConfigured && supabase && updated.id && updated.id !== "new-conference" && !updated.id.startsWith("new-")) {
-      supabase
-        .from("events")
-        .update({
-          name: updated.name,
-          slug: updated.slug,
-          dates: updated.dates,
-          date_from: updated.dateFrom,
-          date_to: updated.dateTo,
-          deadline: updated.deadline,
-          deadline_date: updated.deadlineDate,
-          venue: updated.venue,
-          fee: updated.fee,
-          school_fee_per_student: updated.schoolFeePerStudent,
-          status: updated.status,
-          rules: {
-            ...updated.rules,
+      try {
+        if (updated.id) {
+          localStorage.setItem(`delegate_public_conf_${updated.id}`, JSON.stringify(updated));
+        }
+        if (updated.slug) {
+          localStorage.setItem(`delegate_public_conf_${updated.slug}`, JSON.stringify(updated));
+        }
+        if (user?.id) {
+          const userStorageKey = `delegate_storage_${user.id}`;
+          const existing = localStorage.getItem(userStorageKey);
+          const parsedExisting = existing ? JSON.parse(existing) : {};
+          const prevList: EventModel[] = (parsedExisting.myConferences || []).filter(
+            (c: EventModel) => c.name && c.name.trim().length > 0
+          );
+          const exists = prevList.some((c) => c.id === updated.id);
+          const updatedList = exists
+            ? prevList.map((c) => (c.id === updated.id ? updated : c))
+            : [updated, ...prevList];
+          localStorage.setItem(
+            userStorageKey,
+            JSON.stringify({
+              ...parsedExisting,
+              myConferences: updatedList,
+              event: updated,
+            })
+          );
+        }
+      } catch {}
+
+      if (isSupabaseConfigured && supabase && updated.id && updated.id !== "new-conference" && !updated.id.startsWith("new-")) {
+        supabase
+          .from("events")
+          .upsert({
+            id: updated.id,
+            owner_id: user?.id,
+            slug: updated.slug,
+            type: updated.type || "mun",
+            name: updated.name,
+            dates: updated.dates,
+            date_from: updated.dateFrom,
+            date_to: updated.dateTo,
+            deadline: updated.deadline,
+            deadline_date: updated.deadlineDate,
+            venue: updated.venue,
+            fee: updated.fee,
+            school_fee_per_student: updated.schoolFeePerStudent,
+            status: updated.status,
+            rules: {
+              ...updated.rules,
+              branding: updated.branding,
+            },
             branding: updated.branding,
-          },
-          branding: updated.branding,
-        })
-        .eq("id", updated.id)
-        .then(({ error }) => {
-          if (error) console.warn("Supabase updateEventBasics note:", error.message);
-        });
+          })
+          .then(({ error }) => {
+            if (error) console.warn("Supabase upsertEventBasics note:", error.message);
+          });
+      }
     }
   };
 

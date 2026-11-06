@@ -43,8 +43,7 @@ export default function AvailableConferencesPage() {
         try {
           const { data, error } = await supabase
             .from("events")
-            .select("*, committees(*, portfolios(*))")
-            .order("created_at", { ascending: false });
+            .select("*, committees(*, portfolios(*))");
 
           if (!error && data && data.length > 0) {
             setConferences(data as DatabaseConference[]);

@@ -88,9 +88,23 @@ export default function OrganizerSetupPage() {
   // Step state - always initialized to basics
   const [currentStep, setCurrentStep] = useState<SetupStep>("basics");
 
-  // On conference load / switch, ALWAYS ensure the user is routed to the first incomplete step
+  // On conference load / switch, route cleanly to the requested or first incomplete step
   React.useEffect(() => {
     if (typeof window !== "undefined" && event.id) {
+      const validSteps: SetupStep[] = ["basics", "committees", "countries", "rules", "publish"];
+      const urlStep = new URLSearchParams(window.location.search).get("step") as SetupStep | null;
+
+      if (urlStep && validSteps.includes(urlStep)) {
+        setCurrentStep(urlStep);
+        return;
+      }
+
+      // If the conference is already published, open on basics so user can review/edit
+      if (event.status === "published") {
+        setCurrentStep("basics");
+        return;
+      }
+
       const firstIncomplete = computeFirstIncompleteStep(
         name,
         dateFrom,
@@ -99,22 +113,18 @@ export default function OrganizerSetupPage() {
         venue,
         committees,
         portfolios,
-        event.status === "published"
+        false
       );
 
-      const savedStep = localStorage.getItem(`delegate_setup_step_${event.id}`);
-      const stepOrder: SetupStep[] = ["basics", "committees", "countries", "rules", "publish"];
-      const incompleteIdx = stepOrder.indexOf(firstIncomplete);
-      const savedIdx = savedStep ? stepOrder.indexOf(savedStep as SetupStep) : -1;
-
-      // If saved step is ahead of the first incomplete step or missing, clamp to first incomplete step!
-      if (savedIdx === -1 || savedIdx > incompleteIdx) {
-        setCurrentStep(firstIncomplete);
+      const savedStep = localStorage.getItem(`delegate_setup_step_${event.id}`) as SetupStep | null;
+      if (savedStep && validSteps.includes(savedStep)) {
+        setCurrentStep(savedStep);
       } else {
-        setCurrentStep(savedStep as SetupStep);
+        // Default to first incomplete step, but never land unexpectedly on publish
+        setCurrentStep(firstIncomplete === "publish" ? "basics" : firstIncomplete);
       }
     }
-  }, [event.id, committees.length, portfolios.length]);
+  }, [event.id]);
 
   React.useEffect(() => {
     if (typeof window !== "undefined" && event.id) {
