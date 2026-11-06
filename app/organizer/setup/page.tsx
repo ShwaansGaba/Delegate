@@ -72,16 +72,35 @@ export default function OrganizerSetupPage() {
     event.schoolFeePerStudent ? event.schoolFeePerStudent.toString() : "1200"
   );
 
-  // Auto-sync basics draft live so reloads never lose typed data
+  // Track event ID to only sync initial data once per conference load
+  const syncedEventIdRef = React.useRef<string | null>(null);
+
+  // Sync state if event loads asynchronously or user switches conference
   React.useEffect(() => {
-    if (event.id && (name || dateFrom || dateTo || venue)) {
+    if (event.id && event.id !== syncedEventIdRef.current) {
+      syncedEventIdRef.current = event.id;
+      setName(event.name || "");
+      setDateFrom(event.dateFrom || "");
+      setDateTo(event.dateTo || "");
+      setDeadlineDate(event.deadlineDate || "");
+      setVenue(event.venue || "");
+      setFee(event.fee ? event.fee.toString() : "1500");
+      setSchoolFee(
+        event.schoolFeePerStudent ? event.schoolFeePerStudent.toString() : "1200"
+      );
+    }
+  }, [event.id]);
+
+  // Auto-sync basics draft live so reloads never lose typed data (NEVER TRIM while actively typing)
+  React.useEffect(() => {
+    if (event.id && (name !== undefined || dateFrom || dateTo || venue !== undefined)) {
       const computedDates = dateFrom && dateTo ? `${dateFrom} to ${dateTo}` : event.dates;
       updateEventBasics({
-        name: name.trim() || event.name,
+        name: name, // Preserve spaces while typing!
         dates: computedDates,
         dateFrom,
         dateTo,
-        venue: venue.trim() || event.venue,
+        venue: venue, // Preserve spaces while typing!
         fee: Math.max(0, Number(fee) || 0),
         schoolFeePerStudent: Math.max(0, Number(schoolFee) || 0),
         deadline: deadlineDate,
@@ -100,17 +119,6 @@ export default function OrganizerSetupPage() {
   // Country multi-select state
   const [countryFilterComm, setCountryFilterComm] = useState(committees[0]?.id || "unsc");
   const [selectedPortIds, setSelectedPortIds] = useState<string[]>([]);
-
-  // Sync state if event loads asynchronously
-  React.useEffect(() => {
-    if (event.name) setName(event.name);
-    if (event.dateFrom) setDateFrom(event.dateFrom);
-    if (event.dateTo) setDateTo(event.dateTo);
-    if (event.deadlineDate) setDeadlineDate(event.deadlineDate);
-    if (event.venue) setVenue(event.venue);
-    if (event.fee) setFee(event.fee.toString());
-    if (event.schoolFeePerStudent) setSchoolFee(event.schoolFeePerStudent.toString());
-  }, [event]);
 
   // Keep country filter in sync with existing committees
   React.useEffect(() => {
