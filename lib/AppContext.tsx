@@ -651,8 +651,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .split("@")[0]
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "");
-    const baseName = data?.name?.trim() || "New MUN Conference";
-    const slugBase = baseName
+    const baseName = data?.name !== undefined ? data.name : "";
+    const slugBase = (baseName || "conference")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
@@ -666,14 +666,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ownerId: user.id,
       slug: uniqueSlug,
       name: baseName,
-      dates: data?.dates || "November 20-22, 2026",
-      dateFrom: data?.dateFrom || "2026-11-20",
-      dateTo: data?.dateTo || "2026-11-22",
-      venue: data?.venue || "Main Auditorium",
-      fee: data?.fee ?? 1800,
-      schoolFeePerStudent: data?.schoolFeePerStudent ?? 1400,
-      deadline: data?.deadline || "November 15, 2026",
-      deadlineDate: data?.deadlineDate || "2026-11-15",
+      dates: data?.dates || "",
+      dateFrom: data?.dateFrom || "",
+      dateTo: data?.dateTo || "",
+      venue: data?.venue || "",
+      fee: data?.fee ?? 1500,
+      schoolFeePerStudent: data?.schoolFeePerStudent ?? 1200,
+      deadline: data?.deadline || "",
+      deadlineDate: data?.deadlineDate || "",
       status: "draft",
       rules: {
         allowSchoolTeams: true,
@@ -714,6 +714,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
       localStorage.setItem(`delegate_public_conf_${uniqueSlug}`, JSON.stringify(newConf));
       localStorage.setItem(`delegate_public_conf_${uniqueId}`, JSON.stringify(newConf));
+      localStorage.removeItem(`delegate_setup_step_${uniqueId}`);
+      localStorage.removeItem(`delegate_rules_done_${uniqueId}`);
     } catch {}
 
     if (isSupabaseConfigured && supabase) {

@@ -39,17 +39,82 @@ export default function OrganizerSetupPage() {
     markConferencePublished,
   } = useApp();
 
-  // Step persistence across reloads
+  // Helper to determine the first incomplete step in the setup flow
+  const computeFirstIncompleteStep = (
+    evName: string,
+    evDateFrom: string,
+    evDateTo: string,
+    evDeadline: string,
+    evVenue: string,
+    commList: typeof committees,
+    portList: typeof portfolios,
+    isPub: boolean
+  ): SetupStep => {
+    // 1. Check Basics
+    const cleanName = (evName || "").trim();
+    const cleanVenue = (evVenue || "").trim();
+    const basicsComplete = Boolean(
+      cleanName.length > 0 &&
+      cleanName.toLowerCase() !== "new mun conference" &&
+      evDateFrom &&
+      evDateTo &&
+      evDateTo >= evDateFrom &&
+      evDeadline &&
+      evDeadline <= evDateFrom &&
+      cleanVenue.length > 0
+    );
+    if (!basicsComplete) return "basics";
+
+    // 2. Check Committees
+    if (!commList || commList.length === 0) return "committees";
+
+    // 3. Check Countries (at least 3 portfolios per committee)
+    const countriesComplete = commList.every(
+      (c) => portList.filter((p) => p.committeeId === c.id).length >= 3
+    );
+    if (!countriesComplete) return "countries";
+
+    // 4. Check Rules
+    const rulesDone =
+      isPub ||
+      (typeof window !== "undefined" &&
+        Boolean(localStorage.getItem(`delegate_rules_done_${event.id}`)));
+    if (!rulesDone && !isPub) return "rules";
+
+    // 5. If all complete
+    return isPub ? "basics" : "publish";
+  };
+
+  // Step state - always initialized to basics
   const [currentStep, setCurrentStep] = useState<SetupStep>("basics");
 
+  // On conference load / switch, ALWAYS ensure the user is routed to the first incomplete step
   React.useEffect(() => {
     if (typeof window !== "undefined" && event.id) {
+      const firstIncomplete = computeFirstIncompleteStep(
+        name,
+        dateFrom,
+        dateTo,
+        deadlineDate,
+        venue,
+        committees,
+        portfolios,
+        event.status === "published"
+      );
+
       const savedStep = localStorage.getItem(`delegate_setup_step_${event.id}`);
-      if (savedStep && ["basics", "committees", "countries", "rules", "publish"].includes(savedStep)) {
+      const stepOrder: SetupStep[] = ["basics", "committees", "countries", "rules", "publish"];
+      const incompleteIdx = stepOrder.indexOf(firstIncomplete);
+      const savedIdx = savedStep ? stepOrder.indexOf(savedStep as SetupStep) : -1;
+
+      // If saved step is ahead of the first incomplete step or missing, clamp to first incomplete step!
+      if (savedIdx === -1 || savedIdx > incompleteIdx) {
+        setCurrentStep(firstIncomplete);
+      } else {
         setCurrentStep(savedStep as SetupStep);
       }
     }
-  }, [event.id]);
+  }, [event.id, committees.length, portfolios.length]);
 
   React.useEffect(() => {
     if (typeof window !== "undefined" && event.id) {
@@ -131,6 +196,7 @@ export default function OrganizerSetupPage() {
   // Practical status checks: Real requirements without fake defaults
   const isBasicsDone = Boolean(
     name.trim().length > 0 &&
+    name.trim().toLowerCase() !== "new mun conference" &&
     dateFrom &&
     dateTo &&
     dateTo >= dateFrom &&
@@ -144,6 +210,11 @@ export default function OrganizerSetupPage() {
   const isCountriesDone =
     committees.length > 0 &&
     committees.every((c) => portfolios.filter((p) => p.committeeId === c.id).length >= 3);
+
+  const isRulesDone = Boolean(
+    event.status === "published" ||
+    (typeof window !== "undefined" && Boolean(localStorage.getItem(`delegate_rules_done_${event.id}`)))
+  );
 
   const handleSaveBasics = () => {
     setValidationError(null);
@@ -301,6 +372,35 @@ export default function OrganizerSetupPage() {
     setCurrentStep("rules");
   };
 
+  const handleContinueToPublish = () => {
+    setValidationError(null);
+    if (!isBasicsDone) {
+      setValidationError("Please complete Conference Basics (Name, Dates, Deadline, Venue) first.");
+      setCurrentStep("basics");
+      return;
+    }
+    if (!isCommitteesDone) {
+      setValidationError("Please add at least one committee first before continuing.");
+      setCurrentStep("committees");
+      return;
+    }
+    if (!isCountriesDone) {
+      const commWithFew = committees.find(
+        (c) => portfolios.filter((p) => p.committeeId === c.id).length < 3
+      );
+      setValidationError(
+        `Each committee must have at least 3 portfolios. Please add portfolios for "${commWithFew?.name || "your committee"}".`
+      );
+      if (commWithFew) setCountryFilterComm(commWithFew.id);
+      setCurrentStep("countries");
+      return;
+    }
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`delegate_rules_done_${event.id}`, "true");
+    }
+    setCurrentStep("publish");
+  };
+
   const handleOpenRegistrations = () => {
     setValidationError(null);
 
@@ -423,29 +523,51 @@ export default function OrganizerSetupPage() {
             type="button"
             onClick={() => {
               setValidationError(null);
-              if (st.id !== "basics" && !isBasicsDone) {
-                setValidationError("Please fill in Conference Basics (Name, Dates, Venue, Deadline) first before proceeding.");
+              if (st.id === "basics") {
                 setCurrentStep("basics");
                 return;
               }
-              if (st.id === "countries" && committees.length === 0) {
+              if (!isBasicsDone) {
+                setValidationError("Please complete Conference Basics (Name, Dates, Deadline, Venue) first.");
+                setCurrentStep("basics");
+                return;
+              }
+              if (st.id === "committees") {
+                setCurrentStep("committees");
+                return;
+              }
+              if (!isCommitteesDone) {
                 setValidationError("Please add at least one committee first before configuring countries.");
                 setCurrentStep("committees");
                 return;
               }
-              if (st.id === "publish") {
-                if (!isCommitteesDone) {
-                  setValidationError("Please add at least one committee before publishing.");
-                  setCurrentStep("committees");
-                  return;
-                }
-                if (!isCountriesDone) {
-                  setValidationError("Each committee must have at least 3 portfolios before publishing.");
-                  setCurrentStep("countries");
-                  return;
-                }
+              if (st.id === "countries") {
+                setCurrentStep("countries");
+                return;
               }
-              setCurrentStep(st.id as SetupStep);
+              if (!isCountriesDone) {
+                const commWithFew = committees.find(
+                  (c) => portfolios.filter((p) => p.committeeId === c.id).length < 3
+                );
+                setValidationError(
+                  `Each committee must have at least 3 portfolios. Please add portfolios for "${commWithFew?.name || "your committee"}".`
+                );
+                if (commWithFew) setCountryFilterComm(commWithFew.id);
+                setCurrentStep("countries");
+                return;
+              }
+              if (st.id === "rules") {
+                setCurrentStep("rules");
+                return;
+              }
+              if (st.id === "publish") {
+                if (event.status !== "published" && !isRulesDone) {
+                  setValidationError("Please review conference rules first before publishing.");
+                  setCurrentStep("rules");
+                  return;
+                }
+                setCurrentStep("publish");
+              }
             }}
             className={`px-6 py-3 rounded-2xl text-xl font-heading font-extrabold transition-colors cursor-pointer whitespace-nowrap ${
               currentStep === st.id
@@ -843,8 +965,8 @@ export default function OrganizerSetupPage() {
 
           <div>
             {isBasicsDone && isCommitteesDone && isCountriesDone ? (
-              <Button onClick={handleOpenRegistrations}>
-                Open registrations
+              <Button onClick={handleContinueToPublish}>
+                Review &amp; Publish →
               </Button>
             ) : (
               <div className="space-y-3">

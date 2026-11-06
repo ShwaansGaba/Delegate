@@ -13,8 +13,8 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   const { event, myConferences, selectConference, createNewConference } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isSetup = pathname === "/organizer/setup";
-  const isConferencesHub = pathname === "/organizer/conferences";
+  const isSetup = pathname.startsWith("/organizer/setup");
+  const isConferencesHub = pathname.startsWith("/organizer/conferences");
   const isStandalone = isConferencesHub || isSetup;
 
   React.useEffect(() => {
@@ -78,12 +78,12 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-4">
-            {isSetup && (
+            {isSetup && event.id && (
               <Link
-                href="/organizer/conferences"
+                href="/organizer"
                 className="text-xs sm:text-sm font-heading font-extrabold text-yellow-300 hover:text-yellow-200 uppercase tracking-wider py-1.5 px-3 rounded-xl border border-yellow-300/30 hover:border-yellow-300/60 transition-colors"
               >
-                ← My Conferences
+                Dashboard →
               </Link>
             )}
             <AccountMenu />
