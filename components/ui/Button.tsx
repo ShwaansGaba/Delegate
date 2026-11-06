@@ -22,8 +22,8 @@ export function Button({
 
   const sizeClasses =
     size === "lg"
-      ? "py-3 px-5 text-base sm:py-4 sm:px-6 sm:text-lg rounded-xl sm:rounded-2xl min-h-[48px] sm:min-h-[56px]"
-      : "py-2.5 px-4 text-base rounded-lg sm:rounded-xl min-h-[44px]";
+      ? "py-2.5 px-4 text-sm sm:py-3.5 sm:px-6 sm:text-base rounded-xl sm:rounded-2xl min-h-[42px] sm:min-h-[50px]"
+      : "py-2 px-3 text-xs sm:text-sm rounded-lg sm:rounded-xl min-h-[38px]";
 
   const variantClasses = {
     primary: "bg-[#FFD23F] text-[#0B1B33] hover:bg-[#F5C830] active:bg-[#E8BC26]",

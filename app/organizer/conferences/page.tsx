@@ -47,14 +47,14 @@ export default function MyConferencesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4 sm:pb-6">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-heading font-extrabold text-white">
+          <h1 className="text-2xl sm:text-4xl font-heading font-extrabold text-white">
             My Conferences
           </h1>
-          <p className="text-blue-100 text-sm sm:text-base font-medium mt-1">
+          <p className="text-blue-100 text-xs sm:text-base font-medium mt-0.5">
             Conferences managed under your organizer account ({myConferences.length})
           </p>
         </div>
@@ -63,31 +63,31 @@ export default function MyConferencesPage() {
           type="button"
           onClick={handleCreateNew}
           disabled={isCreating}
-          className="bg-[#FFD23F] hover:bg-yellow-400 text-[#0B1B33] px-5 py-3 rounded-2xl font-heading font-extrabold text-base flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-md cursor-pointer shrink-0"
+          className="bg-[#FFD23F] hover:bg-yellow-400 text-[#0B1B33] px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl font-heading font-extrabold text-xs sm:text-base flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-md cursor-pointer shrink-0"
         >
-          <Plus className="w-5 h-5" strokeWidth={3} />
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={3} />
           <span>{isCreating ? "Creating..." : "Create New Conference"}</span>
         </button>
       </div>
 
       {/* Conferences List */}
       {myConferences.length === 0 ? (
-        <div className="bg-white text-[#0B1B33] rounded-3xl p-8 sm:p-12 text-center space-y-4 max-w-lg mx-auto">
-          <h3 className="text-2xl font-heading font-extrabold">No conferences yet</h3>
-          <p className="text-neutral-600 font-medium text-base">
+        <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-6 sm:p-12 text-center space-y-3 sm:space-y-4 max-w-lg mx-auto">
+          <h3 className="text-xl sm:text-2xl font-heading font-extrabold">No conferences yet</h3>
+          <p className="text-neutral-600 font-medium text-xs sm:text-base">
             Create your first MUN conference to set up committees, portfolios, and start accepting delegate registrations.
           </p>
           <button
             type="button"
             onClick={handleCreateNew}
             disabled={isCreating}
-            className="bg-[#1560BD] hover:bg-[#0F4C96] text-white px-6 py-3.5 rounded-2xl font-heading font-extrabold text-base transition-colors cursor-pointer"
+            className="bg-[#1560BD] hover:bg-[#0F4C96] text-white px-5 py-3 rounded-xl sm:rounded-2xl font-heading font-extrabold text-sm sm:text-base transition-colors cursor-pointer"
           >
             Create Your First Conference
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-5">
           {myConferences.map((conf) => {
             const isActive = conf.id === event.id;
             const publicLink = getConferencePublicLink(conf.slug || conf.id);
@@ -95,7 +95,7 @@ export default function MyConferencesPage() {
             return (
               <div
                 key={conf.id}
-                className={`bg-white text-[#0B1B33] rounded-3xl p-6 space-y-5 transition-all duration-200 border-2 ${
+                className={`bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-3 sm:space-y-4 transition-all duration-200 border-2 ${
                   isActive ? "border-[#FFD23F] ring-2 ring-yellow-400/30" : "border-transparent"
                 }`}
               >

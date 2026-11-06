@@ -118,14 +118,14 @@ export default function OrganizerDashboardPage() {
       </div>
 
       {/* Filter Chips for Mobile / quick filter */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 no-scrollbar">
         <button
           type="button"
           onClick={() => setFilter("all")}
-          className={`px-5 py-2.5 rounded-2xl text-lg font-heading font-extrabold transition-colors cursor-pointer capitalize ${
+          className={`px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-xl sm:rounded-2xl text-xs sm:text-base font-heading font-extrabold transition-colors cursor-pointer capitalize ${
             filter === "all"
               ? "bg-white text-[#0B1B33]"
-              : "border-2 border-white text-white hover:bg-white/10"
+              : "border border-white/60 text-white hover:bg-white/10"
           }`}
         >
           All
@@ -133,10 +133,10 @@ export default function OrganizerDashboardPage() {
         <button
           type="button"
           onClick={() => setFilter("unpaid")}
-          className={`px-5 py-2.5 rounded-2xl text-lg font-heading font-extrabold transition-colors cursor-pointer capitalize ${
+          className={`px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-xl sm:rounded-2xl text-xs sm:text-base font-heading font-extrabold transition-colors cursor-pointer capitalize ${
             filter === "unpaid"
               ? "bg-white text-[#0B1B33]"
-              : "border-2 border-white text-white hover:bg-white/10"
+              : "border border-white/60 text-white hover:bg-white/10"
           }`}
         >
           Unpaid
@@ -145,10 +145,10 @@ export default function OrganizerDashboardPage() {
           <button
             type="button"
             onClick={() => setFilter("first_comm")}
-            className={`px-5 py-2.5 rounded-2xl text-lg font-heading font-extrabold transition-colors cursor-pointer capitalize ${
+            className={`px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-xl sm:rounded-2xl text-xs sm:text-base font-heading font-extrabold transition-colors cursor-pointer capitalize ${
               filter === "first_comm"
                 ? "bg-white text-[#0B1B33]"
-                : "border-2 border-white text-white hover:bg-white/10"
+                : "border border-white/60 text-white hover:bg-white/10"
             }`}
           >
             {firstComm.name}
@@ -157,16 +157,16 @@ export default function OrganizerDashboardPage() {
       </div>
 
       {/* Main Grid: Latest Registrations (Left) + Seats Filled (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Latest Registrations Card (2 Cols on desktop) */}
-        <div className="lg:col-span-2 bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0B1B33]">
+        <div className="lg:col-span-2 bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg sm:text-2xl font-heading font-extrabold text-[#0B1B33]">
               Latest registrations
             </h2>
             <Link
               href="/organizer/registrations"
-              className="text-base font-heading font-bold text-[#1560BD] hover:underline"
+              className="text-xs sm:text-sm font-heading font-bold text-[#1560BD] hover:underline"
             >
               View all →
             </Link>

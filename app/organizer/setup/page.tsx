@@ -488,21 +488,21 @@ export default function OrganizerSetupPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       {/* Top Header */}
       <div>
-        <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
+        <h1 className="text-xl sm:text-3xl font-heading font-extrabold text-white leading-tight">
           Set up your conference
         </h1>
       </div>
 
       {validationError && (
-        <div className="bg-[#FFD23F] text-[#0B1B33] p-4 rounded-2xl font-bold text-base flex items-center justify-between shadow-lg">
+        <div className="bg-[#FFD23F] text-[#0B1B33] p-3 sm:p-4 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-between shadow-md">
           <span>{validationError}</span>
           <button
             type="button"
             onClick={() => setValidationError(null)}
-            className="text-[#0B1B33] font-extrabold ml-4 hover:opacity-75 cursor-pointer text-lg"
+            className="text-[#0B1B33] font-extrabold ml-3 hover:opacity-75 cursor-pointer text-base"
           >
             ✕
           </button>
@@ -510,7 +510,7 @@ export default function OrganizerSetupPage() {
       )}
 
       {/* Stepper Navigation Pills matching Page 26-28 */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 no-scrollbar">
         {[
           { id: "basics", label: "Basics" },
           { id: "committees", label: "Committees" },
@@ -569,10 +569,10 @@ export default function OrganizerSetupPage() {
                 setCurrentStep("publish");
               }
             }}
-            className={`px-6 py-3 rounded-2xl text-xl font-heading font-extrabold transition-colors cursor-pointer whitespace-nowrap ${
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-heading font-extrabold transition-colors cursor-pointer whitespace-nowrap ${
               currentStep === st.id
-                ? "bg-white text-[#0B1B33]"
-                : "border-2 border-white text-white hover:bg-white/10"
+                ? "bg-white text-[#0B1B33] shadow-sm"
+                : "border border-white/60 text-white hover:bg-white/10"
             }`}
           >
             {st.label}
@@ -582,110 +582,114 @@ export default function OrganizerSetupPage() {
 
       {/* STEP 1: BASICS */}
       {currentStep === "basics" && (
-        <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 max-w-2xl space-y-5">
-          <h2 className="text-3xl font-heading font-extrabold">Conference Basics</h2>
-          <div className="space-y-4">
+        <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-6 max-w-2xl space-y-3 sm:space-y-4 shadow-sm">
+          <h2 className="text-lg sm:text-2xl font-heading font-extrabold">Conference Basics</h2>
+          <div className="space-y-2 sm:space-y-3">
             <div>
-              <label className="block text-lg font-bold text-neutral-700 mb-1">Conference name</label>
+              <label className="block text-xs sm:text-sm font-bold text-neutral-600 mb-1">Conference name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                placeholder="e.g. Model UN 2026"
+                className="w-full bg-neutral-100 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]/30"
               />
             </div>
 
             {/* Date From and Date To */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <div>
-                <label className="block text-lg font-bold text-neutral-700 mb-1">Date from</label>
+                <label className="block text-xs sm:text-sm font-bold text-neutral-600 mb-1">Date from</label>
                 <input
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                  className="w-full bg-neutral-100 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]/30"
                 />
               </div>
               <div>
-                <label className="block text-lg font-bold text-neutral-700 mb-1">Date to</label>
+                <label className="block text-xs sm:text-sm font-bold text-neutral-600 mb-1">Date to</label>
                 <input
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                  className="w-full bg-neutral-100 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]/30"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-lg font-bold text-neutral-700 mb-1">Registration deadline</label>
+              <label className="block text-xs sm:text-sm font-bold text-neutral-600 mb-1">Registration deadline</label>
               <input
                 type="date"
                 value={deadlineDate}
                 onChange={(e) => setDeadlineDate(e.target.value)}
-                className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                className="w-full bg-neutral-100 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]/30"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <div>
-                <label className="block text-lg font-bold text-neutral-700 mb-1">Individual fee (Rs)</label>
+                <label className="block text-xs sm:text-sm font-bold text-neutral-600 mb-1">Individual fee (Rs)</label>
                 <input
                   type="number"
                   value={fee}
                   onChange={(e) => setFee(e.target.value)}
-                  className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                  className="w-full bg-neutral-100 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]/30"
                 />
               </div>
               <div>
-                <label className="block text-lg font-bold text-neutral-700 mb-1">School fee / student (Rs)</label>
+                <label className="block text-xs sm:text-sm font-bold text-neutral-600 mb-1">School fee / student (Rs)</label>
                 <input
                   type="number"
                   value={schoolFee}
                   onChange={(e) => setSchoolFee(e.target.value)}
-                  className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                  className="w-full bg-neutral-100 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]/30"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-lg font-bold text-neutral-700 mb-1">Venue</label>
+              <label className="block text-xs sm:text-sm font-bold text-neutral-600 mb-1">Venue</label>
               <input
                 type="text"
                 value={venue}
                 onChange={(e) => setVenue(e.target.value)}
-                className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                placeholder="e.g. Main Auditorium"
+                className="w-full bg-neutral-100 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]/30"
               />
             </div>
           </div>
-          <div className="pt-4">
-            <Button onClick={handleSaveBasics}>Save & Next</Button>
+          <div className="pt-2">
+            <Button onClick={handleSaveBasics} className="w-full sm:w-auto py-2.5 px-6 text-sm sm:text-base rounded-xl font-bold">
+              Save &amp; Next →
+            </Button>
           </div>
         </div>
       )}
 
       {/* STEP 2: COMMITTEES (Pages 14 & 26) */}
       {currentStep === "committees" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 items-start">
           {/* Left Column: Committees list */}
-          <div className="lg:col-span-7 bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-5">
-            <h2 className="text-3xl font-heading font-extrabold">Committees</h2>
+          <div className="lg:col-span-7 bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-3 sm:space-y-4 shadow-sm">
+            <h2 className="text-lg sm:text-2xl font-heading font-extrabold">Committees</h2>
 
-            <div className="space-y-4">
+            <div className="space-y-2.5 sm:space-y-3">
               {committees.map((comm) => (
                 <div
                   key={comm.id}
-                  className="border border-neutral-200 rounded-2xl p-5 flex items-center justify-between"
+                  className="border border-neutral-200 rounded-xl p-3 sm:p-4 flex items-center justify-between"
                 >
                   <div>
-                    <div className="text-2xl font-heading font-extrabold text-[#0B1B33]">
+                    <div className="text-base sm:text-lg font-heading font-extrabold text-[#0B1B33]">
                       {comm.name}
                     </div>
-                    <div className="text-lg text-neutral-600 font-medium mt-0.5">
+                    <div className="text-xs sm:text-sm text-neutral-600 font-medium mt-0.5">
                       {comm.totalSeats} seats, {portfolios.filter(p => p.committeeId === comm.id).length} portfolios
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => {
@@ -696,7 +700,7 @@ export default function OrganizerSetupPage() {
                         setGuideUploaded(Boolean(comm.backgroundGuideUrl));
                         setValidationError(null);
                       }}
-                      className="text-lg font-heading font-extrabold text-[#1560BD] hover:underline cursor-pointer"
+                      className="text-sm sm:text-base font-heading font-extrabold text-[#1560BD] hover:underline cursor-pointer"
                     >
                       Edit
                     </button>
@@ -710,9 +714,9 @@ export default function OrganizerSetupPage() {
                           }
                         }
                       }}
-                      className="text-lg font-heading font-extrabold text-red-600 hover:text-red-700 hover:underline cursor-pointer flex items-center gap-1"
+                      className="text-sm sm:text-base font-heading font-extrabold text-red-600 hover:text-red-700 hover:underline cursor-pointer flex items-center gap-1"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                       <span>Delete</span>
                     </button>
                   </div>
@@ -720,7 +724,7 @@ export default function OrganizerSetupPage() {
               ))}
             </div>
 
-            <div className="pt-2">
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={() => {
@@ -733,96 +737,98 @@ export default function OrganizerSetupPage() {
                     totalSeats: t.totalSeats,
                   });
                 }}
-                className="text-xl font-heading font-extrabold text-[#1560BD] underline hover:text-[#0F4C96] cursor-pointer"
+                className="text-sm sm:text-base font-heading font-extrabold text-[#1560BD] underline hover:text-[#0F4C96] cursor-pointer"
               >
-                Start from a template
+                + Add from template
               </button>
             </div>
           </div>
 
           {/* Right Column: Add or Edit a committee form */}
-          <div className="lg:col-span-5 bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-5">
+          <div className="lg:col-span-5 bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-3 sm:space-y-4 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="text-3xl font-heading font-extrabold">
+              <h2 className="text-lg sm:text-xl font-heading font-extrabold">
                 {editingCommId ? "Edit committee" : "Add a committee"}
               </h2>
               {editingCommId && (
                 <button
                   type="button"
                   onClick={handleCancelCommitteeEdit}
-                  className="text-sm font-heading font-bold text-[#1560BD] hover:underline cursor-pointer"
+                  className="text-xs font-heading font-bold text-[#1560BD] hover:underline cursor-pointer"
                 >
                   + Add new
                 </button>
               )}
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-2.5 sm:space-y-3">
               <div>
-                <label className="block text-lg font-bold text-neutral-700 mb-1">Name</label>
+                <label className="block text-xs sm:text-sm font-bold text-neutral-600 mb-1">Name</label>
                 <input
                   type="text"
                   value={newCommName}
                   onChange={(e) => setNewCommName(e.target.value)}
-                  placeholder="UNGA"
-                  className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                  placeholder="e.g. UNGA, DISEC"
+                  className="w-full bg-neutral-100 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]/30"
                 />
               </div>
 
               <div>
-                <label className="block text-lg font-bold text-neutral-700 mb-1">Agenda</label>
+                <label className="block text-xs sm:text-sm font-bold text-neutral-600 mb-1">Agenda</label>
                 <input
                   type="text"
                   value={newCommAgenda}
                   onChange={(e) => setNewCommAgenda(e.target.value)}
-                  placeholder="Agenda title"
-                  className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                  placeholder="e.g. Addressing climate security"
+                  className="w-full bg-neutral-100 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]/30"
                 />
               </div>
 
               <div>
-                <label className="block text-lg font-bold text-neutral-700 mb-1">Seats</label>
+                <label className="block text-xs sm:text-sm font-bold text-neutral-600 mb-1">Seats</label>
                 <input
                   type="number"
                   value={newCommSeats}
                   onChange={(e) => setNewCommSeats(e.target.value)}
-                  placeholder="40"
-                  className="w-full bg-neutral-100 rounded-2xl p-4 text-xl font-bold outline-none"
+                  placeholder="30"
+                  className="w-full bg-neutral-100 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]/30"
                 />
               </div>
 
-              <div className="pt-2">
+              <div className="pt-1">
                 <button
                   type="button"
                   onClick={() => setGuideUploaded(true)}
-                  className="w-full border-2 border-[#0B1B33] hover:bg-neutral-100 rounded-2xl p-4 text-lg font-heading font-extrabold text-center transition-colors cursor-pointer"
+                  className="w-full border border-neutral-300 hover:bg-neutral-100 rounded-xl p-2.5 text-xs sm:text-sm font-heading font-bold text-center transition-colors cursor-pointer"
                 >
-                  {guideUploaded ? "Background guide uploaded ✓" : "Upload background guide"}
+                  {guideUploaded ? "Background guide uploaded ✓" : "Upload background guide (optional)"}
                 </button>
               </div>
 
               <div className="pt-2">
                 {editingCommId ? (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button onClick={handleSaveCommitteeEdit} className="flex-1">
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveCommitteeEdit} className="flex-1 py-2 sm:py-2.5 text-sm rounded-xl">
                       Save committee
                     </Button>
                     <button
                       type="button"
                       onClick={handleCancelCommitteeEdit}
-                      className="px-5 py-3 rounded-2xl border-2 border-neutral-200 hover:bg-neutral-50 text-neutral-700 font-heading font-bold text-base transition-colors cursor-pointer"
+                      className="px-4 py-2 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 font-heading font-bold text-xs sm:text-sm transition-colors cursor-pointer"
                     >
                       Cancel
                     </button>
                   </div>
                 ) : (
-                  <Button onClick={handleAddCommittee}>Add committee</Button>
+                  <Button onClick={handleAddCommittee} className="w-full py-2 sm:py-2.5 text-sm rounded-xl">
+                    Add committee
+                  </Button>
                 )}
               </div>
 
-              <div className="pt-4">
-                <Button onClick={handleContinueToCountries}>
-                  Continue to countries
+              <div className="pt-2">
+                <Button onClick={handleContinueToCountries} className="w-full py-2.5 text-sm sm:text-base rounded-xl">
+                  Continue to countries →
                 </Button>
               </div>
             </div>
@@ -832,16 +838,16 @@ export default function OrganizerSetupPage() {
 
       {/* STEP 3: COUNTRIES PER COMMITTEE */}
       {currentStep === "countries" && (
-        <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 max-w-3xl space-y-6">
+        <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-6 max-w-3xl space-y-3 sm:space-y-4 shadow-sm">
           <div>
-            <h2 className="text-3xl font-heading font-extrabold">Countries & Portfolios</h2>
-            <p className="text-lg text-neutral-600 font-medium mt-1">
-              Hover over monogram circle to delete, or select checkboxes to delete in bulk.
+            <h2 className="text-lg sm:text-2xl font-heading font-extrabold">Countries &amp; Portfolios</h2>
+            <p className="text-xs sm:text-sm text-neutral-600 font-medium mt-0.5">
+              Select committee below to manage its portfolio roster.
             </p>
           </div>
 
           {/* Committee selector tabs */}
-          <div className="flex gap-2 overflow-x-auto pb-2">
+          <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 no-scrollbar">
             {committees.map((comm) => (
               <button
                 key={comm.id}
@@ -850,7 +856,7 @@ export default function OrganizerSetupPage() {
                   setCountryFilterComm(comm.id);
                   setSelectedPortIds([]);
                 }}
-                className={`px-4 py-2 rounded-xl text-lg font-heading font-extrabold transition-colors cursor-pointer whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-heading font-extrabold transition-colors cursor-pointer whitespace-nowrap ${
                   countryFilterComm === comm.id
                     ? "bg-[#1560BD] text-white"
                     : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
@@ -862,8 +868,8 @@ export default function OrganizerSetupPage() {
           </div>
 
           {/* Bulk delete action header */}
-          <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-            <div className="text-lg font-heading font-extrabold text-neutral-800">
+          <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+            <div className="text-xs sm:text-sm font-heading font-extrabold text-neutral-800">
               Portfolios ({activePortfolios.length})
             </div>
 
@@ -871,18 +877,18 @@ export default function OrganizerSetupPage() {
               <button
                 type="button"
                 onClick={handleDeleteSelected}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-heading font-extrabold flex items-center gap-1.5 cursor-pointer transition-colors"
+                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-heading font-extrabold flex items-center gap-1 cursor-pointer transition-colors"
               >
-                <Trash2 className="w-4 h-4" /> Delete Selected ({selectedPortIds.length})
+                <Trash2 className="w-3.5 h-3.5" /> Delete Selected ({selectedPortIds.length})
               </button>
             )}
           </div>
 
           {/* Country Pills list with hover circle delete and checkbox */}
-          <div className="flex flex-wrap gap-2.5 max-h-72 overflow-y-auto p-1">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2 max-h-56 sm:max-h-72 overflow-y-auto p-1">
             {activePortfolios.length === 0 ? (
-              <div className="py-6 text-neutral-400 font-medium text-center w-full">
-                No portfolios added for this committee.
+              <div className="py-4 text-neutral-400 font-medium text-xs sm:text-sm text-center w-full">
+                No portfolios added for this committee yet.
               </div>
             ) : (
               activePortfolios.map((p) => (
@@ -902,80 +908,76 @@ export default function OrganizerSetupPage() {
 
           {/* Combobox to Add Countries & Indian Politicians */}
           <div className="pt-2 border-t border-neutral-100">
-            <label className="block text-base font-heading font-extrabold text-neutral-800 mb-2">
-              Add countries or politicians (Combobox)
+            <label className="block text-xs sm:text-sm font-bold text-neutral-700 mb-1">
+              Add country or portfolio (Type &amp; Press Enter)
             </label>
             <PortfolioCombobox
               existingNames={activePortfolios.map((p) => p.countryName)}
               onAdd={(item) => addPortfolioToCommittee(countryFilterComm, item)}
-              placeholder="Search country or Indian politician (e.g. India, Amit Shah)..."
+              placeholder="Search or enter country name (e.g. India, France)..."
             />
           </div>
 
-          <div className="pt-4">
-            <Button onClick={handleContinueToRules}>Continue to rules</Button>
+          <div className="pt-2">
+            <Button onClick={handleContinueToRules} className="w-full sm:w-auto py-2.5 px-6 text-sm sm:text-base rounded-xl font-bold">
+              Continue to rules →
+            </Button>
           </div>
         </div>
       )}
 
       {/* STEP 4: RULES (Pages 15 & 27) */}
       {currentStep === "rules" && (
-        <div className="max-w-3xl space-y-6">
-          <div className="space-y-4">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 space-y-4">
-              <h2 className="text-3xl font-heading font-extrabold text-[#0B1B33]">
-                How should registration work?
-              </h2>
+        <div className="max-w-2xl space-y-3 sm:space-y-4">
+          <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-3 sm:space-y-4 shadow-sm">
+            <h2 className="text-lg sm:text-2xl font-heading font-extrabold text-[#0B1B33]">
+              Conference Rules &amp; Allotment
+            </h2>
 
-              <div className="space-y-3 pt-2">
-                <Toggle
-                  label="Allow school teams"
-                  description="Schools register all their delegates at once"
-                  checked={event.rules.allowSchoolTeams}
-                  onChange={(c) => updateEventRules({ allowSchoolTeams: c })}
-                />
+            <div className="space-y-2.5 sm:space-y-3 pt-1">
+              <Toggle
+                label="Allow school teams"
+                description="Schools can register all their delegates at once"
+                checked={event.rules.allowSchoolTeams}
+                onChange={(c) => updateEventRules({ allowSchoolTeams: c })}
+              />
 
-                <Toggle
-                  label="Ask for payment proof"
-                  description="Delegates upload a receipt or pay online"
-                  checked={event.rules.askPaymentProof}
-                  onChange={(c) => updateEventRules({ askPaymentProof: c })}
-                />
+              <Toggle
+                label="Ask for payment proof"
+                description="Delegates must upload receipt before verification"
+                checked={event.rules.askPaymentProof}
+                onChange={(c) => updateEventRules({ askPaymentProof: c })}
+              />
 
-                <Toggle
-                  label="Show taken portfolios live"
-                  description="Delegates see what is still open while choosing"
-                  checked={event.rules.showTakenPortfoliosLive}
-                  onChange={(c) => updateEventRules({ showTakenPortfoliosLive: c })}
-                />
+              <Toggle
+                label="Show taken portfolios live"
+                description="Delegates see what is taken while choosing preferences"
+                checked={event.rules.showTakenPortfoliosLive}
+                onChange={(c) => updateEventRules({ showTakenPortfoliosLive: c })}
+              />
 
-                <Toggle
-                  label="First come, first served"
-                  description="Off means every preference is weighed together"
-                  checked={event.rules.firstComeFirstServed}
-                  onChange={(c) => updateEventRules({ firstComeFirstServed: c })}
-                />
-              </div>
-
-              <p className="text-base text-neutral-600 font-medium pt-2">
-                Turn off first come, first served and every preference is weighed together.
-              </p>
+              <Toggle
+                label="First come, first served"
+                description="Off means every preference is weighted together"
+                checked={event.rules.firstComeFirstServed}
+                onChange={(c) => updateEventRules({ firstComeFirstServed: c })}
+              />
             </div>
           </div>
 
           <div>
             {isBasicsDone && isCommitteesDone && isCountriesDone ? (
-              <Button onClick={handleContinueToPublish}>
+              <Button onClick={handleContinueToPublish} className="w-full sm:w-auto py-2.5 px-6 text-sm sm:text-base rounded-xl font-bold">
                 Review &amp; Publish →
               </Button>
             ) : (
-              <div className="space-y-3">
-                <div className="bg-[#FFD23F] text-[#0B1B33] p-4 rounded-2xl font-bold text-base">
+              <div className="space-y-2">
+                <div className="bg-[#FFD23F] text-[#0B1B33] p-3 rounded-xl font-bold text-xs sm:text-sm">
                   ⚠️ Complete earlier steps first:{" "}
                   {!isBasicsDone
-                    ? "Conference Basics are incomplete (Name, Dates, and Deadline)."
+                    ? "Conference Basics are incomplete."
                     : !isCommitteesDone
-                    ? "At least one committee must be added."
+                    ? "Add at least one committee."
                     : "Each committee needs at least 3 portfolios."}
                 </div>
                 <Button
@@ -985,12 +987,13 @@ export default function OrganizerSetupPage() {
                     else if (!isCommitteesDone) setCurrentStep("committees");
                     else setCurrentStep("countries");
                   }}
+                  className="w-full sm:w-auto py-2.5 px-6 text-sm sm:text-base rounded-xl font-bold"
                 >
                   {!isBasicsDone
-                    ? "Next: Complete Basics"
+                    ? "Go to Basics"
                     : !isCommitteesDone
-                    ? "Next: Add Committees"
-                    : "Next: Add Countries"}
+                    ? "Go to Committees"
+                    : "Go to Countries"}
                 </Button>
               </div>
             )}
@@ -1000,58 +1003,58 @@ export default function OrganizerSetupPage() {
 
       {/* STEP 5: PUBLISH (Pages 16 & 28) */}
       {currentStep === "publish" && (
-        <div className="space-y-6">
+        <div className="space-y-3 sm:space-y-4">
           {event.status !== "published" ? (
-            <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-5 border-2 border-yellow-400">
-              <div className="flex items-center gap-2 text-yellow-800">
-                <Lock className="w-5 h-5 text-yellow-600" />
-                <span className="text-xs uppercase font-extrabold tracking-wider">Registration Links Locked</span>
+            <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-3 sm:space-y-4 border-2 border-yellow-400 shadow-sm max-w-2xl">
+              <div className="flex items-center gap-1.5 text-yellow-800">
+                <Lock className="w-4 h-4 text-yellow-600" />
+                <span className="text-[11px] uppercase font-extrabold tracking-wider">Registration Links Locked</span>
               </div>
-              <h3 className="text-2xl font-heading font-extrabold text-[#0B1B33]">
-                Setup In Progress
+              <h3 className="text-lg sm:text-2xl font-heading font-extrabold text-[#0B1B33]">
+                Ready to Open Registrations
               </h3>
-              <p className="text-neutral-600 font-medium text-base leading-relaxed max-w-xl">
-                This conference is currently in <strong>Draft</strong>. Delegate registration links are locked until you officially publish the conference.
+              <p className="text-neutral-600 font-medium text-xs sm:text-sm leading-relaxed">
+                This conference is currently in <strong>Draft</strong>. Once published, your unique shareable registration links will be unlocked.
               </p>
-              <div className="pt-2">
+              <div className="pt-1">
                 <Button
                   variant="primary"
-                  size="lg"
                   onClick={handleOpenRegistrations}
-                  className="font-heading font-extrabold"
+                  className="w-full sm:w-auto py-2.5 sm:py-3 px-6 text-sm sm:text-base font-heading font-extrabold rounded-xl"
                 >
                   Publish Conference &amp; Open Registrations
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 items-start">
               {/* Left Card: Distinct links */}
-              <div className="lg:col-span-7 space-y-4">
+              <div className="lg:col-span-7 space-y-3 sm:space-y-4">
                 {/* Individual Delegate */}
-                <div className="bg-white text-[#0B1B33] rounded-3xl p-6 space-y-3">
+                <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-5 space-y-2.5 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">
                       Individual Delegate Link
                     </span>
-                    <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
-                      ₹{event.fee || 2500}
+                    <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+                      ₹{event.fee || 1500}
                     </span>
                   </div>
-                  <div className="text-sm font-mono text-neutral-700 break-all p-3 bg-neutral-100 rounded-xl">
+                  <div className="text-xs font-mono text-neutral-700 break-all p-2.5 bg-neutral-100 rounded-xl">
                     {individualLink}
                   </div>
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => handleCopy(individualLink, "individual")}
-                      className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl p-3 text-center text-sm font-heading font-extrabold transition-colors cursor-pointer"
+                      className="w-full bg-white border border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl py-2 px-3 text-center text-xs sm:text-sm font-heading font-extrabold transition-colors cursor-pointer"
                     >
                       {copiedType === "individual" ? "✓ Copied!" : "Copy link"}
                     </button>
                     <Button
                       variant="primary"
                       onClick={() => handleShareWhatsApp(individualLink, "Individual Registration")}
+                      className="py-2 text-xs sm:text-sm rounded-xl font-bold"
                     >
                       WhatsApp
                     </Button>
@@ -1059,29 +1062,30 @@ export default function OrganizerSetupPage() {
                 </div>
 
                 {/* School Team */}
-                <div className="bg-white text-[#0B1B33] rounded-3xl p-6 space-y-3">
+                <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-5 space-y-2.5 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                      School Delegation Team Link
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+                      School Delegation Link
                     </span>
-                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
                       ₹{event.schoolFeePerStudent || 1200}/student
                     </span>
                   </div>
-                  <div className="text-sm font-mono text-neutral-700 break-all p-3 bg-neutral-100 rounded-xl">
+                  <div className="text-xs font-mono text-neutral-700 break-all p-2.5 bg-neutral-100 rounded-xl">
                     {teamLink}
                   </div>
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => handleCopy(teamLink, "team")}
-                      className="w-full bg-white border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl p-3 text-center text-sm font-heading font-extrabold transition-colors cursor-pointer"
+                      className="w-full bg-white border border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] rounded-xl py-2 px-3 text-center text-xs sm:text-sm font-heading font-extrabold transition-colors cursor-pointer"
                     >
                       {copiedType === "team" ? "✓ Copied!" : "Copy link"}
                     </button>
                     <Button
                       variant="primary"
                       onClick={() => handleShareWhatsApp(teamLink, "School Delegation Registration")}
+                      className="py-2 text-xs sm:text-sm rounded-xl font-bold"
                     >
                       WhatsApp
                     </Button>
@@ -1090,42 +1094,41 @@ export default function OrganizerSetupPage() {
               </div>
 
               {/* Right Card: What happens next (Page 28) */}
-              <div className="lg:col-span-5 bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-4">
-                <h3 className="text-2xl font-heading font-extrabold text-[#0B1B33]">
+              <div className="lg:col-span-5 bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-5 space-y-3 shadow-sm">
+                <h3 className="text-lg sm:text-xl font-heading font-extrabold text-[#0B1B33]">
                   What happens next
                 </h3>
 
-                <div className="space-y-4 text-xl font-medium text-neutral-800">
-                  <div className="flex gap-3">
+                <div className="space-y-2 text-xs sm:text-sm font-medium text-neutral-700">
+                  <div className="flex gap-2">
                     <span className="font-heading font-extrabold text-[#0B1B33]">1.</span>
-                    <span>Delegates register and pick preferences</span>
+                    <span>Delegates register and rank committee preferences</span>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex gap-2">
                     <span className="font-heading font-extrabold text-[#0B1B33]">2.</span>
-                    <span>You verify payments</span>
+                    <span>Organizer verifies payments on the Registrations tab</span>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex gap-2">
                     <span className="font-heading font-extrabold text-[#0B1B33]">3.</span>
-                    <span>You allot and publish</span>
+                    <span>Auto or manual allot and publish allotments</span>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row items-center gap-3 pt-6 border-t border-neutral-100">
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-4 border-t border-white/10">
             <button
               type="button"
               onClick={() => router.push("/organizer/conferences")}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl border-2 border-neutral-200 hover:bg-neutral-50 text-[#0B1B33] font-heading font-extrabold text-base transition-colors cursor-pointer text-center"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-white/40 hover:bg-white/10 text-white font-heading font-bold text-xs sm:text-sm transition-colors cursor-pointer text-center"
             >
-              ← Return to My Conferences
+              ← My Conferences
             </button>
             <Button
               variant="primary"
-              size="lg"
               onClick={() => router.push("/organizer")}
-              className="w-full sm:w-auto px-8"
+              className="w-full sm:w-auto py-2.5 px-6 text-xs sm:text-sm rounded-xl font-bold"
             >
               Open Dashboard →
             </Button>

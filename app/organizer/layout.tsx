@@ -51,7 +51,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   if (isStandalone) {
     return (
       <div className="min-h-screen theme-bg-primary flex flex-col text-white transition-colors duration-300">
-        <header className="theme-bg-sidebar border-b border-white/10 px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
+        <header className="theme-bg-sidebar border-b border-white/10 px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
           <div className="flex items-center gap-3">
             {isSetup && (
               <Link
@@ -90,7 +90,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-10 max-w-6xl w-full mx-auto page-transition">
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-5xl w-full mx-auto page-transition">
           {children}
         </main>
       </div>

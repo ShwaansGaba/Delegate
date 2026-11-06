@@ -215,12 +215,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // A. Check Supabase
     if (isSupabaseConfigured && supabase) {
       try {
-        // Query events owned exclusively by this organizer
-        const { data: eventsData, error: evErr } = await supabase
-          .from("events")
-          .select("*")
-          .eq("owner_id", activeUserId)
-          .order("created_at", { ascending: false });
+        // Query events owned exclusively by this organizer (guard against invalid id and missing created_at column)
+        let query = supabase.from("events").select("*");
+        if (activeUserId && activeUserId !== "new-conference") {
+          query = query.eq("owner_id", activeUserId);
+        }
+        const { data: eventsData, error: evErr } = await query;
 
         if (!evErr && eventsData) {
           const validEvents = eventsData.filter(
@@ -260,10 +260,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setEvent(chosen);
 
             // Load committees for this conference
-            const { data: commsData } = await supabase
-              .from("committees")
-              .select("*")
-              .eq("event_id", chosen.id);
+            let commsData = null;
+            if (chosen.id && chosen.id !== "new-conference" && !chosen.id.startsWith("new-")) {
+              const res = await supabase
+                .from("committees")
+                .select("*")
+                .eq("event_id", chosen.id);
+              commsData = res.data;
+            }
 
             const mappedComms: MunCommittee[] = (commsData || []).map((c) => ({
               id: c.id,
@@ -299,11 +303,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
 
             // Load registrations for this conference
-            const { data: regsData } = await supabase
-              .from("registrations")
-              .select("*")
-              .eq("event_id", chosen.id)
-              .order("created_at", { ascending: false });
+            let regsData = null;
+            if (chosen.id && chosen.id !== "new-conference" && !chosen.id.startsWith("new-")) {
+              const res = await supabase
+                .from("registrations")
+                .select("*")
+                .eq("event_id", chosen.id);
+              regsData = res.data;
+            }
 
             if (regsData) {
               setRegistrations(
@@ -843,12 +850,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setEvent(updated);
     setMyConferences((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
 
-    if (isSupabaseConfigured && supabase && updated.id) {
+    if (isSupabaseConfigured && supabase && updated.id && updated.id !== "new-conference" && !updated.id.startsWith("new-")) {
       supabase
         .from("events")
         .update({ rules: updated.rules })
         .eq("id", updated.id)
-        .then();
+        .then(({ error }) => {
+          if (error) console.warn("Supabase updateEventRules note:", error.message);
+        });
     }
   };
 
@@ -902,7 +911,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {}
 
-    if (isSupabaseConfigured && supabase && updated.id) {
+    if (isSupabaseConfigured && supabase && updated.id && updated.id !== "new-conference" && !updated.id.startsWith("new-")) {
       supabase
         .from("events")
         .update({
@@ -924,7 +933,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           branding: updated.branding,
         })
         .eq("id", updated.id)
-        .then();
+        .then(({ error }) => {
+          if (error) console.warn("Supabase updateEventBasics note:", error.message);
+        });
     }
   };
 
@@ -1318,8 +1329,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setEvent(updated);
     setMyConferences((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
 
-    if (isSupabaseConfigured && supabase && updated.id) {
-      supabase.from("events").update({ status: "published" }).eq("id", updated.id).then();
+    if (isSupabaseConfigured && supabase && updated.id && updated.id !== "new-conference" && !updated.id.startsWith("new-")) {
+      supabase
+        .from("events")
+        .update({ status: "published" })
+        .eq("id", updated.id)
+        .then(({ error }) => {
+          if (error) console.warn("Supabase markConferencePublished note:", error.message);
+        });
     }
   };
 
