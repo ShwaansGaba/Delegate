@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
-import { AuthScreen } from "@/components/auth/AuthScreen";
 import { ScrollPop } from "@/components/ui/ScrollPop";
 import { getAssetUrl } from "@/lib/registrationLinks";
 import { ArrowRight, Check, Globe, Shield, Smartphone } from "lucide-react";
@@ -12,8 +11,6 @@ import { ArrowRight, Check, Globe, Shield, Smartphone } from "lucide-react";
 export default function LandingPage() {
   const router = useRouter();
   const { user, isAuthLoaded } = useApp();
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
 
   useEffect(() => {
     document.title = "Delegato | Run your MUN in one link";
@@ -23,8 +20,7 @@ export default function LandingPage() {
     if (user) {
       router.push("/organizer/conferences");
     } else {
-      setAuthMode("signup");
-      setShowAuthModal(true);
+      router.push("/login?mode=signup");
     }
   };
 
@@ -32,8 +28,7 @@ export default function LandingPage() {
     if (user) {
       router.push("/organizer/conferences");
     } else {
-      setAuthMode("login");
-      setShowAuthModal(true);
+      router.push("/login");
     }
   };
 
@@ -78,13 +73,12 @@ export default function LandingPage() {
                 My Conferences →
               </Link>
             ) : (
-              <button
-                type="button"
-                onClick={handleLoginClick}
+              <Link
+                href="/login"
                 className="text-white hover:text-[#FFD23F] font-heading font-bold text-sm sm:text-lg transition-colors cursor-pointer px-2 py-1"
               >
                 Log in
-              </button>
+              </Link>
             )}
 
             <button
@@ -405,13 +399,12 @@ export default function LandingPage() {
             <Link href="/conferences" className="hover:text-white transition-colors">
               Conferences
             </Link>
-            <button
-              type="button"
-              onClick={handleLoginClick}
+            <Link
+              href={user ? "/organizer/conferences" : "/login"}
               className="hover:text-white transition-colors cursor-pointer"
             >
-              Log in
-            </button>
+              {user ? "My Conferences" : "Log in"}
+            </Link>
             <a
               href="mailto:support@delegato.app"
               className="hover:text-white transition-colors"
@@ -426,24 +419,6 @@ export default function LandingPage() {
           © {new Date().getFullYear()} Delegato. Official Student Events &amp; Model United Nations Management Platform.
         </div>
       </footer>
-
-      {/* ========================================================
-          FROSTED GLASS AUTH MODAL
-      ======================================================== */}
-      {showAuthModal && (
-        <div className="fixed inset-0 z-50 bg-[#0B1B33]/80 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto">
-          <div className="w-full max-w-md my-auto relative">
-            <AuthScreen
-              initialMode={authMode}
-              onClose={() => setShowAuthModal(false)}
-              onSuccess={() => {
-                setShowAuthModal(false);
-                router.push("/organizer/conferences");
-              }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

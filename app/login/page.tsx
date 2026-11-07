@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAuthLoaded } = useApp();
+
+  const mode = searchParams.get("mode") === "signup" ? "signup" : "login";
 
   useEffect(() => {
     document.title = "Log in to Delegato";
@@ -21,12 +24,18 @@ export default function LoginPage() {
 
   return (
     <AuthScreen
+      initialMode={mode}
       onSuccess={() => {
         router.push("/organizer/conferences");
       }}
-      onClose={() => {
-        router.push("/");
-      }}
     />
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#1560BD]" />}>
+      <LoginContent />
+    </Suspense>
   );
 }

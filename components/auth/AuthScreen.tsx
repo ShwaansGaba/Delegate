@@ -218,7 +218,7 @@ export function AuthScreen({ onSuccess, onClose, initialMode = "login" }: AuthSc
         {/* Delegate options */}
         <div className="mt-5 sm:mt-8 text-center space-y-1.5 sm:space-y-2">
           <p className="text-blue-100 text-sm sm:text-base">Delegate attending a conference?</p>
-          <div className="flex justify-center space-x-6 text-sm sm:text-base">
+          <div className="flex justify-center space-x-5 sm:space-x-6 text-sm sm:text-base flex-wrap">
             <Link
               href="/conferences"
               className="text-white underline font-bold hover:text-yellow-200"
@@ -230,7 +230,14 @@ export function AuthScreen({ onSuccess, onClose, initialMode = "login" }: AuthSc
               href="/status"
               className="text-white underline font-bold hover:text-yellow-200"
             >
-              Check allotment status
+              Check status
+            </Link>
+            <span className="text-blue-300">•</span>
+            <Link
+              href="/"
+              className="text-white underline font-bold hover:text-yellow-200"
+            >
+              Back to Home
             </Link>
           </div>
         </div>
