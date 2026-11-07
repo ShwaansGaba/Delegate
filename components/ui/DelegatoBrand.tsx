@@ -27,7 +27,7 @@ export function DelegatoIcon({
   className = "",
   rounded = "xl",
 }: DelegatoIconProps) {
-  const iconSrc = getAssetUrl("/branding/delegato-icon.jpg");
+  const iconSrc = getAssetUrl("/branding/delegato-icon-tight.jpg");
 
   return (
     <div
@@ -41,6 +41,22 @@ export function DelegatoIcon({
         loading="eager"
       />
     </div>
+  );
+}
+
+export function DelegatoHorizontalLogo({
+  className = "h-8 sm:h-10 w-auto",
+}: {
+  className?: string;
+}) {
+  const logoSrc = getAssetUrl("/branding/delegato-logo-horizontal-cropped.png");
+  return (
+    <img
+      src={logoSrc}
+      alt="Delegato"
+      className={`object-contain select-none ${className}`}
+      loading="eager"
+    />
   );
 }
 

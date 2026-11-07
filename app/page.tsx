@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import { ScrollPop } from "@/components/ui/ScrollPop";
-import { ArrowRight, Sparkles, Check, Globe, Shield, Smartphone } from "lucide-react";
+import { getAssetUrl } from "@/lib/registrationLinks";
+import { ArrowRight, Check, Globe, Shield, Smartphone } from "lucide-react";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -47,24 +48,17 @@ export default function LandingPage() {
       ======================================================== */}
       <header className="w-full sticky top-0 z-40 backdrop-blur-md bg-[#1560BD]/85 border-b border-white/10 transition-all">
         <div className="max-w-[1120px] mx-auto px-5 sm:px-10 h-20 sm:h-24 flex items-center justify-between">
-          {/* Brand Logo */}
+          {/* Authentic Delegato Brand Logo */}
           <Link
             href="/"
-            className="flex items-center gap-2 select-none group cursor-pointer"
+            className="flex items-center select-none group cursor-pointer"
             aria-label="Delegato"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white flex items-center justify-center shadow-md p-1 group-hover:scale-105 transition-transform shrink-0">
-              <svg viewBox="0 0 98 100" className="w-7 h-7 sm:w-8 sm:h-8" aria-hidden="true">
-                <path d="M0 0H48A50 50 0 0 1 48 100H0Z" fill="#1560BD" />
-                <circle cx="36" cy="30" r="13" fill="#FFFFFF" />
-                <path d="M10 70V64A26 18 0 0 1 62 64V70Z" fill="#FFFFFF" />
-                <rect x="6" y="74" width="70" height="8" rx="2" fill="#FFFFFF" />
-              </svg>
-            </div>
-            <span className="font-heading font-extrabold text-2xl sm:text-3xl tracking-tight text-white flex items-baseline">
-              <span>Deleg</span>
-              <span className="text-[#FFD23F]">ato</span>
-            </span>
+            <img
+              src={getAssetUrl("/branding/delegato-logo-horizontal-cropped.png")}
+              alt="Delegato"
+              className="h-10 sm:h-12 w-auto object-contain group-hover:scale-105 transition-transform"
+            />
           </Link>
 
           {/* Nav Actions */}
@@ -111,11 +105,6 @@ export default function LandingPage() {
         <div className="max-w-[1120px] mx-auto px-5 sm:px-10 flex flex-col-reverse lg:flex-row items-center justify-between gap-10 lg:gap-14">
           {/* Left Hero Content */}
           <div className="flex-1 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#FFD23F] font-bold text-xs sm:text-sm mb-4 sm:mb-6 shadow-sm">
-              <Sparkles className="w-4 h-4" />
-              <span>Modern Model UN Management • 100% Free</span>
-            </div>
-
             <h1 className="font-heading font-extrabold text-4xl sm:text-6xl md:text-7xl lg:text-[80px] leading-[1.03] tracking-tight text-white">
               Run your MUN <br className="hidden sm:inline" />
               in one link.
@@ -399,17 +388,13 @@ export default function LandingPage() {
       ======================================================== */}
       <footer className="bg-[#0F4C96] text-white py-12 sm:py-16 border-t border-white/10 mt-auto">
         <div className="max-w-[1120px] mx-auto px-5 sm:px-10 flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8 text-sm sm:text-base">
-          {/* Brand */}
-          <div className="flex items-center gap-3 font-heading font-extrabold text-lg sm:text-xl">
-            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center p-0.5">
-              <svg viewBox="0 0 98 100" className="w-6 h-6" aria-hidden="true">
-                <path d="M0 0H48A50 50 0 0 1 48 100H0Z" fill="#0F4C96" />
-                <circle cx="36" cy="30" r="13" fill="#FFFFFF" />
-                <path d="M10 70V64A26 18 0 0 1 62 64V70Z" fill="#FFFFFF" />
-                <rect x="6" y="74" width="70" height="8" rx="2" fill="#FFFFFF" />
-              </svg>
-            </div>
-            <span>Delegato, for MUN</span>
+          {/* Authentic Brand Logo */}
+          <div className="flex items-center gap-3">
+            <img
+              src={getAssetUrl("/branding/delegato-logo-horizontal-cropped.png")}
+              alt="Delegato"
+              className="h-9 w-auto object-contain"
+            />
           </div>
 
           {/* Links */}
