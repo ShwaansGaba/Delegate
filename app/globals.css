@@ -23,9 +23,9 @@ body {
   overflow-x: hidden;
 }
 
-/* Enforce rule 3: Large type everywhere, nothing smaller than 16px, no shadows, no gradients, no emojis */
-* {
-  box-shadow: none !important;
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
 }
 
 /* Dynamic Theme Classes */

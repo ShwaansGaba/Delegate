@@ -8,11 +8,13 @@ import { DelegatoIcon, DelegatoWordmark } from "@/components/ui/DelegatoBrand";
 
 interface AuthScreenProps {
   onSuccess?: () => void;
+  onClose?: () => void;
+  initialMode?: "login" | "signup";
 }
 
-export function AuthScreen({ onSuccess }: AuthScreenProps) {
+export function AuthScreen({ onSuccess, onClose, initialMode = "login" }: AuthScreenProps) {
   const { signIn, signUp } = useApp();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -61,6 +63,24 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
     <div className="min-h-screen bg-[#1560BD] flex flex-col items-center justify-center p-3 sm:p-4">
       {/* Conference / Product Monogram & Brand */}
       <div className="w-full max-w-md my-auto py-2">
+        {onClose && (
+          <div className="flex justify-between items-center mb-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-heading font-bold text-xs sm:text-sm cursor-pointer transition-colors backdrop-blur-md"
+            >
+              ← Back
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold cursor-pointer transition-colors backdrop-blur-md"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <div className="text-center mb-4 sm:mb-8">
           <div className="mb-3 sm:mb-4 inline-block">
             <DelegatoIcon size="xl" rounded="2xl" className="shadow-2xl ring-4 ring-white/20" />
