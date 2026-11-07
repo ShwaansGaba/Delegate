@@ -426,7 +426,7 @@ export const COMMITTEE_PRESET_TEMPLATES: CommitteeTemplateDefinition[] = [
     suggestedSeats: 50,
     agenda: "[YOUR AGENDA]",
     type: "indian_body",
-    portfolioKind: "party",
+    portfolioKind: "character",
   },
   {
     name: "Lok Sabha",
@@ -434,7 +434,7 @@ export const COMMITTEE_PRESET_TEMPLATES: CommitteeTemplateDefinition[] = [
     suggestedSeats: 45,
     agenda: "[YOUR AGENDA]",
     type: "indian_body",
-    portfolioKind: "party",
+    portfolioKind: "character",
   },
   {
     name: "G20",
@@ -499,25 +499,28 @@ export function getPortfoliosForCommittee(
     cleanName.includes("AIPPM") ||
     cleanName.includes("LOK SABHA") ||
     cleanName.includes("RAJYA SABHA") ||
+    cleanName.includes("PARLIAMENT") ||
+    cleanName.includes("ALL INDIA POLITICAL") ||
     cleanName === "LS" ||
     cleanName === "RS"
   ) {
     const list: { name: string; code: string }[] = [];
     const used = new Set<string>();
 
-    for (const party of MASTER_INDIAN_PARTIES) {
+    for (const pol of INDIAN_POLITICIANS) {
       if (list.length >= count) break;
-      if (!used.has(party.name.toLowerCase())) {
-        used.add(party.name.toLowerCase());
-        list.push(party);
+      const lower = pol.name.toLowerCase();
+      if (!used.has(lower)) {
+        used.add(lower);
+        list.push({ name: pol.name, code: pol.code });
       }
     }
 
-    // If still need more to fulfill `count`, add indexed regional seats
+    // If still need more to fulfill `count`, add indexed parliamentarian seats
     let idx = 1;
     while (list.length < count) {
-      const name = `Independent MP ${idx}`;
-      list.push({ name, code: `I${idx % 10}` });
+      const name = `Member of Parliament ${idx} (IND)`;
+      list.push({ name, code: "IND" });
       idx++;
     }
 
@@ -597,36 +600,24 @@ export function getAutoPortfolios(
   const result: { name: string; code: string }[] = [];
 
   if (type === "indian_politicians") {
-    // 1. Prominent real Indian politicians
+    // 1. Prominent real Indian politicians with party initials
     for (const pol of INDIAN_POLITICIANS) {
       if (result.length >= clampedCount) break;
       const lower = pol.name.toLowerCase();
       if (!existingSet.has(lower)) {
         existingSet.add(lower);
-        result.push({ name: pol.name, code: pol.code.slice(0, 2).toUpperCase() });
+        result.push({ name: pol.name, code: pol.code.slice(0, 5).toUpperCase() });
       }
     }
 
-    // 2. Indian political parties and representatives
-    if (result.length < clampedCount) {
-      for (const party of MASTER_INDIAN_PARTIES) {
-        if (result.length >= clampedCount) break;
-        const lower = party.name.toLowerCase();
-        if (!existingSet.has(lower)) {
-          existingSet.add(lower);
-          result.push({ name: party.name, code: party.code.slice(0, 2).toUpperCase() });
-        }
-      }
-    }
-
-    // 3. Backfill with indexed parliamentary seats if very large count (> 140)
+    // 2. Backfill with indexed parliamentary seats if very large count (> 150)
     let idx = 1;
     while (result.length < clampedCount) {
-      const name = `Member of Parliament ${idx}`;
+      const name = `Member of Parliament ${idx} (IND)`;
       const lower = name.toLowerCase();
       if (!existingSet.has(lower)) {
         existingSet.add(lower);
-        result.push({ name, code: `MP` });
+        result.push({ name, code: "IND" });
       }
       idx++;
     }

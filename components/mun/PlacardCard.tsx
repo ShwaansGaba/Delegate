@@ -26,7 +26,7 @@ export function PlacardCard({
         <div className="text-xl sm:text-2xl font-heading font-extrabold uppercase tracking-wider text-neutral-800 mb-2">
           {committeeName}
         </div>
-        <div className="text-5xl sm:text-7xl font-heading font-extrabold uppercase tracking-tight text-[#0B1B33] py-4">
+        <div className="text-2xl sm:text-4xl md:text-5xl font-heading font-extrabold uppercase tracking-tight text-[#0B1B33] py-3 break-words">
           {countryName}
         </div>
         <div className="w-full border-t-2 border-[#0B1B33] my-6" />

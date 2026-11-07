@@ -88,7 +88,7 @@ export default function IndividualRegisterPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Helper to get portfolio options for a committee, excluding already selected portfolios
+  // Helper to get portfolio options for a committee, excluding already selected portfolios (sorted alphabetically)
   const getPortOptions = (committeeId: string, currentSelectedIds: string[]) => {
     return portfolios
       .filter((p) => p.committeeId === committeeId)
@@ -98,7 +98,8 @@ export default function IndividualRegisterPage() {
         name: p.countryName,
         code: p.code,
         isTaken: event.rules.showTakenPortfoliosLive ? p.status === "taken" : false,
-      }));
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
   };
 
   const handleNext = () => {

@@ -1073,7 +1073,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         id: `${newId}-${cleanSlug}`,
         committeeId: newId,
         countryName: c.name,
-        code: (c.code || "UN").toUpperCase().slice(0, 2),
+        code: (c.code || "UN").toUpperCase().slice(0, 5),
         status: "open",
       };
     });
@@ -1198,7 +1198,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             id: `${committeeId}-${cleanSlug || i}-${Date.now().toString(36)}-${i}`,
             committeeId,
             countryName: c.name,
-            code: (c.code || "UN").toUpperCase().slice(0, 2),
+            code: (c.code || "UN").toUpperCase().slice(0, 5),
             status: "open",
           };
         });
@@ -1256,7 +1256,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               id: `${id}-${cleanSlug || i}-${Date.now().toString(36)}-${i}`,
               committeeId: id,
               countryName: c.name,
-              code: (c.code || "UN").toUpperCase().slice(0, 2),
+              code: (c.code || "UN").toUpperCase().slice(0, 5),
               status: "open",
             };
           });
@@ -1336,7 +1336,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       id: cleanId,
       committeeId,
       countryName: item.name,
-      code: item.code.toUpperCase().slice(0, 2),
+      code: item.code.toUpperCase().slice(0, 5),
       status: "open",
     };
     setPortfolios((prev) => [...prev, newPort]);
@@ -1385,7 +1385,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           id: `${committeeId}-${cleanSlug || i}-${Date.now().toString(36)}-${i}`,
           committeeId,
           countryName: c.name,
-          code: (c.code || (type === "indian_politicians" ? "IN" : "UN")).toUpperCase().slice(0, 2),
+          code: (c.code || (type === "indian_politicians" ? "IN" : "UN")).toUpperCase().slice(0, 5),
           status: "open",
         };
       });

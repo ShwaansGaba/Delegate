@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { Button } from "@/components/ui/Button";
@@ -179,7 +179,11 @@ export default function OrganizerSetupPage() {
   }, [committees, activeCommId]);
 
   const activeComm = committees.find((c) => c.id === activeCommId);
-  const activePortfolios = portfolios.filter((p) => p.committeeId === activeCommId);
+  const activePortfolios = useMemo(() => {
+    return portfolios
+      .filter((p) => p.committeeId === activeCommId)
+      .sort((a, b) => a.countryName.localeCompare(b.countryName, undefined, { sensitivity: "base" }));
+  }, [portfolios, activeCommId]);
 
   // Requirements checks
   const isBasicsDone = Boolean(

@@ -53,7 +53,8 @@ export function PortfolioCombobox({
   const handleCustomAdd = () => {
     if (!query.trim()) return;
     const cleanName = query.trim();
-    const code = cleanName.slice(0, 2).toUpperCase();
+    const match = cleanName.match(/\(([^)]+)\)/);
+    const code = match ? match[1].slice(0, 5).toUpperCase() : cleanName.slice(0, 3).toUpperCase();
     onAdd({ name: cleanName, code });
     setQuery("");
     setIsOpen(false);

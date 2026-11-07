@@ -6,6 +6,7 @@ import { useApp } from "@/lib/AppContext";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Button } from "@/components/ui/Button";
 import { Row } from "@/components/ui/Row";
+import { CommitteePreference } from "@/lib/types";
 
 interface TeamMember {
   name: string;
@@ -15,7 +16,7 @@ interface TeamMember {
 
 export default function SchoolTeamRegistrationPage() {
   const router = useRouter();
-  const { event, loadEventById, addRegistration } = useApp();
+  const { event, committees, portfolios, loadEventById, addRegistration } = useApp();
 
   // Load conference from URL query param if present
   React.useEffect(() => {
@@ -84,6 +85,25 @@ export default function SchoolTeamRegistrationPage() {
 
   const handleConfirmTeam = async () => {
     // Register head delegate and all delegates
+    // Use real committees and portfolios from active event when available
+    const dynamicPreferences: CommitteePreference[] =
+      committees.length > 0
+        ? committees.slice(0, 3).map((comm, idx) => {
+            const ports = portfolios.filter((p) => p.committeeId === comm.id);
+            return {
+              committeeRank: ((idx + 1) as 1 | 2 | 3),
+              committeeId: comm.id,
+              portfolioIds: [
+                ports[0]?.id || `${comm.id}-p1`,
+                ports[1]?.id || `${comm.id}-p2`,
+                ports[2]?.id || `${comm.id}-p3`,
+              ] as [string, string, string],
+            };
+          })
+        : [
+            { committeeRank: 1 as const, committeeId: "c1", portfolioIds: ["p1", "p2", "p3"] },
+          ];
+
     const headReg = await addRegistration({
       eventId: event.id,
       delegateName: headDelegateName,
@@ -95,11 +115,7 @@ export default function SchoolTeamRegistrationPage() {
       registrationType: "school_team",
       paymentStatus: "unpaid",
       feeAmount: totalFee,
-      preferences: [
-        { committeeRank: 1, committeeId: "unsc", portfolioIds: ["unsc-in", "unsc-jp", "unsc-br"] },
-        { committeeRank: 2, committeeId: "disec", portfolioIds: ["disec-br", "disec-pe", "disec-ke"] },
-        { committeeRank: 3, committeeId: "unhrc", portfolioIds: ["unhrc-ke", "unhrc-no", "unhrc-it"] },
-      ],
+      preferences: dynamicPreferences,
     });
 
     router.push(`/register/confirmation?num=${encodeURIComponent(headReg.registrationNumber)}&team=true&event=${encodeURIComponent(event.id)}`);

@@ -51,8 +51,12 @@ export default function BrowseCommitteesPage() {
         <div className="space-y-4 flex-1">
           {committees.map((comm) => {
             const commPorts = portfolios.filter((p) => p.committeeId === comm.id);
-            const openPorts = commPorts.filter((p) => p.status === "open");
-            const takenPorts = commPorts.filter((p) => p.status === "taken");
+            const openPorts = commPorts
+              .filter((p) => p.status === "open")
+              .sort((a, b) => a.countryName.localeCompare(b.countryName));
+            const takenPorts = commPorts
+              .filter((p) => p.status === "taken")
+              .sort((a, b) => a.countryName.localeCompare(b.countryName));
             
             // Vacancies based on live portfolios
             const seatsLeft = openPorts.length > 0 ? openPorts.length : Math.max(0, comm.totalSeats - takenPorts.length);

@@ -70,7 +70,9 @@ export function CountryPill({
           }
         }}
         title="Delete country"
-        className={`w-9 h-9 rounded-full flex items-center justify-center font-heading font-extrabold text-sm transition-all duration-300 ease-out cursor-pointer flex-shrink-0 ${
+        className={`w-9 h-9 rounded-full flex items-center justify-center font-heading font-extrabold ${
+          (code || "").length >= 4 ? "text-[9px]" : (code || "").length === 3 ? "text-[11px]" : "text-sm"
+        } transition-all duration-300 ease-out cursor-pointer flex-shrink-0 ${
           isCircleHovered
             ? "bg-red-600 text-white rotate-90 scale-105"
             : "bg-[#0F4C96] text-white rotate-0 scale-100"
@@ -79,7 +81,7 @@ export function CountryPill({
         {isCircleHovered ? (
           <X className="w-5 h-5 stroke-[3] animate-pop" />
         ) : (
-          code.slice(0, 2).toUpperCase()
+          (code || "UN").slice(0, 4).toUpperCase()
         )}
       </div>
 
