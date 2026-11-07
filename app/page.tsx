@@ -41,23 +41,23 @@ export default function LandingPage() {
       {/* ========================================================
           NAVIGATION BAR
       ======================================================== */}
-      <header className="w-full sticky top-0 z-40 backdrop-blur-md bg-[#1560BD]/85 border-b border-white/10 transition-all">
-        <div className="max-w-[1120px] mx-auto px-5 sm:px-10 h-20 sm:h-24 flex items-center justify-between">
+      <header className="w-full sticky top-0 z-40 backdrop-blur-md bg-[#1560BD]/90 border-b border-white/10 transition-all">
+        <div className="max-w-[1120px] mx-auto px-3.5 sm:px-10 h-16 sm:h-24 flex items-center justify-between gap-2">
           {/* Authentic Delegato Brand Logo */}
           <Link
             href="/"
-            className="flex items-center select-none group cursor-pointer"
+            className="flex items-center select-none group cursor-pointer shrink-0"
             aria-label="Delegato"
           >
             <img
               src={getAssetUrl("/branding/delegato-logo-transparent.png")}
               alt="Delegato"
-              className="h-10 sm:h-12 w-auto object-contain group-hover:scale-105 transition-transform"
+              className="h-8 sm:h-12 w-auto object-contain group-hover:scale-105 transition-transform"
             />
           </Link>
 
           {/* Nav Actions */}
-          <div className="flex items-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-2 sm:gap-6 shrink-0">
             <Link
               href="/conferences"
               className="text-white/80 hover:text-white text-xs sm:text-base font-bold transition-colors hidden md:inline"
@@ -68,14 +68,14 @@ export default function LandingPage() {
             {user ? (
               <Link
                 href="/organizer/conferences"
-                className="bg-white/15 hover:bg-white/25 text-white font-heading font-bold text-xs sm:text-sm px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-white/20 transition-all"
+                className="bg-white/15 hover:bg-white/25 text-white font-heading font-bold text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2.5 rounded-xl border border-white/20 transition-all whitespace-nowrap"
               >
                 My Conferences →
               </Link>
             ) : (
               <Link
                 href="/login"
-                className="text-white hover:text-[#FFD23F] font-heading font-bold text-sm sm:text-lg transition-colors cursor-pointer px-2 py-1"
+                className="text-white hover:text-[#FFD23F] font-heading font-bold text-xs sm:text-base transition-colors cursor-pointer px-2 py-1 whitespace-nowrap"
               >
                 Log in
               </Link>
@@ -84,9 +84,10 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={handleCreateConferenceClick}
-              className="bg-[#FFD23F] hover:bg-yellow-400 active:scale-95 text-[#0B1B33] font-heading font-extrabold text-xs sm:text-base px-3.5 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl shadow-[0_4px_20px_rgba(255,210,63,0.35)] transition-all cursor-pointer whitespace-nowrap"
+              className="bg-[#FFD23F] hover:bg-yellow-400 active:scale-95 text-[#0B1B33] font-heading font-extrabold text-xs sm:text-base px-3 sm:px-6 py-2 sm:py-3.5 rounded-xl sm:rounded-2xl shadow-[0_4px_20px_rgba(255,210,63,0.35)] transition-all cursor-pointer whitespace-nowrap"
             >
-              Create your conference
+              <span className="sm:hidden">Host MUN</span>
+              <span className="hidden sm:inline">Create your conference</span>
             </button>
           </div>
         </div>
@@ -95,24 +96,24 @@ export default function LandingPage() {
       {/* ========================================================
           HERO SECTION
       ======================================================== */}
-      <section className="relative pt-8 sm:pt-16 pb-16 sm:pb-24 overflow-hidden">
-        <div className="max-w-[1120px] mx-auto px-5 sm:px-10 flex flex-col-reverse lg:flex-row items-center justify-between gap-10 lg:gap-14">
-          {/* Left Hero Content */}
+      <section className="relative pt-6 sm:pt-16 pb-16 sm:pb-24 overflow-hidden">
+        <div className="max-w-[1120px] mx-auto px-5 sm:px-10 flex flex-col lg:flex-row items-center justify-between gap-8 sm:gap-10 lg:gap-14">
+          {/* Main Hero Content (Comes FIRST on mobile!) */}
           <div className="flex-1 text-center lg:text-left">
-            <h1 className="font-heading font-extrabold text-4xl sm:text-6xl md:text-7xl lg:text-[80px] leading-[1.03] tracking-tight text-white">
+            <h1 className="font-heading font-extrabold text-3xl sm:text-6xl md:text-7xl lg:text-[80px] leading-[1.05] tracking-tight text-white">
               Run your MUN <br className="hidden sm:inline" />
               in one link.
             </h1>
 
-            <p className="text-base sm:text-2xl lg:text-[26px] leading-relaxed text-blue-100 font-medium max-w-[580px] mx-auto lg:mx-0 mt-4 sm:mt-6">
+            <p className="text-base sm:text-2xl lg:text-[26px] leading-relaxed text-blue-100 font-medium max-w-[580px] mx-auto lg:mx-0 mt-3 sm:mt-6">
               Open registrations, collect payments, and allot delegates, without spreadsheets. Free to start.
             </p>
 
-            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 sm:gap-6">
+            <div className="mt-6 sm:mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-6">
               <button
                 type="button"
                 onClick={handleCreateConferenceClick}
-                className="w-full sm:w-auto bg-[#FFD23F] hover:bg-yellow-400 active:scale-95 text-[#0B1B33] font-heading font-extrabold text-lg sm:text-2xl px-8 py-4 sm:py-5 rounded-2xl shadow-[0_10px_35px_rgba(255,210,63,0.4)] hover:shadow-[0_14px_45px_rgba(255,210,63,0.55)] transition-all cursor-pointer flex items-center justify-center gap-2.5"
+                className="w-full sm:w-auto bg-[#FFD23F] hover:bg-yellow-400 active:scale-95 text-[#0B1B33] font-heading font-extrabold text-base sm:text-2xl px-6 sm:px-8 py-3.5 sm:py-5 rounded-xl sm:rounded-2xl shadow-[0_10px_35px_rgba(255,210,63,0.4)] hover:shadow-[0_14px_45px_rgba(255,210,63,0.55)] transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>Create your conference</span>
                 <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 stroke-[3]" />
@@ -120,14 +121,14 @@ export default function LandingPage() {
 
               <Link
                 href="/status"
-                className="text-white hover:text-[#FFD23F] font-bold underline text-sm sm:text-xl transition-colors cursor-pointer py-2 text-center"
+                className="text-white hover:text-[#FFD23F] font-bold underline text-sm sm:text-xl transition-colors cursor-pointer py-1.5 text-center"
               >
                 Already registered? Check status
               </Link>
             </div>
 
-            {/* Micro Highlights Pill */}
-            <div className="mt-8 pt-6 border-t border-white/10 flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 text-xs sm:text-sm text-blue-200 font-semibold">
+            {/* Micro Highlights */}
+            <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/10 flex flex-wrap items-center justify-center lg:justify-start gap-3 sm:gap-6 text-xs sm:text-sm text-blue-200 font-semibold">
               <span className="flex items-center gap-1.5">
                 <Check className="w-4 h-4 text-[#FFD23F]" strokeWidth={3} /> No credit card required
               </span>
@@ -140,8 +141,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right Hero Mobile Mockup */}
-          <div className="flex-none relative select-none">
+          {/* Right Hero Mobile Mockup (Comes AFTER on mobile!) */}
+          <div className="flex-none relative select-none mt-4 lg:mt-0">
             {/* Luminous Glow Halo around Phone */}
             <div className="absolute -inset-4 sm:-inset-6 bg-gradient-to-tr from-sky-400/25 via-[#FFD23F]/20 to-blue-400/30 rounded-[54px] blur-2xl -z-10 pointer-events-none" />
 
