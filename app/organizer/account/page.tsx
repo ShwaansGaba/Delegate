@@ -68,7 +68,12 @@ const CARD_STYLES = [
 
 export default function OrganizerAccountPage() {
   const router = useRouter();
-  const { user, signOut, theme, updateTheme, event, myConferences, updateEventBasics, clearDatabase } = useApp();
+  const { user, isAuthLoaded, signOut, theme, updateTheme, event, myConferences, updateEventBasics, clearDatabase } = useApp();
+
+  // Guard against unauthenticated render
+  if (!isAuthLoaded || !user) {
+    return null;
+  }
 
   // Profile state
   const [organizerName, setOrganizerName] = useState("Secretary-General");

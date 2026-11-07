@@ -11,12 +11,19 @@ import { Plus, ArrowRight, Copy, Check, Calendar, MapPin, Users, Settings, Trash
 export default function MyConferencesPage() {
   const router = useRouter();
   const {
+    user,
+    isAuthLoaded,
     myConferences,
     event,
     selectConference,
     createNewConference,
     deleteConference,
   } = useApp();
+
+  // Guard against unauthenticated render
+  if (!isAuthLoaded || !user) {
+    return null;
+  }
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [confToDelete, setConfToDelete] = useState<EventModel | null>(null);

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
+import { AuthScreen } from "@/components/auth/AuthScreen";
 import { AccountMenu } from "@/components/auth/AccountMenu";
 import { DelegatoIcon, DelegatoWordmark } from "@/components/ui/DelegatoBrand";
 import { Menu, X, Plus } from "lucide-react";
@@ -11,7 +12,7 @@ import { Menu, X, Plus } from "lucide-react";
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { event, myConferences, selectConference, createNewConference } = useApp();
+  const { user, isAuthLoaded, event, myConferences, selectConference, createNewConference } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const currentPath = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
@@ -49,6 +50,27 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
     }
     return pathname.includes(cleanHref);
   };
+
+  // 1. Loading state while authentication credentials are verified
+  if (!isAuthLoaded) {
+    return (
+      <div className="min-h-screen bg-[#1560BD] flex items-center justify-center text-white">
+        <div className="flex flex-col items-center gap-3">
+          <DelegatoIcon size="lg" rounded="2xl" className="animate-pulse shadow-xl ring-2 ring-white/20" />
+          <div className="text-xl font-heading font-extrabold text-blue-100">
+            Loading Delegato...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Strict Authentication Guard:
+  // If not authenticated, immediately show the login screen.
+  // NEVER render organizer pages, setup wizards, or conference data to unauthenticated visitors!
+  if (!user) {
+    return <AuthScreen />;
+  }
 
   // If on My Conferences hub OR during Setup: NO SIDEBAR IS SHOWN
   if (isStandalone) {

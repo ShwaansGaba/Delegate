@@ -9,8 +9,13 @@ import { Button } from "@/components/ui/Button";
 
 export default function OrganizerDashboardPage() {
   const router = useRouter();
-  const { event, myConferences, registrations, committees, portfolios } = useApp();
+  const { user, isAuthLoaded, event, myConferences, registrations, committees, portfolios } = useApp();
   const [filter, setFilter] = useState<"all" | "unpaid" | "first_comm">("all");
+
+  // Guard against unauthenticated render
+  if (!isAuthLoaded || !user) {
+    return null;
+  }
 
   // If conference is still in setup/draft, disallow dashboard access completely
   React.useEffect(() => {

@@ -7,7 +7,12 @@ import { Button } from "@/components/ui/Button";
 
 export default function RegistrationsPage() {
   const router = useRouter();
-  const { registrations, committees, portfolios, verifyPayment, event } = useApp();
+  const { user, isAuthLoaded, registrations, committees, portfolios, verifyPayment, event } = useApp();
+
+  // Guard against unauthenticated render
+  if (!isAuthLoaded || !user) {
+    return null;
+  }
 
   // If conference is still in setup/draft, disallow access
   useEffect(() => {

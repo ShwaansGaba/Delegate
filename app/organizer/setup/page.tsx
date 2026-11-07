@@ -28,6 +28,8 @@ const COMMITTEE_TEMPLATES = [
 export default function OrganizerSetupPage() {
   const router = useRouter();
   const {
+    user,
+    isAuthLoaded,
     event,
     committees,
     portfolios,
@@ -42,6 +44,11 @@ export default function OrganizerSetupPage() {
     addPortfolioToCommittee,
     markConferencePublished,
   } = useApp();
+
+  // Guard against unauthenticated render
+  if (!isAuthLoaded || !user) {
+    return null;
+  }
 
   // Helper to determine the first incomplete step in the setup flow
   const computeFirstIncompleteStep = (

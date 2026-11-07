@@ -29,6 +29,8 @@ import {
 export default function OrganizerAllotmentPage() {
   const router = useRouter();
   const {
+    user,
+    isAuthLoaded,
     committees,
     portfolios,
     registrations,
@@ -45,6 +47,11 @@ export default function OrganizerAllotmentPage() {
     deleteMultiplePortfolios,
     addPortfolioToCommittee,
   } = useApp();
+
+  // Guard against unauthenticated render
+  if (!isAuthLoaded || !user) {
+    return null;
+  }
 
   // If conference is still in setup/draft, disallow allotment access
   useEffect(() => {
