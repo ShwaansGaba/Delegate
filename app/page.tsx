@@ -55,7 +55,7 @@ export default function LandingPage() {
             aria-label="Delegato"
           >
             <img
-              src={getAssetUrl("/branding/delegato-logo-horizontal-cropped.png")}
+              src={getAssetUrl("/branding/delegato-logo-transparent.png")}
               alt="Delegato"
               className="h-10 sm:h-12 w-auto object-contain group-hover:scale-105 transition-transform"
             />
@@ -391,7 +391,7 @@ export default function LandingPage() {
           {/* Authentic Brand Logo */}
           <div className="flex items-center gap-3">
             <img
-              src={getAssetUrl("/branding/delegato-logo-horizontal-cropped.png")}
+              src={getAssetUrl("/branding/delegato-logo-transparent.png")}
               alt="Delegato"
               className="h-9 w-auto object-contain"
             />

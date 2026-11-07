@@ -24,6 +24,7 @@ import {
   getConferenceRegistrationLink,
   getConferenceBrowseLink,
 } from "@/lib/registrationLinks";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 type SetupStep = "basics" | "committees" | "portfolios" | "rules" | "publish";
 
@@ -310,6 +311,28 @@ export default function OrganizerSetupPage() {
       setValidationError("Please add at least one committee before proceeding to portfolios.");
       return;
     }
+    // Auto-save committees state
+    if (typeof window !== "undefined" && event.id) {
+      try {
+        localStorage.setItem(`delegate_conf_data_${event.id}`, JSON.stringify({
+          committees,
+          portfolios,
+          registrations: [],
+        }));
+      } catch {}
+    }
+    if (isSupabaseConfigured && supabase && event.id && committees.length > 0) {
+      supabase.from("committees").upsert(
+        committees.map((c) => ({
+          id: c.id,
+          event_id: event.id,
+          name: c.name,
+          agenda: c.agenda,
+          total_seats: c.totalSeats,
+          background_guide_url: c.backgroundGuideUrl || null,
+        }))
+      ).then();
+    }
     setCurrentStep("portfolios");
   };
 
@@ -361,6 +384,45 @@ export default function OrganizerSetupPage() {
       setActiveCommId(commWithFew.id);
       return;
     }
+
+    // Auto-save portfolios & committees state
+    if (typeof window !== "undefined" && event.id) {
+      try {
+        localStorage.setItem(`delegate_conf_data_${event.id}`, JSON.stringify({
+          committees,
+          portfolios,
+          registrations: [],
+        }));
+      } catch {}
+    }
+    if (isSupabaseConfigured && supabase && event.id) {
+      if (committees.length > 0) {
+        supabase.from("committees").upsert(
+          committees.map((c) => ({
+            id: c.id,
+            event_id: event.id,
+            name: c.name,
+            agenda: c.agenda,
+            total_seats: c.totalSeats,
+            background_guide_url: c.backgroundGuideUrl || null,
+          }))
+        ).then();
+      }
+      if (portfolios.length > 0) {
+        for (let i = 0; i < portfolios.length; i += 50) {
+          const chunk = portfolios.slice(i, i + 50);
+          supabase.from("portfolios").upsert(
+            chunk.map((p) => ({
+              id: p.id,
+              committee_id: p.committeeId,
+              country_name: p.countryName,
+              country_code: p.code,
+              status: p.status,
+            }))
+          ).then();
+        }
+      }
+    }
     setCurrentStep("rules");
   };
 
@@ -391,6 +453,46 @@ export default function OrganizerSetupPage() {
     try {
       localStorage.setItem(`delegate_rules_done_${event.id}`, "true");
     } catch {}
+
+    // Auto-save state
+    if (typeof window !== "undefined" && event.id) {
+      try {
+        localStorage.setItem(`delegate_conf_data_${event.id}`, JSON.stringify({
+          committees,
+          portfolios,
+          registrations: [],
+        }));
+      } catch {}
+    }
+    if (isSupabaseConfigured && supabase && event.id) {
+      if (committees.length > 0) {
+        supabase.from("committees").upsert(
+          committees.map((c) => ({
+            id: c.id,
+            event_id: event.id,
+            name: c.name,
+            agenda: c.agenda,
+            total_seats: c.totalSeats,
+            background_guide_url: c.backgroundGuideUrl || null,
+          }))
+        ).then();
+      }
+      if (portfolios.length > 0) {
+        for (let i = 0; i < portfolios.length; i += 50) {
+          const chunk = portfolios.slice(i, i + 50);
+          supabase.from("portfolios").upsert(
+            chunk.map((p) => ({
+              id: p.id,
+              committee_id: p.committeeId,
+              country_name: p.countryName,
+              country_code: p.code,
+              status: p.status,
+            }))
+          ).then();
+        }
+      }
+    }
+
     setCurrentStep("publish");
   };
 
@@ -398,8 +500,8 @@ export default function OrganizerSetupPage() {
 
   const handleOpenRegistrations = async () => {
     setIsPublishing(true);
-    markConferencePublished();
-    setTimeout(() => setIsPublishing(false), 500);
+    await markConferencePublished();
+    setIsPublishing(false);
   };
 
   const individualLink = getConferenceRegistrationLink(event.id, "individual");

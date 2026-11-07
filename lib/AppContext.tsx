@@ -91,7 +91,7 @@ interface AppContextType {
   ) => void;
   findRegistrationByNumber: (num: string, eventId?: string) => Registration | undefined;
   publishAllotmentsToggle: () => void;
-  markConferencePublished: () => void;
+  markConferencePublished: () => Promise<boolean>;
   refreshPortfoliosLive: (committeeId?: string) => Promise<MunPortfolio[]>;
   clearDatabase: () => void;
 }
@@ -184,7 +184,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {}
 
     if (isSupabaseConfigured && supabase) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      supabase.auth.getSession().then(({ data, error }) => {
+        if (error) {
+          console.warn("Supabase auth session recovering:", error.message);
+          try {
+            // Remove invalidated tokens if database was wiped
+            const toRemove: string[] = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (k && (k.startsWith("sb-") || k === "delegate_auth_user")) {
+                toRemove.push(k);
+              }
+            }
+            toRemove.forEach((k) => localStorage.removeItem(k));
+          } catch {}
+          setUser(null);
+          setIsAuthLoaded(true);
+          return;
+        }
+
+        const session = data?.session;
         if (session?.user?.email) {
           const u = { id: session.user.id, email: session.user.email };
           setUser(u);
@@ -203,6 +222,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
           }
         }
+        setIsAuthLoaded(true);
+      }).catch(() => {
+        setUser(null);
         setIsAuthLoaded(true);
       });
 
@@ -299,7 +321,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               commsData = res.data;
             }
 
-            const mappedComms: MunCommittee[] = (commsData || []).map((c) => ({
+            let mappedComms: MunCommittee[] = (commsData || []).map((c) => ({
               id: c.id,
               eventId: c.event_id,
               name: c.name,
@@ -307,16 +329,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               totalSeats: c.total_seats,
               backgroundGuideUrl: c.background_guide_url,
             }));
+
+            // Fallback protection: if Supabase has 0 committees for this conference, check local storage
+            let mappedPorts: MunPortfolio[] = [];
+            if (mappedComms.length === 0 && typeof window !== "undefined") {
+              try {
+                const savedConfData = localStorage.getItem(`delegate_conf_data_${chosen.id}`);
+                if (savedConfData) {
+                  const parsedData = JSON.parse(savedConfData);
+                  if (parsedData.committees && parsedData.committees.length > 0) {
+                    mappedComms = parsedData.committees;
+                    mappedPorts = parsedData.portfolios || [];
+                  }
+                }
+              } catch {}
+            }
             setCommittees(mappedComms);
 
             const commIds = mappedComms.map((c) => c.id);
-            if (commIds.length > 0) {
+            if (mappedPorts.length > 0) {
+              setPortfolios(mappedPorts);
+            } else if (commIds.length > 0) {
               const { data: portsData } = await supabase
                 .from("portfolios")
                 .select("*")
                 .in("committee_id", commIds);
 
-              if (portsData) {
+              if (portsData && portsData.length > 0) {
                 setPortfolios(
                   portsData.map((p) => ({
                     id: p.id,
@@ -327,6 +366,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     allottedRegistrationId: p.allotted_registration_id || undefined,
                   }))
                 );
+              } else if (typeof window !== "undefined") {
+                try {
+                  const savedConfData = localStorage.getItem(`delegate_conf_data_${chosen.id}`);
+                  if (savedConfData) {
+                    const parsedData = JSON.parse(savedConfData);
+                    if (parsedData.portfolios && parsedData.portfolios.length > 0) {
+                      setPortfolios(parsedData.portfolios);
+                    } else {
+                      setPortfolios([]);
+                    }
+                  } else {
+                    setPortfolios([]);
+                  }
+                } catch {
+                  setPortfolios([]);
+                }
+              } else {
+                setPortfolios([]);
               }
             } else {
               setPortfolios([]);
@@ -1413,36 +1470,62 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             .delete()
             .eq("committee_id", committeeId)
             .then(() => {
-              newPorts.forEach((p) =>
-                client
-                  .from("portfolios")
-                  .upsert({
+              if (newPorts.length > 0) {
+                for (let i = 0; i < newPorts.length; i += 50) {
+                  const chunk = newPorts.slice(i, i + 50);
+                  client
+                    .from("portfolios")
+                    .upsert(
+                      chunk.map((p) => ({
+                        id: p.id,
+                        committee_id: p.committeeId,
+                        country_name: p.countryName,
+                        country_code: p.code,
+                        status: p.status,
+                      }))
+                    )
+                    .then();
+                }
+              }
+            });
+        } else {
+          if (newPorts.length > 0) {
+            for (let i = 0; i < newPorts.length; i += 50) {
+              const chunk = newPorts.slice(i, i + 50);
+              client
+                .from("portfolios")
+                .upsert(
+                  chunk.map((p) => ({
                     id: p.id,
                     committee_id: p.committeeId,
                     country_name: p.countryName,
                     country_code: p.code,
                     status: p.status,
-                  })
-                  .then()
-              );
-            });
-        } else {
-          newPorts.forEach((p) =>
-            client
-              .from("portfolios")
-              .upsert({
-                id: p.id,
-                committee_id: p.committeeId,
-                country_name: p.countryName,
-                country_code: p.code,
-                status: p.status,
-              })
-              .then()
-          );
+                  }))
+                )
+                .then();
+            }
+          }
         }
       }
 
-      return [...otherPortfolios, ...updatedListForComm];
+      const allMerged = [...otherPortfolios, ...updatedListForComm];
+      if (typeof window !== "undefined" && event.id) {
+        try {
+          localStorage.setItem(
+            `delegate_conf_data_${event.id}`,
+            JSON.stringify({
+              committees: committees.map((c) =>
+                c.id === committeeId ? { ...c, totalSeats: finalSeats } : c
+              ),
+              portfolios: allMerged,
+              registrations,
+            })
+          );
+        } catch {}
+      }
+
+      return allMerged;
     });
   };
 
@@ -1618,7 +1701,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     updateEventRules({ allotmentsPublished: newState });
   };
 
-  const markConferencePublished = () => {
+  const markConferencePublished = async (): Promise<boolean> => {
     const updated: EventModel = {
       ...event,
       status: "published" as const,
@@ -1638,6 +1721,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         if (updated.id) {
           localStorage.setItem(`delegate_public_conf_${updated.id}`, JSON.stringify(updated));
+          localStorage.setItem(
+            `delegate_conf_data_${updated.id}`,
+            JSON.stringify({
+              committees,
+              portfolios,
+              registrations,
+            })
+          );
         }
         if (updated.slug) {
           localStorage.setItem(`delegate_public_conf_${updated.slug}`, JSON.stringify(updated));
@@ -1666,52 +1757,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (isSupabaseConfigured && supabase && updated.id && updated.id !== "new-conference" && !updated.id.startsWith("new-")) {
-      const client = supabase;
-      client
-        .from("events")
-        .upsert({
-          id: updated.id,
-          owner_id: user?.id || updated.ownerId || "organizer",
-          slug: updated.slug,
-          type: updated.type || "mun",
-          name: updated.name,
-          dates: updated.dates,
-          date_from: updated.dateFrom,
-          date_to: updated.dateTo,
-          deadline: updated.deadline,
-          deadline_date: updated.deadlineDate,
-          venue: updated.venue,
-          fee: updated.fee,
-          school_fee_per_student: updated.schoolFeePerStudent,
-          status: "published",
-          rules: {
-            ...updated.rules,
-            allotmentsPublished: updated.rules?.allotmentsPublished ?? false,
+      try {
+        const client = supabase;
+        const { error: evErr } = await client
+          .from("events")
+          .upsert({
+            id: updated.id,
+            owner_id: user?.id || updated.ownerId || "organizer",
+            slug: updated.slug,
+            type: updated.type || "mun",
+            name: updated.name,
+            dates: updated.dates,
+            date_from: updated.dateFrom,
+            date_to: updated.dateTo,
+            deadline: updated.deadline,
+            deadline_date: updated.deadlineDate,
+            venue: updated.venue,
+            fee: updated.fee,
+            school_fee_per_student: updated.schoolFeePerStudent,
+            status: "published",
+            rules: {
+              ...updated.rules,
+              allotmentsPublished: updated.rules?.allotmentsPublished ?? false,
+              branding: updated.branding,
+            },
             branding: updated.branding,
-          },
-          branding: updated.branding,
-        })
-        .then(async ({ error }) => {
-          if (error) console.error("Supabase markConferencePublished error:", error);
+          });
 
-          // Guarantee all committees are synced to Supabase
-          if (committees.length > 0) {
-            await client.from("committees").upsert(
-              committees.map((c) => ({
-                id: c.id,
-                event_id: updated.id,
-                name: c.name,
-                agenda: c.agenda,
-                total_seats: c.totalSeats,
-                background_guide_url: c.backgroundGuideUrl,
-              }))
-            );
-          }
+        if (evErr) console.error("Supabase markConferencePublished error:", evErr);
 
-          // Guarantee all portfolios are synced to Supabase
-          if (portfolios.length > 0) {
+        // Guarantee all committees are synced to Supabase
+        if (committees.length > 0) {
+          await client.from("committees").upsert(
+            committees.map((c) => ({
+              id: c.id,
+              event_id: updated.id,
+              name: c.name,
+              agenda: c.agenda,
+              total_seats: c.totalSeats,
+              background_guide_url: c.backgroundGuideUrl || null,
+            }))
+          );
+        }
+
+        // Guarantee all portfolios are synced to Supabase in chunks of 50
+        if (portfolios.length > 0) {
+          for (let i = 0; i < portfolios.length; i += 50) {
+            const chunk = portfolios.slice(i, i + 50);
             await client.from("portfolios").upsert(
-              portfolios.map((p) => ({
+              chunk.map((p) => ({
                 id: p.id,
                 committee_id: p.committeeId,
                 country_name: p.countryName,
@@ -1720,8 +1814,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               }))
             );
           }
-        });
+        }
+        return true;
+      } catch (err) {
+        console.error("Supabase markConferencePublished exception:", err);
+        return false;
+      }
     }
+    return true;
   };
 
   const refreshPortfoliosLive = async (committeeId?: string): Promise<MunPortfolio[]> => {

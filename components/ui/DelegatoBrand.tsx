@@ -49,7 +49,7 @@ export function DelegatoHorizontalLogo({
 }: {
   className?: string;
 }) {
-  const logoSrc = getAssetUrl("/branding/delegato-logo-horizontal-cropped.png");
+  const logoSrc = getAssetUrl("/branding/delegato-logo-transparent.png");
   return (
     <img
       src={logoSrc}
