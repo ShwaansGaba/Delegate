@@ -390,8 +390,12 @@ export default function OrganizerSetupPage() {
     setCurrentStep("publish");
   };
 
-  const handleOpenRegistrations = () => {
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const handleOpenRegistrations = async () => {
+    setIsPublishing(true);
     markConferencePublished();
+    setTimeout(() => setIsPublishing(false), 500);
   };
 
   const individualLink = getConferenceRegistrationLink(event.id, "individual");
@@ -1199,9 +1203,10 @@ export default function OrganizerSetupPage() {
                 <Button
                   variant="primary"
                   onClick={handleOpenRegistrations}
+                  disabled={isPublishing}
                   className="w-full sm:w-auto py-3 px-8 text-sm sm:text-base font-heading font-extrabold rounded-xl"
                 >
-                  Publish Conference &amp; Open Registrations
+                  {isPublishing ? "Publishing Conference..." : "Publish Conference & Open Registrations"}
                 </Button>
               </div>
             </div>

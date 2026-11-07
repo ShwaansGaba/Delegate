@@ -930,31 +930,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateEventBasics = (updates: Partial<EventModel>) => {
+    const accountHandle = (user?.email || "org")
+      .split("@")[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+
     let updatedSlug = event.slug;
-    if (updates.name && updates.name.trim() && updates.name !== event.name) {
-      const accountHandle = (user?.email || "org")
-        .split("@")[0]
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "");
+    if (updates.name && updates.name.trim() && (updates.name !== event.name || !updatedSlug)) {
       const newSlugBase = updates.name
         .trim()
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "");
-      const suffix = (event.slug || "").split("-").pop() || Math.random().toString(36).substring(2, 6);
+      const suffix = Math.random().toString(36).substring(2, 6);
       updatedSlug = `${accountHandle}-${newSlugBase}-${suffix}`;
+    } else if (!updatedSlug) {
+      updatedSlug = `${accountHandle}-mun-${Math.random().toString(36).substring(2, 6)}`;
     }
 
-    const updated = {
+    let finalId = event.id;
+    if (!finalId || finalId === "new-conference" || finalId.startsWith("new-")) {
+      finalId = `mun-${updatedSlug}`;
+    }
+
+    const updated: EventModel = {
       ...event,
       ...updates,
+      id: finalId,
       slug: updatedSlug,
-      ownerId: event.ownerId || user?.id,
+      ownerId: event.ownerId || user?.id || "organizer",
     };
     setEvent(updated);
 
     const hasValidName = Boolean(updated.name && updated.name.trim().length > 0);
-    if (hasValidName && updated.id !== "new-conference") {
+    if (hasValidName) {
       setMyConferences((prev) => {
         const exists = prev.some((c) => c.id === updated.id);
         if (exists) {
@@ -977,34 +986,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (updated.slug) {
           localStorage.setItem(`delegate_public_conf_${updated.slug}`, JSON.stringify(updated));
         }
-        if (user?.id) {
-          const userStorageKey = `delegate_storage_${user.id}`;
-          const existing = localStorage.getItem(userStorageKey);
-          const parsedExisting = existing ? JSON.parse(existing) : {};
-          const prevList: EventModel[] = (parsedExisting.myConferences || []).filter(
-            (c: EventModel) => c.name && c.name.trim().length > 0
-          );
-          const exists = prevList.some((c) => c.id === updated.id);
-          const updatedList = exists
-            ? prevList.map((c) => (c.id === updated.id ? updated : c))
-            : [updated, ...prevList];
-          localStorage.setItem(
-            userStorageKey,
-            JSON.stringify({
-              ...parsedExisting,
-              myConferences: updatedList,
-              event: updated,
-            })
-          );
-        }
+        const effectiveOwner = user?.id || updated.ownerId || "organizer";
+        const userStorageKey = `delegate_storage_${effectiveOwner}`;
+        const existing = localStorage.getItem(userStorageKey);
+        const parsedExisting = existing ? JSON.parse(existing) : {};
+        const prevList: EventModel[] = (parsedExisting.myConferences || []).filter(
+          (c: EventModel) => c.name && c.name.trim().length > 0
+        );
+        const exists = prevList.some((c) => c.id === updated.id);
+        const updatedList = exists
+          ? prevList.map((c) => (c.id === updated.id ? updated : c))
+          : [updated, ...prevList];
+        localStorage.setItem(
+          userStorageKey,
+          JSON.stringify({
+            ...parsedExisting,
+            myConferences: updatedList,
+            event: updated,
+          })
+        );
       } catch {}
 
-      if (isSupabaseConfigured && supabase && updated.id && updated.id !== "new-conference" && !updated.id.startsWith("new-")) {
+      if (isSupabaseConfigured && supabase) {
         supabase
           .from("events")
           .upsert({
             id: updated.id,
-            owner_id: user?.id,
+            owner_id: user?.id || updated.ownerId || "organizer",
             slug: updated.slug,
             type: updated.type || "mun",
             name: updated.name,
@@ -1024,7 +1032,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             branding: updated.branding,
           })
           .then(({ error }) => {
-            if (error) console.warn("Supabase upsertEventBasics note:", error.message);
+            if (error) console.error("Supabase upsertEventBasics error:", error);
           });
       }
     }
@@ -1034,14 +1042,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     data: Omit<MunCommittee, "id" | "eventId">,
     countries?: { name: string; code: string }[]
   ) => {
+    let effectiveEventId = event.id;
+    if (!effectiveEventId || effectiveEventId === "new-conference" || effectiveEventId.startsWith("new-")) {
+      const accountHandle = (user?.email || "org").split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+      const slugBase = (event.name || "conference").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      effectiveEventId = `mun-${accountHandle}-${slugBase}-${Math.random().toString(36).substring(2, 6)}`;
+      setEvent((prev) => ({ ...prev, id: effectiveEventId }));
+    }
+
     const cleanCommSlug = data.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const newId = `${event.id}-${cleanCommSlug}`;
+    const newId = `${effectiveEventId}-${cleanCommSlug}`;
     const targetSeats = Math.max(3, Math.min(150, data.totalSeats || 30));
     const newComm: MunCommittee = {
       ...data,
       totalSeats: targetSeats,
       id: newId,
-      eventId: event.id || "conference-1",
+      eventId: effectiveEventId,
     };
     setCommittees((prev) => [...prev.filter((c) => c.id !== newId), newComm]);
 
@@ -1650,7 +1666,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (isSupabaseConfigured && supabase && updated.id && updated.id !== "new-conference" && !updated.id.startsWith("new-")) {
-      supabase
+      const client = supabase;
+      client
         .from("events")
         .upsert({
           id: updated.id,
@@ -1674,8 +1691,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           },
           branding: updated.branding,
         })
-        .then(({ error }) => {
-          if (error) console.warn("Supabase markConferencePublished note:", error.message);
+        .then(async ({ error }) => {
+          if (error) console.error("Supabase markConferencePublished error:", error);
+
+          // Guarantee all committees are synced to Supabase
+          if (committees.length > 0) {
+            await client.from("committees").upsert(
+              committees.map((c) => ({
+                id: c.id,
+                event_id: updated.id,
+                name: c.name,
+                agenda: c.agenda,
+                total_seats: c.totalSeats,
+                background_guide_url: c.backgroundGuideUrl,
+              }))
+            );
+          }
+
+          // Guarantee all portfolios are synced to Supabase
+          if (portfolios.length > 0) {
+            await client.from("portfolios").upsert(
+              portfolios.map((p) => ({
+                id: p.id,
+                committee_id: p.committeeId,
+                country_name: p.countryName,
+                country_code: p.code,
+                status: p.status,
+              }))
+            );
+          }
         });
     }
   };
