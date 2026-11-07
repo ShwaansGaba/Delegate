@@ -22,7 +22,7 @@ export default function PublicConferencePage() {
       const sp = new URLSearchParams(window.location.search);
       const queryId = sp.get("id") || sp.get("c") || sp.get("event") || "";
 
-      if (!queryId) {
+      if (!queryId || queryId === "new-conference" || queryId.startsWith("new-")) {
         setErrorMsg("No conference specified.");
         setLoading(false);
         return;

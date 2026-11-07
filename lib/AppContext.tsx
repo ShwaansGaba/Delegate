@@ -225,7 +225,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         // Query events owned exclusively by this organizer (guard against invalid id and missing created_at column)
         let query = supabase.from("events").select("*");
-        if (activeUserId && activeUserId !== "new-conference") {
+        if (activeUserId && activeUserId !== "new-conference" && !activeUserId.startsWith("new-")) {
           query = query.eq("owner_id", activeUserId);
         }
         const { data: eventsData, error: evErr } = await query;
@@ -264,7 +264,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setAllEvents(parsed);
 
             const chosen =
-              (targetEventId && parsed.find((e) => e.id === targetEventId || e.slug === targetEventId)) ||
+              (targetEventId && targetEventId !== "new-conference" && !targetEventId.startsWith("new-") && parsed.find((e) => e.id === targetEventId || e.slug === targetEventId)) ||
               parsed[0];
 
             setEvent(chosen);
@@ -549,7 +549,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Delegate / Public loader: Load any published conference by ID or slug
   const loadEventById = async (eventId: string): Promise<boolean> => {
-    if (!eventId || eventId === "new-conference") return false;
+    if (!eventId || eventId === "new-conference" || eventId.startsWith("new-")) return false;
 
     // 1. Check Supabase
     if (isSupabaseConfigured && supabase) {
@@ -781,7 +781,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (event.id === conferenceId) {
       if (remaining.length > 0) {
         setEvent(remaining[0]);
-        if (user?.id) {
+        if (user?.id && remaining[0].id && remaining[0].id !== "new-conference" && !remaining[0].id.startsWith("new-")) {
           await loadOrganizerData(user.id, remaining[0].id);
         }
       } else {
@@ -792,7 +792,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured && supabase && conferenceId && conferenceId !== "new-conference" && !conferenceId.startsWith("new-")) {
       try {
         await supabase.from("events").delete().eq("id", conferenceId);
       } catch (err) {
@@ -1346,10 +1346,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             .delete()
             .eq("committee_id", committeeId)
             .then(() => {
-              newPorts.forEach((p) => client.from("portfolios").upsert(p).then());
+              newPorts.forEach((p) =>
+                client
+                  .from("portfolios")
+                  .upsert({
+                    id: p.id,
+                    committee_id: p.committeeId,
+                    country_name: p.countryName,
+                    country_code: p.code,
+                    status: p.status,
+                  })
+                  .then()
+              );
             });
         } else {
-          newPorts.forEach((p) => client.from("portfolios").upsert(p).then());
+          newPorts.forEach((p) =>
+            client
+              .from("portfolios")
+              .upsert({
+                id: p.id,
+                committee_id: p.committeeId,
+                country_name: p.countryName,
+                country_code: p.code,
+                status: p.status,
+              })
+              .then()
+          );
         }
       }
 
