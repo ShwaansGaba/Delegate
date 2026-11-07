@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { DelegatoIcon } from "@/components/ui/DelegatoBrand";
 import { ArrowLeft, Calendar, MapPin, Users, Award } from "lucide-react";
 
 interface DatabaseConference {
@@ -35,7 +36,7 @@ export default function AvailableConferencesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "Available Conferences | Delegate";
+    document.title = "Available Conferences | Delegato";
 
     async function loadLiveConferences() {
       setLoading(true);
@@ -151,8 +152,9 @@ export default function AvailableConferencesPage() {
 
         {/* Title */}
         <div className="mb-4 sm:mb-8">
-          <div className="inline-flex items-center px-3 py-1 rounded-lg bg-white/10 text-blue-100 text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 sm:mb-3">
-            Delegate Registration Portal
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-white/10 text-blue-100 text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 sm:mb-3">
+            <DelegatoIcon size="sm" rounded="md" />
+            <span>Delegato Conference Hub</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
             Available MUN Conferences

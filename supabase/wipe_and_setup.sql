@@ -27,7 +27,7 @@ CREATE TABLE public.events (
   school_fee_per_student NUMERIC DEFAULT 0,
   status TEXT DEFAULT 'draft',
   rules JSONB DEFAULT '{"allowSchoolTeams": true, "askPaymentProof": true, "showTakenPortfoliosLive": true, "firstComeFirstServed": true, "allotmentsPublished": false}'::jsonb,
-  branding JSONB DEFAULT '{"primaryColor": "#1560BD", "accentColor": "#FFD23F", "backgroundEffect": "none", "cardStyle": "solid", "monogram": "UN"}'::jsonb,
+  branding JSONB DEFAULT '{"primaryColor": "#1560BD", "accentColor": "#FFD23F", "backgroundEffect": "none", "cardStyle": "solid", "monogram": "D"}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

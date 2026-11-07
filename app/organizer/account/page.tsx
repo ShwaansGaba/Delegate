@@ -88,7 +88,7 @@ export default function OrganizerAccountPage() {
     accentColor: theme.secondaryColor,
     backgroundEffect: theme.backgroundEffect,
     cardStyle: "solid",
-    monogram: "UN",
+    monogram: "D",
   };
 
   const [regPrimary, setRegPrimary] = useState(initialBranding.primaryColor || "#1560BD");
@@ -97,7 +97,7 @@ export default function OrganizerAccountPage() {
   const [regCardStyle, setRegCardStyle] = useState<"solid" | "glass" | "minimal">(
     initialBranding.cardStyle || "solid"
   );
-  const [regMonogram, setRegMonogram] = useState(initialBranding.monogram || "UN");
+  const [regMonogram, setRegMonogram] = useState(initialBranding.monogram || "D");
 
   const [copiedLink, setCopiedLink] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -122,7 +122,7 @@ export default function OrganizerAccountPage() {
       setRegAccent(activeConf.branding.accentColor || theme.secondaryColor);
       setRegEffect(activeConf.branding.backgroundEffect || "none");
       setRegCardStyle(activeConf.branding.cardStyle || "solid");
-      setRegMonogram(activeConf.branding.monogram || "UN");
+      setRegMonogram(activeConf.branding.monogram || "D");
     }
   }, [selectedConfId, activeConf]);
 
@@ -158,7 +158,7 @@ export default function OrganizerAccountPage() {
       accentColor: regAccent,
       backgroundEffect: regEffect,
       cardStyle: regCardStyle,
-      monogram: regMonogram.trim().toUpperCase() || "UN",
+      monogram: regMonogram.trim().toUpperCase() || "D",
     };
 
     updateEventBasics({
@@ -745,8 +745,9 @@ export default function OrganizerAccountPage() {
                 </div>
 
                 {/* Simulator Footer */}
-                <div className="text-center text-[11px] text-white/70 relative z-10 font-medium">
-                  Powered by Delegate MUN Platform
+                <div className="text-center text-[11px] text-white/70 relative z-10 font-medium flex items-center justify-center gap-1.5">
+                  <span>Powered by</span>
+                  <span className="font-heading font-extrabold text-white">Deleg<span className="text-[#FFD23F]">ato</span></span>
                 </div>
               </div>
             </div>

@@ -66,7 +66,7 @@ export default function SetupLandingPage() {
 
   // Sync state if event loads asynchronously
   React.useEffect(() => {
-    document.title = event.name ? `${event.name} Setup | Delegate` : "Conference Setup | Delegate";
+    document.title = event.name ? `${event.name} Setup | Delegato` : "Conference Setup | Delegato";
     if (event.name) setName(event.name);
     if (event.dateFrom) setDateFrom(event.dateFrom);
     if (event.dateTo) setDateTo(event.dateTo);

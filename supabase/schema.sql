@@ -1,5 +1,5 @@
 -- ========================================================
--- DELEGATE - MUN CONFERENCE PLATFORM
+-- DELEGATO - MUN CONFERENCE PLATFORM
 -- Supabase Schema & Permissive Policies
 -- Paste this script into your Supabase SQL Editor and click RUN
 -- ========================================================

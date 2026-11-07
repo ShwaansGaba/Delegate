@@ -14,6 +14,18 @@ export function getBaseAppUrl(): string {
 }
 
 /**
+ * Resolve static asset URLs (logos, icons) taking GitHub Pages basePath into account.
+ */
+export function getAssetUrl(relativePath: string): string {
+  const clean = relativePath.startsWith("/") ? relativePath : `/${relativePath}`;
+  if (typeof window === "undefined") {
+    return process.env.GITHUB_PAGES === "true" ? `/Delegate${clean}` : clean;
+  }
+  const isGhPages = window.location.pathname.startsWith("/Delegate");
+  return isGhPages ? `/Delegate${clean}` : clean;
+}
+
+/**
  * Public conference portal link (e.g. /c/?id=delhi-mun-2026)
  */
 export function getConferencePublicLink(slugOrId: string): string {

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/lib/AppContext";
 import { Button } from "@/components/ui/Button";
+import { DelegatoIcon, DelegatoWordmark } from "@/components/ui/DelegatoBrand";
 
 interface AuthScreenProps {
   onSuccess?: () => void;
@@ -58,17 +59,17 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
 
   return (
     <div className="min-h-screen bg-[#1560BD] flex flex-col items-center justify-center p-3 sm:p-4">
-      {/* Conference / Product Monogram */}
+      {/* Conference / Product Monogram & Brand */}
       <div className="w-full max-w-md my-auto py-2">
         <div className="text-center mb-4 sm:mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white text-[#1560BD] font-heading font-extrabold text-xl sm:text-2xl mb-2 sm:mb-4">
-            UN
+          <div className="mb-3 sm:mb-4 inline-block">
+            <DelegatoIcon size="xl" rounded="2xl" className="shadow-2xl ring-4 ring-white/20" />
           </div>
-          <h1 className="text-3xl sm:text-4xl text-white font-heading font-extrabold tracking-tight">
-            Delegate
+          <h1 className="text-3xl sm:text-5xl text-white font-heading font-extrabold tracking-tight flex items-center justify-center">
+            <DelegatoWordmark size="xl" />
           </h1>
-          <p className="text-blue-100 text-sm sm:text-lg mt-0.5 sm:mt-2 font-medium">
-            Student Events & Conference Platform
+          <p className="text-blue-100 text-sm sm:text-base mt-1.5 sm:mt-2 font-medium">
+            Official MUN & Student Conference Platform
           </p>
         </div>
 

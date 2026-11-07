@@ -50,7 +50,7 @@ export default function IndividualRegisterPage() {
   const [name, setName] = useState("");
 
   React.useEffect(() => {
-    document.title = event.name ? `Register - ${event.name} | Delegate` : "Register for MUN | Delegate";
+    document.title = event.name ? `Register - ${event.name} | Delegato` : "Register for MUN | Delegato";
   }, [event.name]);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");

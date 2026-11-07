@@ -21,7 +21,7 @@ export default function StatusPage() {
   const [scopedEventId, setScopedEventId] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "Registration Status | Delegate";
+    document.title = "Registration Status | Delegato";
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
       const ev = sp.get("event") || sp.get("eventId");

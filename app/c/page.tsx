@@ -58,7 +58,7 @@ export default function PublicConferencePage() {
               branding: data.branding || undefined,
             };
             setConference(ev);
-            document.title = `${ev.name} | Delegate`;
+            document.title = `${ev.name} | Delegato`;
 
             // Load committees
             const { data: commsData } = await supabase
@@ -92,7 +92,7 @@ export default function PublicConferencePage() {
         if (directPublicConf) {
           const parsed = JSON.parse(directPublicConf);
           setConference(parsed);
-          document.title = `${parsed.name} | Delegate`;
+          document.title = `${parsed.name} | Delegato`;
           const savedData = localStorage.getItem(`delegate_conf_data_${parsed.id}`);
           if (savedData) {
             const parsedData = JSON.parse(savedData);
@@ -114,7 +114,7 @@ export default function PublicConferencePage() {
               );
               if (found) {
                 setConference(found);
-                document.title = `${found.name} | Delegate`;
+                document.title = `${found.name} | Delegato`;
                 const savedData = localStorage.getItem(`delegate_conf_data_${found.id}`);
                 if (savedData) {
                   const parsedData = JSON.parse(savedData);
@@ -151,7 +151,7 @@ export default function PublicConferencePage() {
       <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-4 py-8 sm:px-8 sm:py-16 text-white">
         <div className="max-w-md w-full mx-auto my-auto bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 space-y-5">
           <div className="text-xs uppercase tracking-wider font-bold text-neutral-500">
-            {conference ? conference.name : "Delegate Platform"}
+            {conference ? conference.name : "Delegato"}
           </div>
           <h1 className="text-3xl sm:text-4xl font-heading font-extrabold text-[#0B1B33] leading-tight">
             Registrations are not open
@@ -179,7 +179,7 @@ export default function PublicConferencePage() {
   const accentColor = branding.accentColor || "#FFD23F";
   const bgEffect = branding.backgroundEffect || "none";
   const cardStyle = branding.cardStyle || "solid";
-  const monogram = branding.monogram || "UN";
+  const monogram = branding.monogram || "D";
 
   return (
     <main
@@ -199,7 +199,7 @@ export default function PublicConferencePage() {
             </div>
             <div>
               <div className="text-xs uppercase tracking-wider font-bold text-white/80">
-                Official MUN Registration Portal
+                Delegato MUN Portal
               </div>
               <div className="text-xs text-white/60 font-medium">
                 Delegate Admissions
@@ -370,8 +370,9 @@ export default function PublicConferencePage() {
         </div>
 
         {/* Footer */}
-        <div className="text-center text-xs text-white/70">
-          Powered by Delegate MUN Platform
+        <div className="text-center text-xs text-white/70 flex items-center justify-center gap-1.5 pt-2">
+          <span>Powered by</span>
+          <span className="font-heading font-extrabold text-white">Deleg<span className="text-[#FFD23F]">ato</span></span>
         </div>
       </div>
     </main>

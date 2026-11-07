@@ -29,7 +29,7 @@ export default function SchoolTeamRegistrationPage() {
   }, [event.id, loadEventById]);
 
   React.useEffect(() => {
-    document.title = event.name ? `Team Registration - ${event.name} | Delegate` : "School Team Registration | Delegate";
+    document.title = event.name ? `Team Registration - ${event.name} | Delegato` : "School Team Registration | Delegato";
   }, [event.name]);
 
   const [schoolName, setSchoolName] = useState("Delhi Public School");

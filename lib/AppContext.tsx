@@ -700,7 +700,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         accentColor: theme.secondaryColor || "#FFD23F",
         backgroundEffect: theme.backgroundEffect || "none",
         cardStyle: "solid",
-        monogram: "UN",
+        monogram: "D",
       },
     };
 

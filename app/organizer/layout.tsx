@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { AccountMenu } from "@/components/auth/AccountMenu";
+import { DelegatoIcon, DelegatoWordmark } from "@/components/ui/DelegatoBrand";
 import { Menu, X, Plus } from "lucide-react";
 
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
@@ -30,7 +31,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         ? "Account & Branding"
         : pathname.split("/").pop() || "Organizer";
     const capitalized = pageName.charAt(0).toUpperCase() + pageName.slice(1);
-    document.title = `${capitalized} - ${event.name || "Delegate"}`;
+    document.title = `${capitalized} - ${event.name || "Delegato"} | Delegato`;
   }, [pathname, event.name]);
 
   const navLinks = [
@@ -65,12 +66,10 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
               </Link>
             )}
             <Link href="/organizer/conferences" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-              <div className="w-10 h-10 rounded-full bg-white text-[#1560BD] font-heading font-extrabold flex items-center justify-center text-lg shadow-sm">
-                UN
-              </div>
+              <DelegatoIcon size="md" rounded="xl" className="ring-2 ring-white/20" />
               <div>
                 <div className="text-xl font-heading font-extrabold text-white leading-tight">
-                  Delegate
+                  <DelegatoWordmark size="md" />
                 </div>
                 <div className="text-[11px] text-blue-200 font-bold uppercase tracking-wider">
                   {isSetup ? "Conference Setup" : "My Conferences"}
@@ -96,17 +95,18 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen theme-bg-primary flex flex-col lg:flex-row text-white transition-colors duration-300">
       {/* Mobile & Tablet Top Bar */}
       <div className="lg:hidden theme-bg-sidebar p-4 flex items-center justify-between border-b border-white/10 sticky top-0 z-40 transition-colors duration-300">
-        <div className="flex items-center gap-3 truncate mr-2">
+        <div className="flex items-center gap-2.5 truncate mr-2">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="text-white p-1 cursor-pointer"
+            className="text-white p-1 cursor-pointer shrink-0"
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
+          <DelegatoIcon size="sm" rounded="lg" className="shrink-0 ring-1 ring-white/20" />
           <div className="truncate">
-            <div className="text-lg font-heading font-extrabold text-white truncate">
+            <div className="text-base sm:text-lg font-heading font-extrabold text-white truncate leading-tight">
               {event.name || "Conference Workspace"}
             </div>
             <Link
@@ -155,6 +155,22 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
 
       {/* Desktop Darker Blue Sidebar (#0F4C96) with Active Conference Name on Top */}
       <aside className="hidden lg:flex flex-col w-64 lg:w-72 theme-bg-sidebar p-6 lg:p-8 flex-shrink-0 min-h-screen transition-colors duration-300">
+        {/* Delegato Platform Brand */}
+        <Link
+          href="/organizer/conferences"
+          className="flex items-center gap-3 pb-5 mb-5 border-b border-white/10 hover:opacity-90 transition-opacity"
+        >
+          <DelegatoIcon size="md" rounded="xl" className="ring-2 ring-white/20" />
+          <div>
+            <div className="text-xl font-heading font-extrabold text-white leading-tight">
+              <DelegatoWordmark size="md" />
+            </div>
+            <div className="text-[10px] text-blue-200 font-bold uppercase tracking-wider">
+              Organizer Suite
+            </div>
+          </div>
+        </Link>
+
         {/* Back to My Conferences Button */}
         <Link
           href="/organizer/conferences"

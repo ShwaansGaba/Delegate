@@ -22,7 +22,7 @@ export default function BrowseCommitteesPage() {
   }, [event.id, loadEventById]);
 
   useEffect(() => {
-    document.title = event.name ? `Committees - ${event.name} | Delegate` : "Committees | Delegate";
+    document.title = event.name ? `Committees - ${event.name} | Delegato` : "Committees | Delegato";
   }, [event.name]);
 
   return (
