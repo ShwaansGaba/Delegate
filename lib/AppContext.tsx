@@ -13,7 +13,7 @@ import {
 import { EMPTY_EVENT, STANDARD_TEMPLATES } from "./store";
 import { simulateAutoAllotment, AutoAllotSimulationResult } from "./autoAllot";
 import { supabase, isSupabaseConfigured } from "./supabase";
-import { getPortfoliosForCommittee } from "./committeeTemplates";
+import { getPortfoliosForCommittee, getAutoPortfolios } from "./committeeTemplates";
 
 export interface AuthUser {
   id: string;
@@ -83,6 +83,12 @@ interface AppContextType {
   deletePortfolio: (portfolioId: string) => void;
   deleteMultiplePortfolios: (portfolioIds: string[]) => void;
   addPortfolioToCommittee: (committeeId: string, item: { name: string; code: string }) => void;
+  autoPopulatePortfolios: (
+    committeeId: string,
+    type: "countries" | "indian_politicians",
+    count: number,
+    mode?: "append" | "replace"
+  ) => void;
   findRegistrationByNumber: (num: string, eventId?: string) => Registration | undefined;
   publishAllotmentsToggle: () => void;
   markConferencePublished: () => void;
@@ -1268,7 +1274,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     setPortfolios((prev) => [...prev, newPort]);
 
+    // Keep committee total_seats in sync with the portfolio count
+    const updatedCount = existingCount + 1;
+    setCommittees((prev) =>
+      prev.map((c) =>
+        c.id === committeeId && c.totalSeats < updatedCount ? { ...c, totalSeats: updatedCount } : c
+      )
+    );
+
     if (isSupabaseConfigured && supabase) {
+      supabase.from("committees").update({ total_seats: updatedCount }).eq("id", committeeId).then();
       supabase
         .from("portfolios")
         .insert({
@@ -1280,6 +1295,66 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         })
         .then();
     }
+  };
+
+  const autoPopulatePortfolios = (
+    committeeId: string,
+    type: "countries" | "indian_politicians",
+    count: number,
+    mode: "append" | "replace" = "append"
+  ) => {
+    const clampedCount = Math.max(1, Math.min(150, count));
+
+    setPortfolios((prev) => {
+      const existingForComm = prev.filter((p) => p.committeeId === committeeId);
+      const otherPortfolios = prev.filter((p) => p.committeeId !== committeeId);
+
+      const existingNames = mode === "replace" ? [] : existingForComm.map((p) => p.countryName);
+      const generated = getAutoPortfolios(type, clampedCount, existingNames);
+
+      const newPorts: MunPortfolio[] = generated.map((c, i) => {
+        const cleanSlug = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        return {
+          id: `${committeeId}-${cleanSlug || i}-${Date.now().toString(36)}-${i}`,
+          committeeId,
+          countryName: c.name,
+          code: (c.code || (type === "indian_politicians" ? "IN" : "UN")).toUpperCase().slice(0, 2),
+          status: "open",
+        };
+      });
+
+      let updatedListForComm: MunPortfolio[] = [];
+      if (mode === "replace") {
+        const assignedPorts = existingForComm.filter((p) => p.status !== "open");
+        updatedListForComm = [...assignedPorts, ...newPorts].slice(0, 150);
+      } else {
+        const combined = [...existingForComm, ...newPorts];
+        updatedListForComm = combined.slice(0, 150);
+      }
+
+      const finalSeats = updatedListForComm.length;
+      setCommittees((commPrev) =>
+        commPrev.map((c) => (c.id === committeeId ? { ...c, totalSeats: finalSeats } : c))
+      );
+
+      if (isSupabaseConfigured && supabase) {
+        const client = supabase;
+        client.from("committees").update({ total_seats: finalSeats }).eq("id", committeeId).then();
+        if (mode === "replace") {
+          client
+            .from("portfolios")
+            .delete()
+            .eq("committee_id", committeeId)
+            .then(() => {
+              newPorts.forEach((p) => client.from("portfolios").upsert(p).then());
+            });
+        } else {
+          newPorts.forEach((p) => client.from("portfolios").upsert(p).then());
+        }
+      }
+
+      return [...otherPortfolios, ...updatedListForComm];
+    });
   };
 
   // Atomic Allotment
@@ -1581,6 +1656,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deletePortfolio,
         deleteMultiplePortfolios,
         addPortfolioToCommittee,
+        autoPopulatePortfolios,
         findRegistrationByNumber,
         publishAllotmentsToggle,
         markConferencePublished,

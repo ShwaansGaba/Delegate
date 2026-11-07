@@ -1,4 +1,4 @@
-import { ALL_COUNTRIES } from "./portfolioDatabase";
+import { ALL_COUNTRIES, INDIAN_POLITICIANS } from "./portfolioDatabase";
 
 export interface CommitteeTemplateDefinition {
   name: string;
@@ -581,4 +581,81 @@ export function getPortfoliosForCommittee(
   }
 
   return result.slice(0, count);
+}
+
+/**
+ * Auto-generate a portfolio list for a committee by category (countries vs indian politicians).
+ * Ignores any names in existingNames so duplicates are never added.
+ */
+export function getAutoPortfolios(
+  type: "countries" | "indian_politicians",
+  count: number,
+  existingNames: string[] = []
+): { name: string; code: string }[] {
+  const clampedCount = Math.max(1, Math.min(150, count));
+  const existingSet = new Set(existingNames.map((n) => n.trim().toLowerCase()));
+  const result: { name: string; code: string }[] = [];
+
+  if (type === "indian_politicians") {
+    // 1. Prominent real Indian politicians
+    for (const pol of INDIAN_POLITICIANS) {
+      if (result.length >= clampedCount) break;
+      const lower = pol.name.toLowerCase();
+      if (!existingSet.has(lower)) {
+        existingSet.add(lower);
+        result.push({ name: pol.name, code: pol.code.slice(0, 2).toUpperCase() });
+      }
+    }
+
+    // 2. Indian political parties and representatives
+    if (result.length < clampedCount) {
+      for (const party of MASTER_INDIAN_PARTIES) {
+        if (result.length >= clampedCount) break;
+        const lower = party.name.toLowerCase();
+        if (!existingSet.has(lower)) {
+          existingSet.add(lower);
+          result.push({ name: party.name, code: party.code.slice(0, 2).toUpperCase() });
+        }
+      }
+    }
+
+    // 3. Backfill with indexed parliamentary seats if very large count (> 140)
+    let idx = 1;
+    while (result.length < clampedCount) {
+      const name = `Member of Parliament ${idx}`;
+      const lower = name.toLowerCase();
+      if (!existingSet.has(lower)) {
+        existingSet.add(lower);
+        result.push({ name, code: `MP` });
+      }
+      idx++;
+    }
+
+    return result.slice(0, clampedCount);
+  }
+
+  // Type: "countries"
+  // 1. Most common MUN member states
+  for (const country of MASTER_STANDARD_POOL_NAMES) {
+    if (result.length >= clampedCount) break;
+    const lower = country.toLowerCase();
+    if (!existingSet.has(lower)) {
+      existingSet.add(lower);
+      result.push({ name: country, code: getCountryCode(country) });
+    }
+  }
+
+  // 2. All 193 UN member states
+  if (result.length < clampedCount) {
+    for (const country of ALL_COUNTRIES) {
+      if (result.length >= clampedCount) break;
+      const lower = country.name.toLowerCase();
+      if (!existingSet.has(lower)) {
+        existingSet.add(lower);
+        result.push({ name: country.name, code: country.code.slice(0, 2).toUpperCase() });
+      }
+    }
+  }
+
+  return result.slice(0, clampedCount);
 }
