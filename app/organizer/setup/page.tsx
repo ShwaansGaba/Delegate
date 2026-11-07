@@ -35,6 +35,7 @@ export default function OrganizerSetupPage() {
     updateEventBasics,
     addCommittee,
     editCommittee,
+    syncCommitteePortfolios,
     removeCommittee,
     deletePortfolio,
     deleteMultiplePortfolios,
@@ -198,6 +199,15 @@ export default function OrganizerSetupPage() {
   // Country multi-select state
   const [countryFilterComm, setCountryFilterComm] = useState(committees[0]?.id || "unsc");
   const [selectedPortIds, setSelectedPortIds] = useState<string[]>([]);
+
+  const activeComm = committees.find((c) => c.id === countryFilterComm);
+  const [quickSeatsInput, setQuickSeatsInput] = useState(activeComm?.totalSeats?.toString() || "30");
+
+  React.useEffect(() => {
+    if (activeComm) {
+      setQuickSeatsInput(activeComm.totalSeats.toString());
+    }
+  }, [countryFilterComm, activeComm?.totalSeats]);
 
   // Keep country filter in sync with existing committees
   React.useEffect(() => {
@@ -888,21 +898,56 @@ export default function OrganizerSetupPage() {
             ))}
           </div>
 
-          {/* Bulk delete action header */}
-          <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
-            <div className="text-xs sm:text-sm font-heading font-extrabold text-neutral-800">
-              Portfolios ({activePortfolios.length} / max 150)
+          {/* Portfolio count & fast auto-fill sync header */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs sm:text-sm font-heading font-extrabold text-neutral-800">
+                Portfolios ({activePortfolios.length} / {activeComm?.totalSeats || activePortfolios.length} seats)
+              </span>
+              {activeComm && activePortfolios.length !== activeComm.totalSeats && (
+                <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                  {activePortfolios.length < activeComm.totalSeats ? "Under capacity" : "Over capacity"}
+                </span>
+              )}
             </div>
 
-            {selectedPortIds.length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-neutral-100 rounded-xl px-2 py-1">
+                <span className="text-xs font-bold text-neutral-500">Seats:</span>
+                <input
+                  type="number"
+                  min={3}
+                  max={150}
+                  value={quickSeatsInput}
+                  onChange={(e) => setQuickSeatsInput(e.target.value)}
+                  className="w-12 bg-white rounded-lg px-1 py-0.5 text-xs font-extrabold text-center outline-none border border-neutral-200"
+                />
+              </div>
+
               <button
                 type="button"
-                onClick={handleDeleteSelected}
-                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-heading font-extrabold flex items-center gap-1 cursor-pointer transition-colors"
+                onClick={() => {
+                  const target = Number(quickSeatsInput);
+                  if (!isNaN(target) && target >= 3 && target <= 150) {
+                    syncCommitteePortfolios(countryFilterComm, target);
+                  }
+                }}
+                className="bg-[#1560BD] hover:bg-[#0F4C96] text-white px-2.5 py-1.5 rounded-xl text-xs font-heading font-extrabold flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+                title={`Generate/synchronize portfolios to match ${quickSeatsInput} seats`}
               >
-                <Trash2 className="w-3.5 h-3.5" /> Delete Selected ({selectedPortIds.length})
+                ⚡ Auto-Fill to {quickSeatsInput || 30}
               </button>
-            )}
+
+              {selectedPortIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleDeleteSelected}
+                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-heading font-extrabold flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete ({selectedPortIds.length})
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Country Pills list with hover circle delete and checkbox */}

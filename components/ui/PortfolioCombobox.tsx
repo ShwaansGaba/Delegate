@@ -24,13 +24,13 @@ export function PortfolioCombobox({
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return MASTER_PORTFOLIO_LIST.slice(0, 10);
+    if (!q) return MASTER_PORTFOLIO_LIST.slice(0, 15);
     return MASTER_PORTFOLIO_LIST.filter(
       (item) =>
         item.name.toLowerCase().includes(q) ||
         item.code.toLowerCase().includes(q) ||
         (item.designation && item.designation.toLowerCase().includes(q))
-    ).slice(0, 12);
+    ).slice(0, 30);
   }, [query]);
 
   // Handle clicking outside to close
@@ -138,10 +138,20 @@ export function PortfolioCombobox({
                     className={`text-xs uppercase font-extrabold px-2 py-0.5 rounded-md ${
                       item.category === "politician"
                         ? "bg-amber-100 text-amber-800"
+                        : item.category === "party"
+                        ? "bg-purple-100 text-purple-800"
+                        : item.category === "regional"
+                        ? "bg-emerald-100 text-emerald-800"
                         : "bg-blue-100 text-blue-800"
                     }`}
                   >
-                    {item.category === "politician" ? "Leader" : "Country"}
+                    {item.category === "politician"
+                      ? "Leader"
+                      : item.category === "party"
+                      ? "Party"
+                      : item.category === "regional"
+                      ? "Bloc"
+                      : "Country"}
                   </span>
                   {isAlreadyAdded && (
                     <span className="text-sm font-bold text-neutral-400">Added</span>

@@ -70,6 +70,7 @@ interface AppContextType {
   updateEventBasics: (updates: Partial<EventModel>) => void;
   addCommittee: (committee: Omit<MunCommittee, "id" | "eventId">, countries?: { name: string; code: string }[]) => void;
   loadTemplateCommittees: () => void;
+  syncCommitteePortfolios: (committeeId: string, targetCount: number) => void;
   editCommittee: (id: string, updates: Partial<MunCommittee>) => void;
   removeCommittee: (id: string) => void;
   allotDelegateManual: (regId: string, committeeId: string, portfolioId: string) => Promise<boolean>;
@@ -1050,9 +1051,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         backgroundGuideUrl: `/guides/${tpl.name}_Background_Guide.pdf`,
       });
 
-      tpl.countries.forEach((c) => {
+      const countries = getPortfoliosForCommittee(tpl.name, tpl.totalSeats);
+      countries.forEach((c) => {
         newPorts.push({
-          id: `${commId}-${c.code.toLowerCase()}`,
+          id: `${commId}-${c.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
           committeeId: commId,
           countryName: c.name,
           code: c.code,
@@ -1095,6 +1097,62 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const syncCommitteePortfolios = (committeeId: string, targetCount: number) => {
+    const clampedSeats = Math.max(3, Math.min(150, targetCount));
+
+    setCommittees((prev) =>
+      prev.map((c) => (c.id === committeeId ? { ...c, totalSeats: clampedSeats } : c))
+    );
+
+    const comm = committees.find((c) => c.id === committeeId);
+    const commName = comm?.name || "Committee";
+
+    setPortfolios((prev) => {
+      const existingForComm = prev.filter((p) => p.committeeId === committeeId);
+      const otherPortfolios = prev.filter((p) => p.committeeId !== committeeId);
+
+      if (existingForComm.length < clampedSeats) {
+        const needed = clampedSeats - existingForComm.length;
+        const candidatePool = getPortfoliosForCommittee(commName, clampedSeats + 30);
+        const existingNames = new Set(existingForComm.map((p) => p.countryName.toLowerCase()));
+        const newToAdd = candidatePool
+          .filter((c) => !existingNames.has(c.name.toLowerCase()))
+          .slice(0, needed);
+
+        const createdPorts: MunPortfolio[] = newToAdd.map((c, i) => {
+          const cleanSlug = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+          return {
+            id: `${committeeId}-${cleanSlug || i}-${Date.now().toString(36)}-${i}`,
+            committeeId,
+            countryName: c.name,
+            code: (c.code || "UN").toUpperCase().slice(0, 2),
+            status: "open",
+          };
+        });
+
+        const updated = [...prev, ...createdPorts];
+        if (isSupabaseConfigured && supabase) {
+          const client = supabase;
+          createdPorts.forEach((p) => {
+            client.from("portfolios").upsert(p).then();
+          });
+        }
+        return updated;
+      } else if (existingForComm.length > clampedSeats) {
+        const openPorts = existingForComm.filter((p) => p.status === "open");
+        const assignedPorts = existingForComm.filter((p) => p.status !== "open");
+        const keepCount = Math.max(0, clampedSeats - assignedPorts.length);
+        const keptOpen = openPorts.slice(0, keepCount);
+        return [...otherPortfolios, ...assignedPorts, ...keptOpen];
+      }
+      return prev;
+    });
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from("committees").update({ total_seats: clampedSeats }).eq("id", committeeId).then();
+    }
+  };
+
   const editCommittee = (id: string, updates: Partial<MunCommittee>) => {
     const clampedUpdates = { ...updates };
     if (clampedUpdates.totalSeats) {
@@ -1113,16 +1171,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const existingForComm = prev.filter((p) => p.committeeId === id);
         if (existingForComm.length < targetSeats) {
           const needed = targetSeats - existingForComm.length;
-          const candidatePool = getPortfoliosForCommittee(commName, targetSeats + 25);
+          const candidatePool = getPortfoliosForCommittee(commName, targetSeats + 30);
           const existingNames = new Set(existingForComm.map((p) => p.countryName.toLowerCase()));
           const newToAdd = candidatePool
             .filter((c) => !existingNames.has(c.name.toLowerCase()))
             .slice(0, needed);
 
-          const createdPorts: MunPortfolio[] = newToAdd.map((c) => {
+          const createdPorts: MunPortfolio[] = newToAdd.map((c, i) => {
             const cleanSlug = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
             return {
-              id: `${id}-${cleanSlug}`,
+              id: `${id}-${cleanSlug || i}-${Date.now().toString(36)}-${i}`,
               committeeId: id,
               countryName: c.name,
               code: (c.code || "UN").toUpperCase().slice(0, 2),
@@ -1510,6 +1568,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateEventBasics,
         addCommittee,
         loadTemplateCommittees,
+        syncCommitteePortfolios,
         editCommittee,
         removeCommittee,
         allotDelegateManual,
