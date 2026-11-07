@@ -69,7 +69,6 @@ interface DelegatoWordmarkProps {
 export function DelegatoWordmark({
   size = "md",
   className = "",
-  theme = "light",
 }: DelegatoWordmarkProps) {
   const textSize = {
     sm: "text-base font-bold",
@@ -78,14 +77,12 @@ export function DelegatoWordmark({
     xl: "text-3xl sm:text-4xl font-extrabold",
   }[size];
 
-  const primaryTextColor = theme === "light" ? "text-white" : "text-[#0B1B33]";
-
   return (
     <span
-      className={`font-heading tracking-tight inline-flex items-baseline select-none ${textSize} ${className}`}
+      className={`font-heading tracking-tight inline-flex items-baseline select-none font-extrabold text-[#FFD23F] ${textSize} ${className}`}
+      style={{ fontFamily: "'Bricolage Grotesque', sans-serif" }}
     >
-      <span className={primaryTextColor}>Deleg</span>
-      <span className="text-[#FFD23F]">ato</span>
+      Delegato
     </span>
   );
 }

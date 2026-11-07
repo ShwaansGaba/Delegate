@@ -752,7 +752,7 @@ export default function OrganizerAccountPage() {
                 {/* Simulator Footer */}
                 <div className="text-center text-[11px] text-white/70 relative z-10 font-medium flex items-center justify-center gap-1.5">
                   <span>Powered by</span>
-                  <span className="font-heading font-extrabold text-white">Deleg<span className="text-[#FFD23F]">ato</span></span>
+                  <span className="font-heading font-extrabold text-[#FFD23F]" style={{ fontFamily: "'Bricolage Grotesque', sans-serif" }}>Delegato</span>
                 </div>
               </div>
             </div>
