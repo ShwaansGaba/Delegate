@@ -16,10 +16,13 @@ type SetupStep = "basics" | "committees" | "countries" | "rules" | "publish";
 const COMMITTEE_TEMPLATES = [
   { name: "UNSC", agenda: "Addressing maritime security and sovereignty conflicts", totalSeats: 15 },
   { name: "DISEC", agenda: "Non-proliferation of tactical and cyber ballistic armaments", totalSeats: 40 },
-  { name: "UNHRC", agenda: "Protection of vulnerable populations in active war zones", totalSeats: 30 },
-  { name: "UNEP", agenda: "Transboundary river basin conservation and climate treaties", totalSeats: 25 },
-  { name: "UNGA", agenda: "Equitable development of sovereign AI and technology infrastructure", totalSeats: 40 },
-  { name: "WHO", agenda: "Global pandemic preparedness and healthcare distribution equity", totalSeats: 25 },
+  { name: "UNHRC", agenda: "Protection of vulnerable populations in active war zones", totalSeats: 47 },
+  { name: "UNEP", agenda: "Transboundary river basin conservation and climate treaties", totalSeats: 30 },
+  { name: "UNGA", agenda: "Equitable development of sovereign AI and technology infrastructure", totalSeats: 60 },
+  { name: "WHO", agenda: "Global pandemic preparedness and healthcare distribution equity", totalSeats: 35 },
+  { name: "AIPPM", agenda: "Review of national electoral reforms and cooperative federalism", totalSeats: 50 },
+  { name: "Lok Sabha", agenda: "National security framework and border infrastructure review", totalSeats: 45 },
+  { name: "G20", agenda: "Sustainable global debt architecture and multilateral financing", totalSeats: 21 },
 ];
 
 export default function OrganizerSetupPage() {
@@ -296,8 +299,8 @@ export default function OrganizerSetupPage() {
       return;
     }
     const seats = Number(newCommSeats);
-    if (isNaN(seats) || seats <= 0) {
-      setValidationError("Seats must be a positive number.");
+    if (isNaN(seats) || seats < 3 || seats > 150) {
+      setValidationError("Portfolios / seats must be between 3 and 150.");
       return;
     }
 
@@ -327,8 +330,8 @@ export default function OrganizerSetupPage() {
       return;
     }
     const seats = Number(newCommSeats);
-    if (isNaN(seats) || seats <= 0) {
-      setValidationError("Seats must be a positive number.");
+    if (isNaN(seats) || seats < 3 || seats > 150) {
+      setValidationError("Portfolios / seats must be between 3 and 150.");
       return;
     }
 
@@ -795,14 +798,22 @@ export default function OrganizerSetupPage() {
               </div>
 
               <div>
-                <label className="block text-xs sm:text-sm font-bold text-neutral-600 mb-1">Seats</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs sm:text-sm font-bold text-neutral-600">Portfolios / Seats</label>
+                  <span className="text-[11px] text-neutral-400 font-bold">Min 3, Max 150</span>
+                </div>
                 <input
                   type="number"
+                  min={3}
+                  max={150}
                   value={newCommSeats}
                   onChange={(e) => setNewCommSeats(e.target.value)}
                   placeholder="30"
                   className="w-full bg-neutral-100 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]/30"
                 />
+                <p className="text-[11px] text-neutral-400 mt-1">
+                  Setting {newCommSeats || 30} seats will automatically generate {newCommSeats || 30} portfolios in the next step.
+                </p>
               </div>
 
               <div className="pt-1">
@@ -880,7 +891,7 @@ export default function OrganizerSetupPage() {
           {/* Bulk delete action header */}
           <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
             <div className="text-xs sm:text-sm font-heading font-extrabold text-neutral-800">
-              Portfolios ({activePortfolios.length})
+              Portfolios ({activePortfolios.length} / max 150)
             </div>
 
             {selectedPortIds.length > 0 && (

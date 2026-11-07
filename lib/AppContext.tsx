@@ -13,6 +13,7 @@ import {
 import { EMPTY_EVENT, STANDARD_TEMPLATES } from "./store";
 import { simulateAutoAllotment, AutoAllotSimulationResult } from "./autoAllot";
 import { supabase, isSupabaseConfigured } from "./supabase";
+import { getPortfoliosForCommittee } from "./committeeTemplates";
 
 export interface AuthUser {
   id: string;
@@ -977,33 +978,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   ) => {
     const cleanCommSlug = data.name.toLowerCase().replace(/[^a-z0-9]/g, "");
     const newId = `${event.id}-${cleanCommSlug}`;
+    const targetSeats = Math.max(3, Math.min(150, data.totalSeats || 30));
     const newComm: MunCommittee = {
       ...data,
+      totalSeats: targetSeats,
       id: newId,
       eventId: event.id || "conference-1",
     };
     setCommittees((prev) => [...prev.filter((c) => c.id !== newId), newComm]);
 
-    const countriesToAdd = countries || [
-      { name: "India", code: "IN" },
-      { name: "United States", code: "US" },
-      { name: "United Kingdom", code: "GB" },
-      { name: "France", code: "FR" },
-      { name: "China", code: "CN" },
-      { name: "Russia", code: "RU" },
-      { name: "Brazil", code: "BR" },
-      { name: "Japan", code: "JP" },
-      { name: "Germany", code: "DE" },
-      { name: "Kenya", code: "KE" },
-    ];
+    // Automatically generate exactly `targetSeats` portfolios matching the requested seat count!
+    const countriesToAdd =
+      countries && countries.length > 0
+        ? countries.slice(0, 150)
+        : getPortfoliosForCommittee(data.name, targetSeats);
 
-    const newPorts: MunPortfolio[] = countriesToAdd.map((c) => ({
-      id: `${newId}-${c.code.toLowerCase()}`,
-      committeeId: newId,
-      countryName: c.name,
-      code: c.code,
-      status: "open",
-    }));
+    const newPorts: MunPortfolio[] = countriesToAdd.map((c) => {
+      const cleanSlug = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+      return {
+        id: `${newId}-${cleanSlug}`,
+        committeeId: newId,
+        countryName: c.name,
+        code: (c.code || "UN").toUpperCase().slice(0, 2),
+        status: "open",
+      };
+    });
 
     setPortfolios((prev) => [...prev.filter((p) => p.committeeId !== newId), ...newPorts]);
 
@@ -1097,9 +1096,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const editCommittee = (id: string, updates: Partial<MunCommittee>) => {
-    setCommittees((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
+    const clampedUpdates = { ...updates };
+    if (clampedUpdates.totalSeats) {
+      clampedUpdates.totalSeats = Math.max(3, Math.min(150, clampedUpdates.totalSeats));
+    }
+
+    setCommittees((prev) => prev.map((c) => (c.id === id ? { ...c, ...clampedUpdates } : c)));
+
+    // If totalSeats was updated and increased, automatically top up portfolios so the roster matches the requested seat count!
+    if (clampedUpdates.totalSeats && clampedUpdates.totalSeats > 0) {
+      const comm = committees.find((c) => c.id === id);
+      const commName = clampedUpdates.name || comm?.name || "Committee";
+      const targetSeats = clampedUpdates.totalSeats;
+
+      setPortfolios((prev) => {
+        const existingForComm = prev.filter((p) => p.committeeId === id);
+        if (existingForComm.length < targetSeats) {
+          const needed = targetSeats - existingForComm.length;
+          const candidatePool = getPortfoliosForCommittee(commName, targetSeats + 25);
+          const existingNames = new Set(existingForComm.map((p) => p.countryName.toLowerCase()));
+          const newToAdd = candidatePool
+            .filter((c) => !existingNames.has(c.name.toLowerCase()))
+            .slice(0, needed);
+
+          const createdPorts: MunPortfolio[] = newToAdd.map((c) => {
+            const cleanSlug = c.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+            return {
+              id: `${id}-${cleanSlug}`,
+              committeeId: id,
+              countryName: c.name,
+              code: (c.code || "UN").toUpperCase().slice(0, 2),
+              status: "open",
+            };
+          });
+
+          return [...prev, ...createdPorts];
+        }
+        return prev;
+      });
+    }
+
     if (isSupabaseConfigured && supabase) {
-      supabase.from("committees").update(updates).eq("id", id).then();
+      supabase.from("committees").update(clampedUpdates).eq("id", id).then();
     }
   };
 
@@ -1157,6 +1195,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addPortfolioToCommittee = (committeeId: string, item: { name: string; code: string }) => {
+    const existingCount = portfolios.filter((p) => p.committeeId === committeeId).length;
+    if (existingCount >= 150) {
+      alert("Maximum limit of 150 portfolios reached for this committee.");
+      return;
+    }
     const cleanId = `${committeeId}-${item.code.toLowerCase().replace(/[^a-z0-9]/g, "")}-${Date.now().toString().slice(-4)}`;
     const newPort: MunPortfolio = {
       id: cleanId,
