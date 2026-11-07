@@ -144,16 +144,7 @@ export function AuthScreen({ onSuccess }: AuthScreenProps) {
                 <div className="font-bold">{errorMsg}</div>
                 {errorMsg.toLowerCase().includes("disabled") && (
                   <p className="text-xs sm:text-sm text-red-700 font-normal mt-1">
-                    To enable: Go to{" "}
-                    <a
-                      href="https://supabase.com/dashboard/project/znhbotfzmmrsibazlraw/auth/providers"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline font-bold"
-                    >
-                      Supabase Dashboard → Authentication → Providers → Email
-                    </a>
-                    , toggle <strong>Enable Email provider</strong> to <strong>ON</strong>, and click <strong>Save</strong>.
+                    Email signups are currently restricted. Please log in with existing credentials or contact the organizer.
                   </p>
                 )}
               </div>

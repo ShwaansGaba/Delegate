@@ -790,10 +790,10 @@ export default function OrganizerAccountPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-xl font-heading font-extrabold text-red-600">
-              Danger Zone: Wipe All Data & Reset
+              Danger Zone: Reset All Platform Data
             </h3>
             <p className="text-neutral-500 text-xs sm:text-sm font-medium mt-1">
-              Purges all conferences, committees, portfolios, and delegate registrations from your database and local storage.
+              Purges all conferences, committees, portfolios, and delegate registrations from your account and local storage.
             </p>
           </div>
           <button
@@ -801,17 +801,17 @@ export default function OrganizerAccountPage() {
             onClick={async () => {
               if (
                 confirm(
-                  "Are you sure you want to completely wipe all conference and registration data from database and storage? This cannot be undone."
+                  "Are you sure you want to completely reset all conference and registration data? This cannot be undone."
                 )
               ) {
                 await clearDatabase();
-                alert("Database and storage have been completely wiped.");
+                alert("All conference and registration data has been reset.");
                 router.push("/organizer/conferences");
               }
             }}
             className="px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-heading font-extrabold text-sm transition-colors cursor-pointer shrink-0"
           >
-            Wipe Database Now
+            Reset All Data Now
           </button>
         </div>
       </div>

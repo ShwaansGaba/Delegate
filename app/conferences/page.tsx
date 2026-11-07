@@ -8,7 +8,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { DelegatoIcon } from "@/components/ui/DelegatoBrand";
 import { ArrowLeft, Calendar, MapPin, Users, Award } from "lucide-react";
 
-interface DatabaseConference {
+interface ConferenceItem {
   id: string;
   name: string;
   dates?: string;
@@ -32,7 +32,7 @@ export default function AvailableConferencesPage() {
   const router = useRouter();
   const { event, committees, portfolios } = useApp();
   const [selectedConfForModal, setSelectedConfForModal] = useState<string | null>(null);
-  const [conferences, setConferences] = useState<DatabaseConference[]>([]);
+  const [conferences, setConferences] = useState<ConferenceItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,79 +40,127 @@ export default function AvailableConferencesPage() {
 
     async function loadLiveConferences() {
       setLoading(true);
+      const collected: ConferenceItem[] = [];
+
+      // 1. Fetch from Supabase
       if (isSupabaseConfigured && supabase) {
         try {
-          const { data, error } = await supabase
+          const { data: eventsData, error: evErr } = await supabase
             .from("events")
-            .select("*, committees(*, portfolios(*))");
+            .select("*");
 
-          if (!error && data && data.length > 0) {
-            setConferences(data as DatabaseConference[]);
-          } else if (event.name && event.name.trim()) {
-            setConferences([
-              {
-                id: event.id,
-                name: event.name,
-                dates: event.dates,
-                date_from: event.dateFrom,
-                date_to: event.dateTo,
-                venue: event.venue,
-                fee: event.fee,
-                school_fee_per_student: event.schoolFeePerStudent,
-                deadline: event.deadline,
-                deadline_date: event.deadlineDate,
-                status: event.status,
-                committees: committees.map((c) => ({
-                  id: c.id,
-                  name: c.name,
-                  total_seats: c.totalSeats,
-                  portfolios: portfolios.filter((p) => p.committeeId === c.id),
-                })),
-              },
-            ]);
-          } else {
-            setConferences([]);
+          if (!evErr && eventsData && eventsData.length > 0) {
+            const eventIds = eventsData.map((e) => e.id);
+            const { data: commsData } = await supabase
+              .from("committees")
+              .select("*")
+              .in("event_id", eventIds);
+
+            const commIds = (commsData || []).map((c) => c.id);
+            let portsData: { id: string; committee_id: string; status: string }[] = [];
+            if (commIds.length > 0) {
+              const res = await supabase
+                .from("portfolios")
+                .select("id, committee_id, status")
+                .in("committee_id", commIds);
+              portsData = res.data || [];
+            }
+
+            eventsData.forEach((ev) => {
+              if (ev.name && ev.name.trim().length > 0) {
+                const evComms = (commsData || [])
+                  .filter((c) => c.event_id === ev.id)
+                  .map((c) => ({
+                    id: c.id,
+                    name: c.name,
+                    total_seats: c.total_seats,
+                    portfolios: portsData.filter((p) => p.committee_id === c.id),
+                  }));
+
+                collected.push({
+                  id: ev.id,
+                  name: ev.name,
+                  dates: ev.dates,
+                  date_from: ev.date_from,
+                  date_to: ev.date_to,
+                  venue: ev.venue,
+                  fee: Number(ev.fee) || 0,
+                  school_fee_per_student: Number(ev.school_fee_per_student) || 0,
+                  deadline: ev.deadline,
+                  deadline_date: ev.deadline_date,
+                  status: ev.status,
+                  committees: evComms,
+                });
+              }
+            });
           }
-        } catch {
-          if (event.name && event.name.trim()) {
-            setConferences([
-              {
-                id: event.id,
-                name: event.name,
-                dates: event.dates,
-                venue: event.venue,
-                fee: event.fee,
-                school_fee_per_student: event.schoolFeePerStudent,
-              },
-            ]);
-          } else {
-            setConferences([]);
-          }
+        } catch (err) {
+          console.warn("Live conferences load notice:", err);
         }
-      } else if (event.name && event.name.trim()) {
-        setConferences([
-          {
-            id: event.id,
-            name: event.name,
-            dates: event.dates,
-            date_from: event.dateFrom,
-            date_to: event.dateTo,
-            venue: event.venue,
-            fee: event.fee,
-            school_fee_per_student: event.schoolFeePerStudent,
-            deadline: event.deadline,
-            status: event.status,
-          },
-        ]);
-      } else {
-        setConferences([]);
       }
+
+      // 2. Offline / Local Storage fallback & merge
+      if (typeof window !== "undefined") {
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith("delegate_public_conf_") || key.startsWith("delegate_storage_"))) {
+              const raw = localStorage.getItem(key);
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                const list: ConferenceItem[] = parsed.myConferences || (parsed.name ? [parsed] : []);
+                list.forEach((c) => {
+                  if (c.name && c.name.trim() && !collected.some((existing) => existing.id === c.id)) {
+                    collected.push({
+                      id: c.id,
+                      name: c.name,
+                      dates: c.dates,
+                      date_from: c.date_from || (c as unknown as { dateFrom?: string }).dateFrom,
+                      date_to: c.date_to || (c as unknown as { dateTo?: string }).dateTo,
+                      venue: c.venue,
+                      fee: c.fee,
+                      school_fee_per_student: c.school_fee_per_student || (c as unknown as { schoolFeePerStudent?: number }).schoolFeePerStudent,
+                      deadline: c.deadline,
+                      deadline_date: c.deadline_date || (c as unknown as { deadlineDate?: string }).deadlineDate,
+                      status: c.status,
+                    });
+                  }
+                });
+              }
+            }
+          }
+        } catch {}
+      }
+
+      // 3. Fallback to active conference if valid
+      if (event.name && event.name.trim() && !collected.some((c) => c.id === event.id)) {
+        collected.push({
+          id: event.id,
+          name: event.name,
+          dates: event.dates,
+          date_from: event.dateFrom,
+          date_to: event.dateTo,
+          venue: event.venue,
+          fee: event.fee,
+          school_fee_per_student: event.schoolFeePerStudent,
+          deadline: event.deadline,
+          status: event.status,
+          committees: committees.map((c) => ({
+            id: c.id,
+            name: c.name,
+            total_seats: c.totalSeats,
+            portfolios: portfolios.filter((p) => p.committeeId === c.id),
+          })),
+        });
+      }
+
+      setConferences(collected);
       setLoading(false);
     }
 
     loadLiveConferences();
 
-    // Realtime listener for live database synchronization
+    // Realtime listener for live synchronization
     if (isSupabaseConfigured && supabase) {
       const client = supabase;
       const channel = client
@@ -126,7 +174,7 @@ export default function AvailableConferencesPage() {
         client.removeChannel(channel);
       };
     }
-  }, [event.name, event.id, committees, portfolios]);
+  }, [event.name, event.id, event.dates, event.dateFrom, event.dateTo, event.venue, event.fee, event.schoolFeePerStudent, event.deadline, event.status, committees, portfolios]);
 
   return (
     <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 text-white page-transition">
@@ -160,7 +208,7 @@ export default function AvailableConferencesPage() {
             Available MUN Conferences
           </h1>
           <p className="text-base sm:text-xl text-blue-100 font-medium mt-1 sm:mt-2">
-            Conferences configured in the database appear here in real-time.
+            Explore upcoming Model United Nations conferences and register your delegation.
           </p>
         </div>
 
@@ -169,23 +217,23 @@ export default function AvailableConferencesPage() {
           {loading ? (
             <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center">
               <div className="text-xl sm:text-2xl font-heading font-bold text-gray-700">
-                Loading live database...
+                Loading conferences...
               </div>
             </div>
           ) : conferences.length === 0 ? (
-            /* Clean Empty State when database has 0 conferences */
+            /* Clean Empty State when 0 conferences */
             <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-6 sm:p-14 text-center border border-blue-100 animate-fadeIn">
               <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-blue-50 text-[#1560BD] mb-3 sm:mb-5">
                 <Calendar className="w-7 h-7 sm:w-10 sm:h-10" />
               </div>
               <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-[#0B1B33] mb-2 sm:mb-3">
-                No Active Conferences in Database
+                No Active Conferences
               </h2>
               <p className="text-base sm:text-xl text-gray-600 font-medium max-w-lg mx-auto mb-6 sm:mb-8">
-                There are currently no Model United Nations conferences created in your Supabase database.
-                Sign in as an organizer to set up your first conference and publish registrations.
+                There are currently no Model United Nations conferences open for registration right now.
+                Sign in as an organizer to set up your conference and launch registrations.
               </p>
-              <Link href="/">
+              <Link href="/organizer/conferences">
                 <button
                   type="button"
                   className="bg-[#FFD23F] text-[#0B1B33] px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-base sm:text-xl font-heading font-extrabold hover:bg-yellow-400 active:scale-95 transition-all shadow-md cursor-pointer"
@@ -195,7 +243,7 @@ export default function AvailableConferencesPage() {
               </Link>
             </div>
           ) : (
-            /* Render ONLY actual database conferences */
+            /* Render active conferences */
             conferences.map((conf, index) => {
               const commsCount = conf.committees?.length || committees.length || 0;
               let seatsAvailable = 0;
@@ -298,7 +346,7 @@ export default function AvailableConferencesPage() {
         {/* Footer */}
         <div className="mt-12 text-center text-blue-200 text-sm">
           Are you a school organizer?{" "}
-          <Link href="/" className="text-white underline font-bold ml-1 hover:text-yellow-300">
+          <Link href="/organizer/conferences" className="text-white underline font-bold ml-1 hover:text-yellow-300">
             Log in to manage or host a conference
           </Link>
         </div>

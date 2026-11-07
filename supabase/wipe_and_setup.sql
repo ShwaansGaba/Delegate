@@ -1,16 +1,19 @@
 -- ========================================================
--- DELEGATE - DATABASE WIPE & MULTI-TENANT CLEAN SETUP
+-- DELEGATO - COMPLETE DATABASE WIPE & CLEAN MULTI-TENANT SETUP
 -- Copy and paste this script into your Supabase SQL Editor and click RUN.
--- Dashboard URL: https://supabase.com/dashboard/project/znhbotfzmmrsibazlraw/sql
+-- Dashboard SQL Editor: https://supabase.com/dashboard/project/znhbotfzmmrsibazlraw/sql
 -- ========================================================
 
--- 1. Drop existing tables to completely wipe old corrupted data
+-- 1. Wipe all authentication accounts, emails, and session data
+DELETE FROM auth.users;
+
+-- 2. Drop existing public tables and foreign key relationships
 DROP TABLE IF EXISTS public.registrations CASCADE;
 DROP TABLE IF EXISTS public.portfolios CASCADE;
 DROP TABLE IF EXISTS public.committees CASCADE;
 DROP TABLE IF EXISTS public.events CASCADE;
 
--- 2. Create Events Table (Multi-tenant with TEXT owner_id & branding)
+-- 3. Create Events Table (Multi-tenant with TEXT owner_id & branding)
 CREATE TABLE public.events (
   id TEXT PRIMARY KEY,
   owner_id TEXT NOT NULL,
@@ -32,7 +35,7 @@ CREATE TABLE public.events (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Create Committees Table
+-- 4. Create Committees Table
 CREATE TABLE public.committees (
   id TEXT PRIMARY KEY,
   event_id TEXT REFERENCES public.events(id) ON DELETE CASCADE,
@@ -43,7 +46,7 @@ CREATE TABLE public.committees (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Create Portfolios Table
+-- 5. Create Portfolios Table
 CREATE TABLE public.portfolios (
   id TEXT PRIMARY KEY,
   committee_id TEXT REFERENCES public.committees(id) ON DELETE CASCADE,
@@ -54,7 +57,7 @@ CREATE TABLE public.portfolios (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. Create Registrations Table
+-- 6. Create Registrations Table
 CREATE TABLE public.registrations (
   id TEXT PRIMARY KEY,
   event_id TEXT REFERENCES public.events(id) ON DELETE CASCADE,
@@ -75,7 +78,7 @@ CREATE TABLE public.registrations (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. Indexes for lightning fast lookups
+-- 7. Indexes for lightning fast lookups
 CREATE INDEX idx_events_owner ON public.events(owner_id);
 CREATE INDEX idx_events_slug ON public.events(slug);
 CREATE INDEX idx_committees_event ON public.committees(event_id);
@@ -83,7 +86,7 @@ CREATE INDEX idx_portfolios_committee ON public.portfolios(committee_id);
 CREATE INDEX idx_registrations_event ON public.registrations(event_id);
 CREATE INDEX idx_registrations_number ON public.registrations(registration_number);
 
--- 7. Enable RLS with permissive policies for API communication
+-- 8. Enable Row Level Security (RLS) with permissive policies
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.committees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.portfolios ENABLE ROW LEVEL SECURITY;

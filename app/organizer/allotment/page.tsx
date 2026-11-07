@@ -345,7 +345,7 @@ export default function OrganizerAllotmentPage() {
             </button>
           </div>
           <p className="text-blue-100 text-xs sm:text-sm font-medium mt-0.5">
-            Excel-style interactive roster for allotting committee seats and country portfolios
+            Interactive roster for allotting committee seats and country portfolios
           </p>
         </div>
 
@@ -355,7 +355,7 @@ export default function OrganizerAllotmentPage() {
             type="button"
             onClick={handleExportCSV}
             className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/30 text-white text-xs sm:text-sm font-heading font-extrabold flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="Download full allotment spreadsheet in CSV format compatible with Microsoft Excel & Google Sheets"
+            title="Download full allotment spreadsheet in CSV format"
           >
             <Download className="w-4 h-4" />
             <span>Export CSV</span>
@@ -438,7 +438,7 @@ export default function OrganizerAllotmentPage() {
       </div>
 
       {/* ======================================================== */}
-      {/* VIEW 1: DELEGATES ALLOTMENT SHEET (Excel-style Table)     */}
+      {/* VIEW 1: DELEGATES ALLOTMENT SHEET (Interactive Table)     */}
       {/* ======================================================== */}
       {viewMode === "delegates" && (
         <div className="space-y-3">
@@ -550,11 +550,11 @@ export default function OrganizerAllotmentPage() {
             </div>
           </div>
 
-          {/* Excel-like Tabular Spreadsheet */}
+          {/* Interactive Tabular Spreadsheet */}
           <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
             <div className="overflow-x-auto max-h-[700px]">
               <table className="w-full text-left text-xs sm:text-sm border-collapse">
-                {/* Excel Column Headers */}
+                {/* Table Column Headers */}
                 <thead className="sticky top-0 bg-neutral-100 text-[#0B1B33] font-heading font-extrabold uppercase tracking-wider text-[11px] border-b border-neutral-200 z-10 select-none shadow-xs">
                   <tr>
                     <th className="py-2.5 px-3 w-12 text-center border-r border-neutral-200 bg-neutral-100">#</th>
@@ -593,7 +593,7 @@ export default function OrganizerAllotmentPage() {
                       Preferences (Ranked 1 → 3)
                     </th>
                     <th className="py-2.5 px-3 min-w-[340px]">
-                      Allotted Committee &amp; Portfolio (Interactive Excel Cell)
+                      Allotted Committee &amp; Portfolio
                     </th>
                   </tr>
                 </thead>
@@ -869,7 +869,7 @@ export default function OrganizerAllotmentPage() {
               </table>
             </div>
 
-            {/* Excel Table Status Footer */}
+            {/* Table Status Footer */}
             <div className="p-3 bg-neutral-100 border-t border-neutral-200 text-xs font-bold text-neutral-600 flex items-center justify-between">
               <div>
                 Showing <strong>{filteredDelegates.length}</strong> of <strong>{totalDelegates}</strong> delegates
@@ -888,7 +888,7 @@ export default function OrganizerAllotmentPage() {
       )}
 
       {/* ======================================================== */}
-      {/* VIEW 2: COMMITTEE SEATS MATRIX (Excel-style Seats Table)  */}
+      {/* VIEW 2: COMMITTEE SEATS MATRIX (Seats Grid View)          */}
       {/* ======================================================== */}
       {viewMode === "matrix" && (
         <div className="space-y-4">

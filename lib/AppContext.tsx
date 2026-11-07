@@ -186,18 +186,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured && supabase) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user?.email) {
-          setUser({ id: session.user.id, email: session.user.email });
+          const u = { id: session.user.id, email: session.user.email };
+          setUser(u);
+          try {
+            localStorage.setItem("delegate_auth_user", JSON.stringify(u));
+          } catch {}
         } else {
-          setUser(null);
+          try {
+            const stored = localStorage.getItem("delegate_auth_user");
+            if (stored) {
+              setUser(JSON.parse(stored));
+            } else {
+              setUser(null);
+            }
+          } catch {
+            setUser(null);
+          }
         }
         setIsAuthLoaded(true);
       });
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session?.user?.email) {
-          setUser({ id: session.user.id, email: session.user.email });
-        } else {
+          const u = { id: session.user.id, email: session.user.email };
+          setUser(u);
+          try {
+            localStorage.setItem("delegate_auth_user", JSON.stringify(u));
+          } catch {}
+        } else if (_event === "SIGNED_OUT") {
           setUser(null);
+          try {
+            localStorage.removeItem("delegate_auth_user");
+          } catch {}
         }
       });
 
@@ -354,13 +374,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // B. Offline Storage strictly isolated per user id (No hardcoded seed conferences)
+    // B. Offline Storage: Check active user's key first, then fallback across all local storage keys
+    let cleanConfs: EventModel[] = [];
     const userStorageKey = `delegate_storage_${activeUserId}`;
     try {
       const saved = localStorage.getItem(userStorageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        const cleanConfs: EventModel[] = (parsed.myConferences || []).filter(
+        cleanConfs = (parsed.myConferences || []).filter(
           (c: EventModel) =>
             c.name &&
             c.name.trim().length > 0 &&
@@ -368,43 +389,59 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             c.id !== "national-conclave-2026" &&
             !c.name?.toLowerCase().includes("delhi youth")
         );
-        setMyConferences(cleanConfs);
-        setAllEvents(cleanConfs);
-        if (cleanConfs.length > 0) {
-          const chosen =
-            (targetEventId && cleanConfs.find((e: EventModel) => e.id === targetEventId)) ||
-            (parsed.event && parsed.event.id !== "delhi-youth-summit-2026" && !parsed.event.name?.toLowerCase().includes("delhi youth")
-              ? parsed.event
-              : cleanConfs[0]);
-          setEvent(chosen);
-          // Strictly load isolated data for this conference
-          try {
-            const savedConfData = localStorage.getItem(`delegate_conf_data_${chosen.id}`);
-            if (savedConfData) {
-              const parsedData = JSON.parse(savedConfData);
-              setCommittees(parsedData.committees || []);
-              setPortfolios(parsedData.portfolios || []);
-              setRegistrations(parsedData.registrations || []);
-            } else {
-              setCommittees([]);
-              setPortfolios([]);
-              setRegistrations([]);
+      }
+    } catch {}
+
+    // Fallback: search any other conferences stored locally on this browser
+    if (cleanConfs.length === 0 && typeof window !== "undefined") {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith("delegate_storage_") || k.startsWith("delegate_public_conf_"))) {
+            const raw = localStorage.getItem(k);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              const list: EventModel[] = parsed.myConferences || (parsed.name ? [parsed] : []);
+              list.forEach((c) => {
+                if (c.name && c.name.trim().length > 0 && !cleanConfs.some((ex) => ex.id === c.id)) {
+                  cleanConfs.push(c);
+                }
+              });
             }
-          } catch {
-            setCommittees([]);
-            setPortfolios([]);
-            setRegistrations([]);
           }
+        }
+      } catch {}
+    }
+
+    if (cleanConfs.length > 0) {
+      setMyConferences(cleanConfs);
+      setAllEvents(cleanConfs);
+      const chosen =
+        (targetEventId && cleanConfs.find((e: EventModel) => e.id === targetEventId)) ||
+        cleanConfs[0];
+      setEvent(chosen);
+
+      // Strictly load isolated data for this conference
+      try {
+        const savedConfData = localStorage.getItem(`delegate_conf_data_${chosen.id}`);
+        if (savedConfData) {
+          const parsedData = JSON.parse(savedConfData);
+          setCommittees(parsedData.committees || []);
+          setPortfolios(parsedData.portfolios || []);
+          setRegistrations(parsedData.registrations || []);
         } else {
-          setEvent(EMPTY_EVENT);
           setCommittees([]);
           setPortfolios([]);
           setRegistrations([]);
         }
-        setIsLoaded(true);
-        return;
+      } catch {
+        setCommittees([]);
+        setPortfolios([]);
+        setRegistrations([]);
       }
-    } catch {}
+      setIsLoaded(true);
+      return;
+    }
 
     // Clean initial state for new organizer
     setMyConferences([]);
@@ -436,6 +473,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user?.id && isLoaded) {
       const userStorageKey = `delegate_storage_${user.id}`;
+      // Safety guard: if myConferences is empty, check if localStorage already has conferences
+      // Never wipe out existing conferences with an empty memory state!
+      if (myConferences.length === 0) {
+        try {
+          const existing = localStorage.getItem(userStorageKey);
+          if (existing) {
+            const parsed = JSON.parse(existing);
+            if (parsed.myConferences && parsed.myConferences.length > 0) {
+              return;
+            }
+          }
+        } catch {}
+      }
+
       try {
         localStorage.setItem(
           userStorageKey,
@@ -1552,18 +1603,77 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const markConferencePublished = () => {
-    const updated = {
+    const updated: EventModel = {
       ...event,
       status: "published" as const,
     };
     setEvent(updated);
-    setMyConferences((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    setMyConferences((prev) => {
+      const exists = prev.some((c) => c.id === updated.id);
+      return exists ? prev.map((c) => (c.id === updated.id ? updated : c)) : [updated, ...prev];
+    });
+    setAllEvents((prev) => {
+      const exists = prev.some((c) => c.id === updated.id);
+      return exists ? prev.map((c) => (c.id === updated.id ? updated : c)) : [updated, ...prev];
+    });
+
+    // Immediate persistence to localStorage
+    if (typeof window !== "undefined") {
+      try {
+        if (updated.id) {
+          localStorage.setItem(`delegate_public_conf_${updated.id}`, JSON.stringify(updated));
+        }
+        if (updated.slug) {
+          localStorage.setItem(`delegate_public_conf_${updated.slug}`, JSON.stringify(updated));
+        }
+        if (user?.id) {
+          const userStorageKey = `delegate_storage_${user.id}`;
+          const existing = localStorage.getItem(userStorageKey);
+          const parsedExisting = existing ? JSON.parse(existing) : {};
+          const prevList: EventModel[] = (parsedExisting.myConferences || []).filter(
+            (c: EventModel) => c.name && c.name.trim().length > 0
+          );
+          const exists = prevList.some((c) => c.id === updated.id);
+          const updatedList = exists
+            ? prevList.map((c) => (c.id === updated.id ? updated : c))
+            : [updated, ...prevList];
+          localStorage.setItem(
+            userStorageKey,
+            JSON.stringify({
+              ...parsedExisting,
+              myConferences: updatedList,
+              event: updated,
+            })
+          );
+        }
+      } catch {}
+    }
 
     if (isSupabaseConfigured && supabase && updated.id && updated.id !== "new-conference" && !updated.id.startsWith("new-")) {
       supabase
         .from("events")
-        .update({ status: "published" })
-        .eq("id", updated.id)
+        .upsert({
+          id: updated.id,
+          owner_id: user?.id || updated.ownerId || "organizer",
+          slug: updated.slug,
+          type: updated.type || "mun",
+          name: updated.name,
+          dates: updated.dates,
+          date_from: updated.dateFrom,
+          date_to: updated.dateTo,
+          deadline: updated.deadline,
+          deadline_date: updated.deadlineDate,
+          venue: updated.venue,
+          fee: updated.fee,
+          school_fee_per_student: updated.schoolFeePerStudent,
+          status: "published",
+          rules: {
+            ...updated.rules,
+            allotmentsPublished: updated.rules?.allotmentsPublished ?? false,
+            branding: updated.branding,
+          },
+          branding: updated.branding,
+        })
         .then(({ error }) => {
           if (error) console.warn("Supabase markConferencePublished note:", error.message);
         });
