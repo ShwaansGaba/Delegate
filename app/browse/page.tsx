@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Button } from "@/components/ui/Button";
+import { formatDateDDMMYYYY } from "@/lib/dateUtils";
 
 export default function BrowseCommitteesPage() {
   const router = useRouter();
@@ -47,7 +48,7 @@ export default function BrowseCommitteesPage() {
             Committees & Agendas
           </h1>
           {event.dates && (
-            <p className="text-blue-100 text-sm mt-1 font-medium">{event.dates} • {event.venue || "Campus Venue"}</p>
+            <p className="text-blue-100 text-sm mt-1 font-medium">{formatDateDDMMYYYY(event.dates)} • {event.venue || "Campus Venue"}</p>
           )}
         </div>
 

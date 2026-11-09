@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useApp } from "@/lib/AppContext";
 import { Row } from "@/components/ui/Row";
+import { formatDateDDMMYYYY } from "@/lib/dateUtils";
 
 export default function ConfirmationPage() {
   const router = useRouter();
@@ -107,7 +108,7 @@ export default function ConfirmationPage() {
         {/* Hold deadline text */}
         <div className="space-y-4 pt-2">
           <p className="text-xl text-white font-medium leading-relaxed">
-            Your choices are held until {event.deadline}.
+            Your choices are held until {formatDateDDMMYYYY(event.deadline)}.
           </p>
 
           <div className="pt-4 flex flex-col gap-3">

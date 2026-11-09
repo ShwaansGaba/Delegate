@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { EventModel, MunCommittee } from "@/lib/types";
+import { formatDateDDMMYYYY } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/Button";
 import { ArrowRight, Calendar, MapPin, Clock, Users, BookOpen } from "lucide-react";
 
@@ -216,7 +217,7 @@ export default function PublicConferencePage() {
             {conference.dates && (
               <div className="flex items-center gap-2.5 text-white/90 font-medium text-sm sm:text-base bg-white/10 p-3 rounded-xl border border-white/10 backdrop-blur-sm">
                 <Calendar className="w-5 h-5 shrink-0" style={{ color: accentColor }} />
-                <span>{conference.dates}</span>
+                <span>{formatDateDDMMYYYY(conference.dates)}</span>
               </div>
             )}
             {conference.venue && (
@@ -228,7 +229,7 @@ export default function PublicConferencePage() {
             {conference.deadline && (
               <div className="flex items-center gap-2.5 text-white/90 font-medium text-sm sm:text-base bg-white/10 p-3 rounded-xl border border-white/10 backdrop-blur-sm sm:col-span-2">
                 <Clock className="w-5 h-5 shrink-0" style={{ color: accentColor }} />
-                <span>Registration deadline: <strong className="text-white">{conference.deadline}</strong></span>
+                <span>Registration deadline: <strong className="text-white">{formatDateDDMMYYYY(conference.deadline)}</strong></span>
               </div>
             )}
           </div>

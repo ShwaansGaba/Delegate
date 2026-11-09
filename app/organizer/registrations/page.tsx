@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { Button } from "@/components/ui/Button";
+import { formatDateDDMMYYYY } from "@/lib/dateUtils";
 
 export default function RegistrationsPage() {
   const router = useRouter();
@@ -119,7 +120,8 @@ export default function RegistrationsPage() {
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
     const safeName = event.name ? event.name.replace(/[^a-zA-Z0-9]/g, "_") : "Delegate_MUN";
-    link.setAttribute("download", `${safeName}_Registrations_${new Date().toISOString().slice(0, 10)}.csv`);
+    const todayStr = formatDateDDMMYYYY(new Date());
+    link.setAttribute("download", `${safeName}_Registrations_${todayStr}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

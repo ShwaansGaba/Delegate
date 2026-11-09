@@ -14,6 +14,7 @@ import { EMPTY_EVENT, STANDARD_TEMPLATES } from "./store";
 import { simulateAutoAllotment, AutoAllotSimulationResult } from "./autoAllot";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { getPortfoliosForCommittee, getAutoPortfolios } from "./committeeTemplates";
+import { formatDateDDMMYYYY } from "./dateUtils";
 
 export interface AuthUser {
   id: string;
@@ -296,10 +297,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             organizationId: ev.organization_id || "org-1",
             type: ev.type || "mun",
             name: ev.name,
-            dates: ev.dates,
+            dates: formatDateDDMMYYYY(ev.dates),
             dateFrom: ev.date_from,
             dateTo: ev.date_to,
-            deadline: ev.deadline,
+            deadline: formatDateDDMMYYYY(ev.deadline),
             deadlineDate: ev.deadline_date,
             venue: ev.venue,
             fee: Number(ev.fee) || 0,
@@ -831,10 +832,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             organizationId: ev.organization_id || "org-1",
             type: ev.type || "mun",
             name: ev.name,
-            dates: ev.dates,
+            dates: formatDateDDMMYYYY(ev.dates),
             dateFrom: ev.date_from,
             dateTo: ev.date_to,
-            deadline: ev.deadline,
+            deadline: formatDateDDMMYYYY(ev.deadline),
             deadlineDate: ev.deadline_date,
             venue: ev.venue,
             fee: Number(ev.fee) || 0,
@@ -957,13 +958,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ownerId: user.id,
       slug: uniqueSlug,
       name: baseName,
-      dates: data?.dates || "",
+      dates: formatDateDDMMYYYY(data?.dates || ""),
       dateFrom: data?.dateFrom || "",
       dateTo: data?.dateTo || "",
       venue: data?.venue || "",
       fee: data?.fee ?? 1500,
       schoolFeePerStudent: data?.schoolFeePerStudent ?? 1200,
-      deadline: data?.deadline || "",
+      deadline: formatDateDDMMYYYY(data?.deadline || ""),
       deadlineDate: data?.deadlineDate || "",
       status: "draft",
       rules: {

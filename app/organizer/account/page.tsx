@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp, BackgroundEffect } from "@/lib/AppContext";
 import { ConferenceBranding, EventModel } from "@/lib/types";
+import { formatDateDDMMYYYY } from "@/lib/dateUtils";
 import {
   User,
   Palette,
@@ -739,7 +740,7 @@ export default function OrganizerAccountPage() {
 
                   <div className="flex flex-wrap gap-2 text-[11px] text-white/90">
                     <span className="bg-white/15 px-2.5 py-1 rounded-lg border border-white/10">
-                      📅 {activeConf.dates || "Nov 14-16, 2026"}
+                      📅 {formatDateDDMMYYYY(activeConf.dates) || "14-11-2026 to 16-11-2026"}
                     </span>
                     <span className="bg-white/15 px-2.5 py-1 rounded-lg border border-white/10">
                       📍 {activeConf.venue || "Main Auditorium"}

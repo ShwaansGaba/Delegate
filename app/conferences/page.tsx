@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { DelegatoIcon, DelegatoHorizontalLogo } from "@/components/ui/DelegatoBrand";
+import { formatDateDDMMYYYY, formatRangeDDMMYYYY } from "@/lib/dateUtils";
 import { Search, X, MapPin, Calendar, Users, Award, ChevronDown, User, Check, ExternalLink } from "lucide-react";
 
 interface ConferenceItem {
@@ -490,7 +491,7 @@ export default function AvailableConferencesPage() {
                   {featuredConf.name}
                 </div>
                 <div className="relative z-10 text-lg font-bold text-[#FFD23F] drop-shadow-sm">
-                  {featuredConf.dates || (featuredConf.date_from ? `${featuredConf.date_from} to ${featuredConf.date_to}` : "Dates TBA")}
+                  {formatDateDDMMYYYY(featuredConf.dates) || (featuredConf.date_from ? formatRangeDDMMYYYY(featuredConf.date_from, featuredConf.date_to) : "Dates TBA")}
                 </div>
               </div>
 
@@ -500,7 +501,7 @@ export default function AvailableConferencesPage() {
                   {featuredConf.name}
                 </h2>
                 <p className="mt-2 text-lg text-[#3b4660] font-medium">
-                  {featuredConf.dates || "Upcoming"}, {featuredConf.venue || "Campus Venue"}, {featuredConf.committees?.length || 3} committees
+                  {formatDateDDMMYYYY(featuredConf.dates) || "Upcoming"}, {featuredConf.venue || "Campus Venue"}, {featuredConf.committees?.length || 3} committees
                 </p>
                 <p className="mt-4 text-xl lg:text-2xl font-bold text-[#0B1B33]">
                   ₹{(featuredConf.fee || 1500).toLocaleString("en-IN")} per delegate
@@ -550,7 +551,7 @@ export default function AvailableConferencesPage() {
                   {featuredConf.name}
                 </div>
                 <div className="relative z-10 text-sm font-bold text-[#FFD23F]">
-                  {featuredConf.dates || "Dates TBA"}
+                  {formatDateDDMMYYYY(featuredConf.dates) || (featuredConf.date_from ? formatRangeDDMMYYYY(featuredConf.date_from, featuredConf.date_to) : "Dates TBA")}
                 </div>
               </div>
               <div className="p-4 flex items-center justify-between">
@@ -725,7 +726,7 @@ export default function AvailableConferencesPage() {
                         style={{ color: conf.banner_url ? "#FFD23F" : palette.dateColor }}
                         className="relative z-10 text-sm sm:text-lg font-bold"
                       >
-                        {conf.dates || (conf.date_from ? `${conf.date_from}` : "Dates TBA")}
+                        {formatDateDDMMYYYY(conf.dates) || (conf.date_from ? formatRangeDDMMYYYY(conf.date_from, conf.date_to) : "Dates TBA")}
                       </div>
                     </div>
 
@@ -736,7 +737,7 @@ export default function AvailableConferencesPage() {
                           {conf.name}
                         </div>
                         <div className="mt-1 text-xs sm:text-base text-[#3b4660] line-clamp-1">
-                          {conf.dates || "Upcoming"}, {conf.venue?.split(",")[0] || "Delhi"}
+                          {formatDateDDMMYYYY(conf.dates) || "Upcoming"}, {conf.venue?.split(",")[0] || "Delhi"}
                         </div>
                       </div>
                       <div className="flex items-center justify-between mt-3 text-xs sm:text-base">
@@ -805,7 +806,7 @@ export default function AvailableConferencesPage() {
                         style={{ color: conf.banner_url ? "#FFD23F" : palette.dateColor }}
                         className="relative z-10 text-base font-bold"
                       >
-                        {conf.dates || "Upcoming"}
+                        {formatDateDDMMYYYY(conf.dates) || "Upcoming"}
                       </div>
                     </div>
 
@@ -816,7 +817,7 @@ export default function AvailableConferencesPage() {
                           {conf.name}
                         </div>
                         <div className="mt-1 text-sm text-[#3b4660] line-clamp-1">
-                          {conf.dates || "Upcoming"}, {conf.venue?.split(",")[0] || "Auditorium"}
+                          {formatDateDDMMYYYY(conf.dates) || "Upcoming"}, {conf.venue?.split(",")[0] || "Auditorium"}
                         </div>
                       </div>
                       <div className="flex items-center justify-between mt-3 text-sm">
@@ -868,7 +869,7 @@ export default function AvailableConferencesPage() {
                         style={{ color: conf.banner_url ? "#FFD23F" : palette.dateColor }}
                         className="relative z-10 text-xs font-bold"
                       >
-                        {conf.dates?.split(" ")[0] || ""}
+                        {formatDateDDMMYYYY(conf.dates)?.split(" ")[0] || ""}
                       </div>
                     </div>
 
@@ -879,7 +880,7 @@ export default function AvailableConferencesPage() {
                           {conf.name}
                         </div>
                         <div className="mt-1 text-xs text-[#3b4660] line-clamp-1">
-                          {conf.dates || "Upcoming"}, {conf.venue?.split(",")[0] || "Auditorium"}
+                          {formatDateDDMMYYYY(conf.dates) || "Upcoming"}, {conf.venue?.split(",")[0] || "Auditorium"}
                         </div>
                       </div>
                       <div className="mt-2.5 flex items-center justify-between">

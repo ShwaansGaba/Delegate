@@ -24,6 +24,7 @@ import {
   getConferenceRegistrationLink,
   getConferenceBrowseLink,
 } from "@/lib/registrationLinks";
+import { formatDateDDMMYYYY, formatRangeDDMMYYYY } from "@/lib/dateUtils";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 type SetupStep = "basics" | "committees" | "portfolios" | "rules" | "publish";
@@ -258,7 +259,8 @@ export default function OrganizerSetupPage() {
       return;
     }
 
-    const computedDates = `${dateFrom} to ${dateTo}`;
+    const computedDates = formatRangeDDMMYYYY(dateFrom, dateTo);
+    const computedDeadline = formatDateDDMMYYYY(deadlineDate);
     updateEventBasics({
       name: name.trim(),
       dates: computedDates,
@@ -267,7 +269,7 @@ export default function OrganizerSetupPage() {
       venue: venue.trim(),
       fee: Math.max(0, Number(fee) || 0),
       schoolFeePerStudent: Math.max(0, Number(schoolFee) || 0),
-      deadline: deadlineDate,
+      deadline: computedDeadline,
       deadlineDate,
       bannerUrl: bannerUrl.trim(),
       imageUrl: bannerUrl.trim(),
@@ -682,6 +684,11 @@ export default function OrganizerSetupPage() {
                 />
               </div>
             </div>
+            {(dateFrom || dateTo) && (
+              <p className="text-xs text-neutral-500 font-medium -mt-2">
+                Dates: <span className="font-bold text-[#1560BD]">{formatRangeDDMMYYYY(dateFrom, dateTo)}</span> (DD-MM-YYYY)
+              </p>
+            )}
 
             <div>
               <label className="block text-xs sm:text-sm font-bold text-neutral-700 mb-1">
@@ -693,6 +700,11 @@ export default function OrganizerSetupPage() {
                 onChange={(e) => setDeadlineDate(e.target.value)}
                 className="w-full bg-neutral-100 rounded-xl px-3.5 py-2.5 sm:py-3 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]"
               />
+              {deadlineDate && (
+                <p className="text-xs text-neutral-500 font-medium mt-1">
+                  Deadline: <span className="font-bold text-[#1560BD]">{formatDateDDMMYYYY(deadlineDate)}</span> (DD-MM-YYYY)
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

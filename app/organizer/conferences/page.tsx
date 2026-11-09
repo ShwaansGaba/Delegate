@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { EventModel } from "@/lib/types";
 import { getConferencePublicLink } from "@/lib/registrationLinks";
+import { formatDateDDMMYYYY } from "@/lib/dateUtils";
 import { Plus, ArrowRight, Copy, Check, Calendar, MapPin, Users, Settings, Trash2, Lock } from "lucide-react";
 
 export default function MyConferencesPage() {
@@ -158,7 +159,7 @@ export default function MyConferencesPage() {
                     {conf.dates && (
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-neutral-400 shrink-0" />
-                        <span>{conf.dates}</span>
+                        <span>{formatDateDDMMYYYY(conf.dates)}</span>
                       </div>
                     )}
                     {conf.venue && (
