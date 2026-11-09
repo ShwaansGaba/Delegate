@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { Registration, MunPortfolio, MunCommittee } from "@/lib/types";
+import { ALL_COUNTRIES } from "@/lib/portfolioDatabase";
 import {
   Search,
   Download,
@@ -106,16 +107,20 @@ export default function OrganizerAllotmentPage() {
 
   // Summary Metrics
   const totalDelegates = registrations.length;
-  const allottedCount = registrations.filter((r) => r.allotment).length;
+  const allottedCount = registrations.filter(
+    (r) => r.allotment && portfolios.some((p) => p.id === r.allotment?.portfolioId)
+  ).length;
   const unallottedCount = totalDelegates - allottedCount;
   const paidCount = registrations.filter((r) => r.paymentStatus === "verified").length;
   const totalPortfolios = portfolios.length;
   const filledSeats = portfolios.filter((p) => p.status === "taken").length;
 
-  // Unallotted delegates list for Queue and Matrix assignment
+  // Unallotted delegates list for Queue and Matrix assignment (including delegates whose allotted portfolio was deleted)
   const unallottedDelegates = useMemo(() => {
-    return registrations.filter((r) => !r.allotment);
-  }, [registrations]);
+    return registrations.filter(
+      (r) => !r.allotment || !portfolios.some((p) => p.id === r.allotment?.portfolioId)
+    );
+  }, [registrations, portfolios]);
 
   // Keep queue index within bounds
   useEffect(() => {
@@ -127,10 +132,12 @@ export default function OrganizerAllotmentPage() {
   // Set default focused delegate in Grid view
   useEffect(() => {
     if (!focusedDelegateId && registrations.length > 0) {
-      const firstUnallotted = registrations.find((r) => !r.allotment);
+      const firstUnallotted = registrations.find(
+        (r) => !r.allotment || !portfolios.some((p) => p.id === r.allotment?.portfolioId)
+      );
       setFocusedDelegateId(firstUnallotted ? firstUnallotted.id : registrations[0].id);
     }
-  }, [registrations, focusedDelegateId]);
+  }, [registrations, portfolios, focusedDelegateId]);
 
   // Helper: Portfolio availability map
   const portfolioAvailabilityMap = useMemo(() => {
@@ -151,11 +158,13 @@ export default function OrganizerAllotmentPage() {
 
   // Helper: check if a portfolio is available
   const isPortfolioAvailable = useCallback(
-    (portfolioId: string) => {
-      const info = portfolioAvailabilityMap.get(portfolioId);
+    (portfolioId: string, committeeId?: string) => {
+      const port = findMatchingPortfolio(portfolioId, committeeId, portfolios);
+      if (!port) return false;
+      const info = portfolioAvailabilityMap.get(port.id);
       return info ? !info.isTaken : true;
     },
-    [portfolioAvailabilityMap]
+    [portfolioAvailabilityMap, portfolios]
   );
 
   // Helper: check if all preferences of a delegate are taken
@@ -167,7 +176,7 @@ export default function OrganizerAllotmentPage() {
       for (const pref of reg.preferences) {
         for (const pId of pref.portfolioIds || []) {
           totalPrefs++;
-          if (!isPortfolioAvailable(pId)) {
+          if (!isPortfolioAvailable(pId, pref.committeeId)) {
             takenPrefs++;
           }
         }
@@ -182,14 +191,14 @@ export default function OrganizerAllotmentPage() {
     (reg: Registration) => {
       for (const pref of reg.preferences || []) {
         for (const pId of pref.portfolioIds || []) {
-          if (isPortfolioAvailable(pId)) {
-            const port = portfolios.find((p) => p.id === pId);
+          const matchedPort = findMatchingPortfolio(pId, pref.committeeId, portfolios);
+          if (matchedPort && isPortfolioAvailable(matchedPort.id, pref.committeeId)) {
             const comm = committees.find((c) => c.id === pref.committeeId);
             return {
               committeeId: pref.committeeId,
               committeeName: comm?.name || "Committee",
-              portfolioId: pId,
-              countryName: port?.countryName || pId,
+              portfolioId: matchedPort.id,
+              countryName: matchedPort.countryName,
             };
           }
         }
@@ -686,13 +695,15 @@ export default function OrganizerAllotmentPage() {
                   ) : (
                     gridDelegates.map((reg) => {
                       const isFocused = focusedDelegateId === reg.id;
-                      const isAllotted = Boolean(reg.allotment);
+                      const allottedPort = reg.allotment?.portfolioId
+                        ? portfolios.find((p) => p.id === reg.allotment?.portfolioId)
+                        : undefined;
+                      const isAllotted = Boolean(reg.allotment && allottedPort);
                       const isPaid = reg.paymentStatus === "verified";
                       const allTaken = !isAllotted && areAllPreferencesTaken(reg);
                       const firstAvail = !isAllotted ? getFirstAvailablePreference(reg) : null;
 
                       const allottedComm = committees.find((c) => c.id === reg.allotment?.committeeId);
-                      const allottedPort = portfolios.find((p) => p.id === reg.allotment?.portfolioId);
 
                       return (
                         <tr
@@ -775,7 +786,7 @@ export default function OrganizerAllotmentPage() {
                                 <div>
                                   <div className="font-heading font-extrabold text-[#0B1B33] text-sm">
                                     {allottedComm?.name || "Committee"},{" "}
-                                    {allottedPort?.countryName || "Country"}
+                                    {allottedPort?.countryName || "Allotted"}
                                   </div>
                                 </div>
                                 <button
@@ -784,37 +795,28 @@ export default function OrganizerAllotmentPage() {
                                     e.stopPropagation();
                                     handleUnallotSeat(reg.id);
                                   }}
-                                  className="text-neutral-400 hover:text-rose-600 text-xs font-bold p-1 rounded-md transition-colors"
+                                  className="text-neutral-400 hover:text-rose-600 text-xs font-bold p-1 rounded-md transition-colors cursor-pointer"
                                   title="Unallot seat"
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>
                               </div>
-                            ) : !isPaid ? (
+                            ) : (
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-semibold text-neutral-400">Not paid</span>
+                                <span className="font-heading font-extrabold text-xs text-neutral-400">
+                                  NIL
+                                </span>
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     openChooseModal(reg);
                                   }}
-                                  className="px-2.5 py-1 rounded-lg border border-neutral-300 hover:border-neutral-400 text-xs font-bold text-neutral-700 hover:bg-neutral-50 transition-colors"
+                                  className="px-3 py-1.5 rounded-xl border border-neutral-300 hover:border-amber-400 text-xs font-heading font-extrabold text-[#0B1B33] hover:bg-amber-50/40 transition-colors cursor-pointer"
                                 >
                                   Choose
                                 </button>
                               </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openChooseModal(reg);
-                                }}
-                                className="px-3 py-1.5 rounded-xl border border-neutral-300 hover:border-amber-400 text-xs font-heading font-extrabold text-[#0B1B33] hover:bg-amber-50/40 transition-colors cursor-pointer"
-                              >
-                                Choose
-                              </button>
                             )}
                           </td>
                         </tr>
@@ -935,17 +937,18 @@ export default function OrganizerAllotmentPage() {
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           {(pref.portfolioIds || []).map((pId) => {
-                            const port = portfolios.find((p) => p.id === pId);
-                            const name = port?.countryName || pId;
-                            const isAvailable = isPortfolioAvailable(pId);
-                            const isFirstAvail = currentQueueFirstAvailable?.portfolioId === pId;
+                            const port = findMatchingPortfolio(pId, pref.committeeId, portfolios);
+                            const name = getPortfolioCountryName(pId, pref.committeeId, portfolios);
+                            const actualPId = port ? port.id : pId;
+                            const isAvailable = port ? isPortfolioAvailable(port.id, pref.committeeId) : false;
+                            const isFirstAvail = currentQueueFirstAvailable?.portfolioId === actualPId;
 
                             if (!isAvailable) {
                               return (
                                 <span
                                   key={pId}
                                   className="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium line-through text-neutral-400 bg-neutral-100 border border-neutral-200 cursor-not-allowed select-none"
-                                  title="Taken"
+                                  title={port ? "Already allotted" : "Seat not currently in committee"}
                                 >
                                   {name}
                                 </span>
@@ -958,7 +961,7 @@ export default function OrganizerAllotmentPage() {
                                   key={pId}
                                   type="button"
                                   onClick={async () => {
-                                    await handleAllotSeat(currentQueueDelegate.id, pref.committeeId, pId);
+                                    await handleAllotSeat(currentQueueDelegate.id, pref.committeeId, actualPId);
                                     setQueueIndex((prev) => Math.min(prev, unallottedDelegates.length - 2));
                                   }}
                                   className="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-extrabold bg-[#FFC72C] hover:bg-yellow-400 text-neutral-900 border border-amber-400 shadow-xs cursor-pointer active:scale-95 transition-all"
@@ -974,7 +977,7 @@ export default function OrganizerAllotmentPage() {
                                 key={pId}
                                 type="button"
                                 onClick={async () => {
-                                  await handleAllotSeat(currentQueueDelegate.id, pref.committeeId, pId);
+                                  await handleAllotSeat(currentQueueDelegate.id, pref.committeeId, actualPId);
                                   setQueueIndex((prev) => Math.min(prev, unallottedDelegates.length - 2));
                                 }}
                                 className="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-white text-neutral-800 border-2 border-neutral-800 hover:border-amber-400 hover:bg-amber-50 cursor-pointer active:scale-95 transition-all"
@@ -1481,6 +1484,81 @@ export default function OrganizerAllotmentPage() {
 }
 
 // =========================================================================
+// HELPERS: Portfolio Matcher & Country Name Resolver
+// =========================================================================
+function findMatchingPortfolio(
+  pId: string,
+  committeeId: string | undefined,
+  portfolios: MunPortfolio[]
+): MunPortfolio | undefined {
+  if (!pId) return undefined;
+
+  // 1. Exact ID match (fastest and cleanest)
+  const exact = portfolios.find((p) => p.id === pId);
+  if (exact) return exact;
+
+  // 2. Search in matching committee
+  const commPorts = committeeId
+    ? portfolios.filter((p) => p.committeeId === committeeId)
+    : portfolios;
+
+  const parts = pId.toLowerCase().split("-");
+  const lastPart = parts[parts.length - 1];
+  const secondLast = parts.length > 1 ? parts[parts.length - 2] : "";
+
+  // 2a. Match by country code (e.g. port.code === "BR" when pId ends with -br)
+  const byCode = commPorts.find(
+    (p) =>
+      p.code.toLowerCase() === lastPart ||
+      p.code.toLowerCase() === secondLast ||
+      pId.endsWith(`-${p.code.toLowerCase()}`)
+  );
+  if (byCode) return byCode;
+
+  // 2b. Match by country name slug (e.g. "brazil")
+  const byName = commPorts.find((p) => {
+    const slug = p.countryName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return (
+      slug === lastPart ||
+      slug === secondLast ||
+      pId.includes(`-${slug}`) ||
+      pId.includes(slug)
+    );
+  });
+  if (byName) return byName;
+
+  return undefined;
+}
+
+function getPortfolioCountryName(
+  pId: string,
+  committeeId: string | undefined,
+  portfolios: MunPortfolio[]
+): string {
+  const match = findMatchingPortfolio(pId, committeeId, portfolios);
+  if (match) return match.countryName;
+
+  const parts = pId.toLowerCase().split("-");
+  const lastPart = parts[parts.length - 1];
+  const secondLast = parts.length > 1 ? parts[parts.length - 2] : "";
+
+  const country = ALL_COUNTRIES.find(
+    (c) =>
+      c.code.toLowerCase() === lastPart ||
+      c.code.toLowerCase() === secondLast ||
+      c.name.toLowerCase().replace(/[^a-z0-9]/g, "") === lastPart ||
+      c.name.toLowerCase().replace(/[^a-z0-9]/g, "") === secondLast
+  );
+  if (country) return country.name;
+
+  if (lastPart && lastPart.length <= 15) {
+    return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
+  }
+
+  return "NIL";
+}
+
+// =========================================================================
 // HELPER: Preference Cell Renderer in Grid View
 // =========================================================================
 function renderPreferenceCell(
@@ -1488,7 +1566,7 @@ function renderPreferenceCell(
   prefIdx: number,
   firstAvailablePId: string | undefined,
   handleAllotSeat: (regId: string, committeeId: string, portfolioId: string) => Promise<void>,
-  isPortfolioAvailable: (portfolioId: string) => boolean,
+  isPortfolioAvailable: (portfolioId: string, committeeId?: string) => boolean,
   portfolios: MunPortfolio[],
   committees: MunCommittee[]
 ) {
@@ -1498,7 +1576,11 @@ function renderPreferenceCell(
   }
 
   const comm = committees.find((c) => c.id === pref.committeeId);
-  const isDelegateAllotted = Boolean(reg.allotment);
+  const isDelegateAllotted = Boolean(
+    reg.allotment &&
+    reg.allotment.portfolioId &&
+    portfolios.some((p) => p.id === reg.allotment?.portfolioId)
+  );
 
   return (
     <div className="space-y-1.5">
@@ -1507,17 +1589,18 @@ function renderPreferenceCell(
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         {(pref.portfolioIds || []).map((pId) => {
-          const port = portfolios.find((p) => p.id === pId);
-          const name = port?.countryName || pId;
-          const isAvail = isPortfolioAvailable(pId);
-          const isFirstAvail = !isDelegateAllotted && firstAvailablePId === pId;
+          const port = findMatchingPortfolio(pId, pref.committeeId, portfolios);
+          const name = getPortfolioCountryName(pId, pref.committeeId, portfolios);
+          const actualPId = port ? port.id : pId;
+          const isAvail = port ? isPortfolioAvailable(port.id, pref.committeeId) : false;
+          const isFirstAvail = !isDelegateAllotted && firstAvailablePId === actualPId;
 
           if (!isAvail) {
             return (
               <span
                 key={pId}
                 className="px-2 py-0.5 rounded-lg text-xs font-medium line-through text-neutral-400 bg-neutral-100 border border-neutral-200 cursor-not-allowed whitespace-nowrap select-none"
-                title="Already allotted"
+                title={port ? "Already allotted" : "Seat not currently in committee"}
               >
                 {name}
               </span>
@@ -1531,7 +1614,7 @@ function renderPreferenceCell(
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleAllotSeat(reg.id, pref.committeeId, pId);
+                  handleAllotSeat(reg.id, pref.committeeId, actualPId);
                 }}
                 className="px-2.5 py-0.5 rounded-lg text-xs font-heading font-extrabold bg-[#FFC72C] hover:bg-yellow-400 text-neutral-900 border border-amber-400 shadow-2xs cursor-pointer active:scale-95 transition-all whitespace-nowrap"
                 title="Click to allot this portfolio"
@@ -1547,7 +1630,7 @@ function renderPreferenceCell(
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                handleAllotSeat(reg.id, pref.committeeId, pId);
+                handleAllotSeat(reg.id, pref.committeeId, actualPId);
               }}
               className="px-2 py-0.5 rounded-lg text-xs font-bold bg-white text-neutral-800 border border-neutral-300 hover:border-amber-400 hover:bg-amber-50 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
               title="Click to allot this portfolio"

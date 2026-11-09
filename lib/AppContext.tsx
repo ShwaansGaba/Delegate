@@ -602,7 +602,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         "postgres_changes",
         { event: "*", schema: "public", table: "portfolios" },
         (payload) => {
-          if (payload.eventType === "UPDATE") {
+          if (payload.eventType === "INSERT") {
+            const row = payload.new as any;
+            if (!row) return;
+            const newPort: MunPortfolio = {
+              id: row.id,
+              committeeId: row.committee_id,
+              countryName: row.country_name,
+              code: row.country_code,
+              status: row.status || "open",
+              allottedRegistrationId: row.allotted_registration_id || undefined,
+            };
+            setPortfolios((prev) => {
+              if (prev.some((p) => p.id === newPort.id)) {
+                return prev.map((p) => (p.id === newPort.id ? newPort : p));
+              }
+              return [...prev, newPort];
+            });
+          } else if (payload.eventType === "UPDATE") {
             const row = payload.new as any;
             if (!row) return;
             setPortfolios((prev) =>
@@ -615,6 +632,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   };
                 }
                 return p;
+              })
+            );
+          } else if (payload.eventType === "DELETE") {
+            const oldRow = payload.old as any;
+            if (!oldRow?.id) return;
+            setPortfolios((prev) => prev.filter((p) => p.id !== oldRow.id));
+            setRegistrations((prev) =>
+              prev.map((r) => {
+                if (r.allotment?.portfolioId === oldRow.id) {
+                  const copy = { ...r };
+                  delete copy.allotment;
+                  return copy;
+                }
+                return r;
               })
             );
           }
@@ -809,6 +840,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setCommittees(mappedComms);
 
           const commIds = mappedComms.map((c) => c.id);
+          let validPortIds = new Set<string>();
+
           if (commIds.length > 0) {
             const { data: portsData } = await supabase
               .from("portfolios")
@@ -816,6 +849,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               .in("committee_id", commIds);
 
             if (portsData) {
+              validPortIds = new Set(portsData.map((p) => p.id));
               setPortfolios(
                 portsData.map((p) => ({
                   id: p.id,
@@ -836,24 +870,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           if (regsData) {
             setRegistrations(
-              regsData.map((r) => ({
-                id: r.id,
-                eventId: r.event_id,
-                delegateName: r.name || "",
-                email: r.email || "",
-                phone: r.phone || "",
-                school: r.school || "",
-                classYear: r.class_year || "",
-                experienceMuns: Number(r.experience_count) || 0,
-                registrationNumber: r.registration_number,
-                registrationType: r.type === "school_team" ? "school_team" : "individual",
-                paymentStatus: (r.payment_status as PaymentStatus) || "unpaid",
-                paymentProofUrl: r.payment_proof_url || undefined,
-                feeAmount: Number(r.fee_amount) || 1500,
-                preferences: r.preferences || [],
-                allotment: r.allotment || undefined,
-                createdAt: r.created_at || new Date().toISOString(),
-              }))
+              regsData.map((r) => {
+                const hasValidPort = Boolean(
+                  r.allotment?.portfolioId && validPortIds.has(r.allotment.portfolioId)
+                );
+                return {
+                  id: r.id,
+                  eventId: r.event_id,
+                  delegateName: r.name || "",
+                  email: r.email || "",
+                  phone: r.phone || "",
+                  school: r.school || "",
+                  classYear: r.class_year || "",
+                  experienceMuns: Number(r.experience_count) || 0,
+                  registrationNumber: r.registration_number,
+                  registrationType: r.type === "school_team" ? "school_team" : "individual",
+                  paymentStatus: (r.payment_status as PaymentStatus) || "unpaid",
+                  paymentProofUrl: r.payment_proof_url || undefined,
+                  feeAmount: Number(r.fee_amount) || 1500,
+                  preferences: r.preferences || [],
+                  allotment: hasValidPort ? r.allotment : undefined,
+                  createdAt: r.created_at || new Date().toISOString(),
+                };
+              })
             );
           }
 
@@ -1465,6 +1504,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
     if (isSupabaseConfigured && supabase) {
       supabase.from("portfolios").delete().eq("id", portfolioId).then();
+      // Ensure any allotment referencing this deleted portfolio is nullified in Supabase
+      supabase.from("registrations").update({ allotment: null }).eq("allotment->>portfolioId", portfolioId).then();
     }
   };
 
@@ -1483,6 +1524,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
     if (isSupabaseConfigured && supabase) {
       supabase.from("portfolios").delete().in("id", portfolioIds).then();
+      for (const pId of portfolioIds) {
+        supabase.from("registrations").update({ allotment: null }).eq("allotment->>portfolioId", pId).then();
+      }
     }
   };
 
@@ -1492,7 +1536,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       alert("Maximum limit of 150 portfolios reached for this committee.");
       return;
     }
-    const cleanId = `${committeeId}-${item.code.toLowerCase().replace(/[^a-z0-9]/g, "")}-${Date.now().toString().slice(-4)}`;
+    const cleanCode = item.code.toLowerCase().replace(/[^a-z0-9]/g, "") || "item";
+    const canonicalId = `${committeeId}-${cleanCode}`;
+    const idExists = portfolios.some((p) => p.id === canonicalId);
+    const cleanId = idExists ? `${canonicalId}-${Date.now().toString().slice(-4)}` : canonicalId;
+
     const newPort: MunPortfolio = {
       id: cleanId,
       committeeId,
@@ -1639,12 +1687,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     committeeId: string,
     portfolioId: string
   ): Promise<{ success: boolean; reassignedDelegateName?: string }> => {
-    const targetPort = portfolios.find((p) => p.id === portfolioId);
+    let targetPort = portfolios.find((p) => p.id === portfolioId);
     if (!targetPort) {
-      alert("Selected portfolio does not exist.");
+      const commPorts = portfolios.filter((p) => p.committeeId === committeeId);
+      const parts = portfolioId.toLowerCase().split("-");
+      const lastPart = parts[parts.length - 1];
+      const secondLast = parts.length > 1 ? parts[parts.length - 2] : "";
+
+      targetPort = commPorts.find(
+        (p) =>
+          p.code.toLowerCase() === lastPart ||
+          p.code.toLowerCase() === secondLast ||
+          portfolioId.endsWith(`-${p.code.toLowerCase()}`) ||
+          p.countryName.toLowerCase().replace(/[^a-z0-9]/g, "") === lastPart
+      );
+    }
+
+    if (!targetPort) {
       return { success: false };
     }
 
+    const actualPortId = targetPort.id;
     let reassignedDelegateName: string | undefined = undefined;
     const previousRegId = targetPort.allottedRegistrationId;
 
@@ -1656,7 +1719,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const allotment: MunAllotment = {
       registrationId: regId,
       committeeId,
-      portfolioId,
+      portfolioId: actualPortId,
       matchedPreferenceRank: 1,
       matchedPortfolioRank: 1,
       allottedAt: new Date().toISOString(),
@@ -1667,7 +1730,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPortfolios((prev) =>
       prev.map((p) => {
         // Target portfolio assigned to regId
-        if (p.id === portfolioId) {
+        if (p.id === actualPortId) {
           return { ...p, status: "taken", allottedRegistrationId: regId };
         }
         // If this delegate already held another portfolio, free it
@@ -1713,7 +1776,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await supabase
           .from("portfolios")
           .update({ status: "taken", allotted_registration_id: regId })
-          .eq("id", portfolioId);
+          .eq("id", actualPortId);
 
         // Update target registration
         await supabase
