@@ -18,7 +18,17 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   const currentPath = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
   const isSetup = currentPath.includes("/organizer/setup");
   const isConferencesHub = currentPath.includes("/organizer/conferences");
-  const isStandalone = isConferencesHub || isSetup;
+
+  const isConferenceCreated = Boolean(
+    event.id &&
+    event.id !== "new-conference" &&
+    event.name &&
+    event.name.trim().toLowerCase() !== "new mun conference" &&
+    event.status === "published"
+  );
+
+  // Only the multi-conference hub OR a brand-new draft conference is standalone
+  const isStandalone = isConferencesHub || (isSetup && !isConferenceCreated);
 
   React.useEffect(() => {
     const pageName =
@@ -27,19 +37,19 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         : pathname === "/organizer/conferences"
         ? "My Conferences"
         : pathname === "/organizer/setup"
-        ? "Conference Setup"
+        ? isConferenceCreated ? "Conference" : "Conference Setup"
         : pathname === "/organizer/account"
         ? "Account & Branding"
         : pathname.split("/").pop() || "Organizer";
     const capitalized = pageName.charAt(0).toUpperCase() + pageName.slice(1);
     document.title = `${capitalized} - ${event.name || "Delegato"} | Delegato`;
-  }, [pathname, event.name]);
+  }, [pathname, event.name, isConferenceCreated]);
 
   const navLinks = [
     { name: "Dashboard", href: "/organizer" },
     { name: "Registrations", href: "/organizer/registrations" },
     { name: "Allotment", href: "/organizer/allotment" },
-    { name: "Setup", href: "/organizer/setup?step=basics" },
+    { name: isConferenceCreated ? "Conference" : "Setup", href: "/organizer/setup?step=basics" },
     { name: "Account", href: "/organizer/account" },
   ];
 
@@ -98,7 +108,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
                   <DelegatoWordmark size="md" />
                 </div>
                 <div className="text-[11px] text-blue-200 font-bold uppercase tracking-wider">
-                  {isSetup ? "Conference Setup" : "My Conferences"}
+                  {isSetup ? (isConferenceCreated ? "Conference" : "Conference Setup") : "My Conferences"}
                 </div>
               </div>
             </Link>

@@ -209,6 +209,24 @@ export default function OrganizerSetupPage() {
     (typeof window !== "undefined" && Boolean(localStorage.getItem(`delegate_rules_done_${event.id}`)))
   );
 
+  const isConferenceCreated = Boolean(
+    event.id &&
+    event.id !== "new-conference" &&
+    event.name &&
+    event.name.trim().toLowerCase() !== "new mun conference" &&
+    event.status === "published"
+  );
+
+  const handleStepSelect = (step: SetupStep) => {
+    setValidationError(null);
+    setCurrentStep(step);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("step", step);
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
+
   // Step 1: Save basics and move to committees
   const handleSaveBasics = () => {
     setValidationError(null);
@@ -526,24 +544,72 @@ export default function OrganizerSetupPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
-      {/* Step Header & Sequential Progress Bar (No clickable button pills) */}
-      <div className="space-y-2 border-b border-white/10 pb-4">
-        <div className="flex items-center justify-between text-xs sm:text-sm font-bold text-blue-100">
-          <span className="uppercase tracking-wider font-extrabold text-[#FFD23F] flex items-center gap-1.5">
-            <span>Step {currentStepIndex + 1} of 5:</span>
-            <span>{STEP_LABELS[currentStep].title}</span>
-          </span>
-          <span className="text-white/80 font-medium hidden sm:inline">
-            {STEP_LABELS[currentStep].subtitle}
-          </span>
+      {/* Top Header & Navigation Buttons for created conference */}
+      {isConferenceCreated ? (
+        <div className="space-y-4 border-b border-white/10 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-heading font-extrabold text-white tracking-tight">
+                Conference
+              </h1>
+              <p className="text-blue-100 text-xs sm:text-sm font-medium mt-0.5">
+                Manage basics, committees, portfolios, rules, and registration links for {event.name}.
+              </p>
+            </div>
+            {event.status === "published" && (
+              <span className="self-start sm:self-auto px-3.5 py-1 rounded-full text-xs font-heading font-extrabold bg-emerald-400/20 text-emerald-200 border border-emerald-400/40">
+                Published & Active
+              </span>
+            )}
+          </div>
+
+          {/* Section Navigation Buttons */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar p-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
+            {[
+              { id: "basics" as SetupStep, label: "Basics" },
+              { id: "committees" as SetupStep, label: "Committees" },
+              { id: "portfolios" as SetupStep, label: "Portfolios" },
+              { id: "rules" as SetupStep, label: "Rules & Allotment" },
+              { id: "publish" as SetupStep, label: "Registration Links" },
+            ].map((tab) => {
+              const isActive = currentStep === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleStepSelect(tab.id)}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-heading font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                    isActive
+                      ? "bg-white text-[#0B1B33] shadow-md"
+                      : "text-white/80 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
-          <div
-            className="bg-[#FFD23F] h-full transition-all duration-300 rounded-full"
-            style={{ width: `${((currentStepIndex + 1) / 5) * 100}%` }}
-          />
+      ) : (
+        /* Sequential Progress Bar for new draft conference */
+        <div className="space-y-2 border-b border-white/10 pb-4">
+          <div className="flex items-center justify-between text-xs sm:text-sm font-bold text-blue-100">
+            <span className="uppercase tracking-wider font-extrabold text-[#FFD23F] flex items-center gap-1.5">
+              <span>Step {currentStepIndex + 1} of 5:</span>
+              <span>{STEP_LABELS[currentStep].title}</span>
+            </span>
+            <span className="text-white/80 font-medium hidden sm:inline">
+              {STEP_LABELS[currentStep].subtitle}
+            </span>
+          </div>
+          <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
+            <div
+              className="bg-[#FFD23F] h-full transition-all duration-300 rounded-full"
+              style={{ width: `${((currentStepIndex + 1) / 5) * 100}%` }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Validation Error Banner */}
       {validationError && (
