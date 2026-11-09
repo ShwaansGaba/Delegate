@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -316,6 +317,27 @@ export default function SchoolTeamRegistrationPage() {
                 >
                   Change something
                 </button>
+              </div>
+
+              {/* Parental Consent & Dispute Disclaimer Notice */}
+              <div className="bg-white/10 border border-white/20 rounded-2xl p-4 text-white text-xs sm:text-sm leading-relaxed space-y-1 text-left">
+                <p className="font-bold text-[#FFD23F] flex items-center gap-1.5">
+                  <span>🛡️</span> Notice on Parental Consent &amp; Disputes:
+                </p>
+                <p className="text-white/90">
+                  By confirming this team registration, the school / head delegate represents that all student delegates have valid parental/guardian consent. Delegato is an intermediary platform and is not liable for any event-related disputes, cancellations, or refunds.
+                </p>
+                <p className="pt-1 text-[11px] sm:text-xs text-blue-200">
+                  Review our{" "}
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    className="text-[#FFD23F] underline font-bold hover:text-white"
+                  >
+                    Terms &amp; Conditions
+                  </Link>
+                  .
+                </p>
               </div>
             </div>
 

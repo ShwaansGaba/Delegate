@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { Button } from "../ui/Button";
 
 interface ReviewPreference {
@@ -73,8 +74,29 @@ export function CredentialReview({
         </button>
       </div>
 
+      {/* Parental Consent & Intermediary Disclaimer Notice */}
+      <div className="bg-white/10 border border-white/20 rounded-2xl p-4 text-white text-xs sm:text-sm leading-relaxed space-y-1 text-left">
+        <p className="font-bold text-[#FFD23F] flex items-center gap-1.5">
+          <span>🛡️</span> Notice on Parental Consent &amp; Disputes:
+        </p>
+        <p className="text-white/90">
+          By registering, you represent and warrant that you have obtained full parental/guardian consent to participate. Delegato operates strictly as a technical intermediary software platform and is not liable for any event-related disputes, cancellations, venue issues, or fee refunds between delegates and organizers.
+        </p>
+        <p className="pt-1 text-[11px] sm:text-xs text-blue-200">
+          Review our complete{" "}
+          <Link
+            href="/terms"
+            target="_blank"
+            className="text-[#FFD23F] underline font-bold hover:text-white"
+          >
+            Terms &amp; Conditions
+          </Link>
+          .
+        </p>
+      </div>
+
       {/* Bottom Action Button */}
-      <div className="pt-4">
+      <div className="pt-2">
         <Button onClick={onConfirm} disabled={isSubmitting}>
           {isSubmitting ? "Confirming..." : "Confirm registration"}
         </Button>

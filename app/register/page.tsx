@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -337,8 +338,15 @@ export default function IndividualRegisterPage() {
               </div>
             </div>
 
-            <div className="pt-4 pb-4 sm:pt-6 sm:pb-2 mt-auto">
+            <div className="pt-4 pb-4 sm:pt-6 sm:pb-2 mt-auto space-y-2">
               <Button onClick={handleNext}>Next</Button>
+              <p className="text-[11px] text-white/75 text-center leading-tight">
+                By registering, you confirm parental/guardian consent and agree to Delegato&apos;s{" "}
+                <Link href="/terms" target="_blank" className="underline font-bold text-[#FFD23F] hover:text-white">
+                  Terms &amp; Conditions
+                </Link>
+                . Delegato is not liable for event disputes.
+              </p>
             </div>
           </div>
         )}

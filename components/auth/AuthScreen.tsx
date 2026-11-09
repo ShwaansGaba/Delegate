@@ -183,6 +183,19 @@ export function AuthScreen({ onSuccess, onClose, initialMode = "login" }: AuthSc
                   : "Create account"}
               </Button>
             </div>
+
+            {/* Terms and Conditions Legal Link */}
+            <p className="text-[11px] sm:text-xs text-gray-500 text-center leading-normal pt-1">
+              By continuing, you agree to Delegato&apos;s{" "}
+              <Link
+                href="/terms"
+                target="_blank"
+                className="text-[#1560BD] underline font-bold hover:text-blue-800"
+              >
+                Terms &amp; Conditions
+              </Link>
+              .
+            </p>
           </form>
 
           <div className="mt-4 pt-4 sm:mt-6 sm:pt-6 border-t border-gray-100 text-center">
