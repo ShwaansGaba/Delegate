@@ -508,7 +508,7 @@ export default function AvailableConferencesPage() {
             href="/organizer/conferences"
             className="bg-[#FFD23F] text-[#0B1B33] font-bold text-lg px-5 py-3 rounded-xl hover:bg-yellow-400 active:scale-95 transition-all shrink-0 shadow-sm"
           >
-            Organize a MUN
+            Organize an MUN
           </Link>
         </header>
 
@@ -884,13 +884,13 @@ export default function AvailableConferencesPage() {
                       )}
                       <span
                         style={{
-                          backgroundColor: conf.banner_url ? "#FFFFFF" : palette.badgeBg,
-                          color: conf.banner_url ? "#0B1B33" : palette.badgeText,
-                          borderColor: conf.banner_url ? "#0B1B33" : palette.badgeBg,
+                          backgroundColor: conf.status === "paused" ? "#F59E0B" : (conf.banner_url ? "#FFFFFF" : palette.badgeBg),
+                          color: conf.status === "paused" ? "#FFFFFF" : (conf.banner_url ? "#0B1B33" : palette.badgeText),
+                          borderColor: conf.status === "paused" ? "#F59E0B" : (conf.banner_url ? "#0B1B33" : palette.badgeBg),
                         }}
                         className="relative z-10 self-start border-2 rounded-[10px] px-2.5 py-0.5 text-xs sm:text-sm font-bold shadow-sm"
                       >
-                        {idx === 0 ? "Closing soon" : "Filling fast"}
+                        {conf.status === "paused" ? "Paused" : (idx === 0 ? "Closing soon" : "Filling fast")}
                       </span>
 
                       <div className="relative z-10 font-heading font-extrabold text-xl sm:text-[28px] leading-[1.05] drop-shadow-sm group-hover:scale-[1.02] transition-transform">

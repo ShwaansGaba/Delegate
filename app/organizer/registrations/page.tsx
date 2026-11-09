@@ -8,7 +8,7 @@ import { formatDateDDMMYYYY } from "@/lib/dateUtils";
 
 export default function RegistrationsPage() {
   const router = useRouter();
-  const { user, isAuthLoaded, isLoaded, registrations, committees, portfolios, verifyPayment, event } = useApp();
+  const { user, isAuthLoaded, isLoaded, registrations, committees, portfolios, verifyPayment, event, togglePauseRegistrations } = useApp();
 
   // Guard against unauthenticated render or pending data load
   if (!isAuthLoaded || !isLoaded || !user) {
@@ -20,12 +20,12 @@ export default function RegistrationsPage() {
     if (!isLoaded) return;
     if (!event.name || event.id === "new-conference") {
       router.replace("/organizer/conferences");
-    } else if (event.status !== "published") {
+    } else if (event.status !== "published" && event.status !== "paused") {
       router.replace("/organizer/setup?step=basics");
     }
   }, [isLoaded, event.name, event.id, event.status, router]);
 
-  if (!event.name || event.id === "new-conference" || event.status !== "published") {
+  if (!event.name || event.id === "new-conference" || (event.status !== "published" && event.status !== "paused")) {
     return null;
   }
 
@@ -33,6 +33,20 @@ export default function RegistrationsPage() {
   const [filter, setFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string>("");
   const [reminderToast, setReminderToast] = useState("");
+  const [isTogglingPause, setIsTogglingPause] = useState(false);
+
+  const isPaused = event.status === "paused" || !!event.rules?.isRegistrationsPaused;
+
+  const handleTogglePause = async () => {
+    setIsTogglingPause(true);
+    try {
+      await togglePauseRegistrations();
+      setReminderToast(isPaused ? "Registrations resumed successfully!" : "Registrations have been paused.");
+      setTimeout(() => setReminderToast(""), 4000);
+    } finally {
+      setIsTogglingPause(false);
+    }
+  };
 
   // Sync initial query params client-side without suspending
   useEffect(() => {
@@ -142,27 +156,99 @@ export default function RegistrationsPage() {
     return portfolios.find((p) => p.id === id)?.countryName || id;
   };
 
-  if (!event.name || event.id === "new-conference" || event.status !== "published") {
+  if (!event.name || event.id === "new-conference" || (event.status !== "published" && event.status !== "paused")) {
     return null;
   }
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {reminderToast && (
+        <div className="bg-[#FFD23F] text-[#0B1B33] px-5 py-3 rounded-2xl font-heading font-extrabold shadow-lg flex items-center justify-between animate-fadeIn">
+          <span>{reminderToast}</span>
+          <button
+            type="button"
+            onClick={() => setReminderToast("")}
+            className="text-xs uppercase tracking-wider ml-4 underline font-bold"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Paused Banner */}
+      {isPaused && (
+        <div className="bg-amber-500/20 border-2 border-amber-300 text-white rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fadeIn">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <span className="text-3xl shrink-0">⏸️</span>
+            <div>
+              <p className="font-heading font-extrabold text-xl text-amber-300">
+                Registrations are Temporarily Paused
+              </p>
+              <p className="text-sm text-amber-100 font-medium mt-0.5 max-w-xl">
+                Delegates attempting to register will see a friendly notice that registrations are paused. You can resume accepting new submissions anytime.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleTogglePause}
+            disabled={isTogglingPause}
+            className="bg-[#FFD23F] text-[#0B1B33] hover:bg-yellow-400 font-heading font-extrabold px-5 py-3 rounded-2xl text-base transition-all shrink-0 cursor-pointer shadow-sm active:scale-95"
+          >
+            {isTogglingPause ? "Resuming..." : "▶ Resume Registrations"}
+          </button>
+        </div>
+      )}
+
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white">
-            Registrations
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-4xl sm:text-5xl font-heading font-extrabold text-white">
+              Registrations
+            </h1>
+            {isPaused ? (
+              <span className="bg-amber-400 text-[#0B1B33] text-xs uppercase tracking-wider font-extrabold px-3 py-1 rounded-full shadow-sm">
+                Paused
+              </span>
+            ) : (
+              <span className="bg-emerald-400 text-[#0B1B33] text-xs uppercase tracking-wider font-extrabold px-3 py-1 rounded-full shadow-sm">
+                Live
+              </span>
+            )}
+          </div>
           <p className="text-blue-100 text-sm font-medium mt-1">
             {event.name || "Conference Registrations"} • {filteredList.length} total
           </p>
         </div>
-        <div>
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+          {/* Dedicated Pause / Resume Button */}
+          <button
+            type="button"
+            onClick={handleTogglePause}
+            disabled={isTogglingPause}
+            className={`w-full sm:w-auto px-5 py-3 rounded-2xl text-base font-heading font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm active:scale-95 ${
+              isPaused
+                ? "bg-emerald-400 hover:bg-emerald-300 text-[#0B1B33]"
+                : "bg-amber-400 hover:bg-amber-300 text-[#0B1B33]"
+            }`}
+            title={isPaused ? "Allow attendees to register" : "Temporarily pause new registrations"}
+          >
+            <span>{isPaused ? "▶" : "⏸"}</span>
+            <span>
+              {isTogglingPause
+                ? "Updating..."
+                : isPaused
+                ? "Resume Registrations"
+                : "Pause Registrations"}
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={handleExportCSV}
-            className="w-full sm:w-auto bg-white text-[#0B1B33] hover:bg-neutral-100 px-6 py-3 rounded-2xl text-lg font-heading font-extrabold transition-colors cursor-pointer"
+            className="w-full sm:w-auto bg-white text-[#0B1B33] hover:bg-neutral-100 px-6 py-3 rounded-2xl text-base font-heading font-extrabold transition-colors cursor-pointer shadow-sm"
           >
             Export list
           </button>

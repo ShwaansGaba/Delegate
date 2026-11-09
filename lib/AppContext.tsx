@@ -100,6 +100,7 @@ interface AppContextType {
   lookupRegistrationAsync: (num: string, eventId?: string) => Promise<Registration | null>;
   publishAllotmentsToggle: () => void;
   markConferencePublished: () => Promise<boolean>;
+  togglePauseRegistrations: () => Promise<boolean>;
   refreshPortfoliosLive: (committeeId?: string) => Promise<MunPortfolio[]>;
   clearDatabase: () => void;
 }
@@ -2131,6 +2132,73 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
+  const togglePauseRegistrations = async (): Promise<boolean> => {
+    const isCurrentlyPaused = event.status === "paused" || !!event.rules?.isRegistrationsPaused;
+    const nextStatus = isCurrentlyPaused ? ("published" as const) : ("paused" as const);
+    const updated: EventModel = {
+      ...event,
+      status: nextStatus,
+      rules: {
+        ...event.rules,
+        isRegistrationsPaused: !isCurrentlyPaused,
+      },
+    };
+    setEvent(updated);
+    setMyConferences((prev) => {
+      const exists = prev.some((c) => c.id === updated.id);
+      return exists ? prev.map((c) => (c.id === updated.id ? updated : c)) : [updated, ...prev];
+    });
+    setAllEvents((prev) => {
+      const exists = prev.some((c) => c.id === updated.id);
+      return exists ? prev.map((c) => (c.id === updated.id ? updated : c)) : [updated, ...prev];
+    });
+
+    if (typeof window !== "undefined") {
+      try {
+        if (updated.id) {
+          localStorage.setItem(`delegate_public_conf_${updated.id}`, JSON.stringify(updated));
+        }
+        if (updated.slug) {
+          localStorage.setItem(`delegate_public_conf_${updated.slug}`, JSON.stringify(updated));
+        }
+        if (user?.id) {
+          const userStorageKey = `delegate_storage_${user.id}`;
+          const existing = localStorage.getItem(userStorageKey);
+          const parsed = existing ? JSON.parse(existing) : {};
+          const prevList: EventModel[] = (parsed.myConferences || []).filter(
+            (c: EventModel) => c.name && c.name.trim().length > 0
+          );
+          const exists = prevList.some((c) => c.id === updated.id);
+          const updatedList = exists
+            ? prevList.map((c) => (c.id === updated.id ? updated : c))
+            : [updated, ...prevList];
+          localStorage.setItem(
+            userStorageKey,
+            JSON.stringify({ ...parsed, myConferences: updatedList, event: updated })
+          );
+        }
+      } catch {}
+    }
+
+    if (isSupabaseConfigured && supabase && updated.id && updated.id !== "new-conference" && !updated.id.startsWith("new-")) {
+      try {
+        await supabase
+          .from("events")
+          .update({
+            status: nextStatus,
+            rules: {
+              ...updated.rules,
+              isRegistrationsPaused: !isCurrentlyPaused,
+            },
+          })
+          .eq("id", updated.id);
+      } catch (err) {
+        console.error("Supabase togglePauseRegistrations error:", err);
+      }
+    }
+    return true;
+  };
+
   const refreshPortfoliosLive = async (committeeId?: string): Promise<MunPortfolio[]> => {
     if (isSupabaseConfigured && supabase) {
       try {
@@ -2244,6 +2312,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         lookupRegistrationAsync,
         publishAllotmentsToggle,
         markConferencePublished,
+        togglePauseRegistrations,
         refreshPortfoliosLive,
         clearDatabase,
       }}

@@ -125,9 +125,52 @@ export default function SchoolTeamRegistrationPage() {
     router.push(`/register/confirmation?num=${encodeURIComponent(headReg.registrationNumber)}&team=true&event=${encodeURIComponent(event.id)}`);
   };
 
+  const isPaused = event.status === "paused" || !!event.rules?.isRegistrationsPaused;
+
+  if (isPaused) {
+    return (
+      <main
+        className="min-h-[100dvh] flex flex-col justify-center items-center px-4 py-10 text-center"
+        style={{ backgroundColor: primaryColor }}
+        data-bg-effect={bgEffect}
+      >
+        <div className="max-w-md w-full bg-white text-[#0B1B33] rounded-3xl p-8 shadow-2xl space-y-5 animate-fadeIn">
+          <div className="w-16 h-16 mx-auto rounded-full bg-amber-100 flex items-center justify-center text-3xl">
+            ⏸️
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0B1B33]">
+            Registrations Temporarily Paused
+          </h1>
+          <p className="text-neutral-600 font-medium text-sm sm:text-base leading-relaxed">
+            The secretariat for <span className="font-bold text-[#1560BD]">{event.name || "this MUN"}</span> has temporarily paused incoming team registrations.
+          </p>
+          <p className="text-xs text-neutral-500">
+            Please check back shortly or check your existing registration status.
+          </p>
+          <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-center">
+            <button
+              type="button"
+              onClick={() => router.push("/status")}
+              className="bg-[#1560BD] text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors cursor-pointer"
+            >
+              Check My Status
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/conferences")}
+              className="border-2 border-gray-200 text-gray-700 px-5 py-3 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              Browse Other MUNs
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main
-      className="min-h-screen flex flex-col justify-between px-6 py-8 sm:px-8 sm:py-12 page-transition"
+      className="min-h-[100dvh] flex flex-col justify-between px-3.5 py-4 sm:px-8 sm:py-8 overflow-y-auto overflow-x-hidden pb-10 sm:pb-8 page-transition"
       style={{ backgroundColor: primaryColor }}
       data-bg-effect={bgEffect}
     >
@@ -222,7 +265,7 @@ export default function SchoolTeamRegistrationPage() {
               </div>
             </div>
 
-            <div className="pt-8 pb-4">
+            <div className="pt-4 pb-4 sm:pt-6 sm:pb-2 mt-auto">
               <Button onClick={() => setStep("review")}>Review team</Button>
             </div>
           </div>
@@ -276,7 +319,7 @@ export default function SchoolTeamRegistrationPage() {
               </div>
             </div>
 
-            <div className="pt-8 pb-4">
+            <div className="pt-4 pb-4 sm:pt-6 sm:pb-2 mt-auto">
               <Button onClick={handleConfirmTeam}>Confirm registration</Button>
             </div>
           </div>

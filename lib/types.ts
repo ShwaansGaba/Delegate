@@ -39,6 +39,7 @@ export interface EventRules {
   showTakenPortfoliosLive: boolean;
   firstComeFirstServed: boolean;
   allotmentsPublished: boolean;
+  isRegistrationsPaused?: boolean;
 }
 
 export interface ConferenceBranding {
@@ -65,7 +66,7 @@ export interface EventModel {
   schoolFeePerStudent?: number; // School delegation fee (per student)
   deadline: string;
   deadlineDate?: string;
-  status: "draft" | "published" | "closed";
+  status: "draft" | "published" | "paused" | "closed";
   rules: EventRules;
   branding?: ConferenceBranding;
   bannerUrl?: string;
