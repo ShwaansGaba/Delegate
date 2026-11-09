@@ -12,7 +12,7 @@ import { Menu, X, Plus } from "lucide-react";
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isAuthLoaded, event, myConferences, selectConference, createNewConference } = useApp();
+  const { user, isAuthLoaded, event, myConferences, selectConference, createNewConference, theme } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const currentPath = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
@@ -75,7 +75,10 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   // If on My Conferences hub OR during Setup: NO SIDEBAR IS SHOWN
   if (isStandalone) {
     return (
-      <div className="min-h-screen theme-bg-primary flex flex-col text-white transition-colors duration-300">
+      <div
+        className="min-h-screen theme-bg-primary flex flex-col text-white transition-colors duration-300"
+        data-bg-effect={theme.backgroundEffect}
+      >
         <header className="theme-bg-sidebar border-b border-white/10 px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
           <div className="flex items-center gap-3">
             {isSetup && (
@@ -114,7 +117,10 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
 
   // Inside an entered conference workspace: SIDEBAR APPEARS
   return (
-    <div className="min-h-screen theme-bg-primary flex flex-col lg:flex-row text-white transition-colors duration-300">
+    <div
+      className="min-h-screen theme-bg-primary flex flex-col lg:flex-row text-white transition-colors duration-300"
+      data-bg-effect={theme.backgroundEffect}
+    >
       {/* Mobile & Tablet Top Bar */}
       <div className="lg:hidden theme-bg-sidebar p-4 flex items-center justify-between border-b border-white/10 sticky top-0 z-40 transition-colors duration-300">
         <div className="flex items-center gap-2.5 truncate mr-2">

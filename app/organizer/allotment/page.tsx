@@ -80,6 +80,18 @@ export default function OrganizerAllotmentPage() {
   // Inline Allotment selection draft per delegate row: { [regId]: { committeeId: string, portfolioId: string } }
   const [rowDrafts, setRowDrafts] = useState<Record<string, { committeeId: string; portfolioId: string }>>({});
 
+  // Pagination & GUI controls for large delegate counts
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [editingDelegateId, setEditingDelegateId] = useState<string | null>(null);
+
+  // User friendly toast alerts for allot & reassignment
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "warning" | "info" } | null>(null);
+  const showToast = (text: string, type: "success" | "warning" | "info" = "success") => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 4500);
+  };
+
   // Modals state
   const [showAutoAllotModal, setShowAutoAllotModal] = useState(false);
   const [showConflictsModal, setShowConflictsModal] = useState(false);
@@ -169,9 +181,11 @@ export default function OrganizerAllotmentPage() {
         if (statusFilter === "paid" && reg.paymentStatus !== "verified") return false;
         if (statusFilter === "unpaid" && reg.paymentStatus === "verified") return false;
 
-        // Committee Filter
+        // Committee Filter: matches either allotted committee OR preferred committee
         if (committeeFilter !== "all") {
-          if (reg.allotment?.committeeId !== committeeFilter) return false;
+          const inAllotment = reg.allotment?.committeeId === committeeFilter;
+          const inPreferences = (reg.preferences || []).some((p) => p.committeeId === committeeFilter);
+          if (!inAllotment && !inPreferences) return false;
         }
 
         return true;
@@ -192,6 +206,46 @@ export default function OrganizerAllotmentPage() {
         return sortAsc ? cmp : -cmp;
       });
   }, [registrations, portfolios, committees, searchQuery, statusFilter, committeeFilter, sortBy, sortAsc]);
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, committeeFilter, sortBy, sortAsc]);
+
+  const totalPages = Math.ceil(filteredDelegates.length / pageSize) || 1;
+  const paginatedDelegates = useMemo(() => {
+    if (pageSize >= 1000) return filteredDelegates;
+    const start = (currentPage - 1) * pageSize;
+    return filteredDelegates.slice(start, start + pageSize);
+  }, [filteredDelegates, currentPage, pageSize]);
+
+  const handleAllot = async (regId: string, committeeId: string, portfolioId: string) => {
+    const targetPort = portfolios.find((p) => p.id === portfolioId);
+    const targetComm = committees.find((c) => c.id === committeeId);
+    const targetReg = registrations.find((r) => r.id === regId);
+
+    const res = await allotDelegateManual(regId, committeeId, portfolioId);
+    if (res.success) {
+      if (res.reassignedDelegateName) {
+        showToast(
+          `✓ Reassigned ${targetPort?.countryName || "seat"} (${targetComm?.name || "Committee"}) to ${targetReg?.delegateName || "delegate"}. Previous holder (${res.reassignedDelegateName}) is now unallotted.`,
+          "warning"
+        );
+      } else {
+        showToast(
+          `✓ Successfully allotted ${targetPort?.countryName || "seat"} (${targetComm?.name || "Committee"}) to ${targetReg?.delegateName || "delegate"}!`,
+          "success"
+        );
+      }
+      setEditingDelegateId(null);
+    }
+  };
+
+  const handleUnallot = async (regId: string) => {
+    const targetReg = registrations.find((r) => r.id === regId);
+    await unallotDelegate(regId);
+    showToast(`Seat unallotted for ${targetReg?.delegateName || "delegate"}. Portfolio is now free.`, "info");
+  };
 
   // Matrix View Portfolios with Allotted Delegate info
   const matrixPortfolios = useMemo(() => {
@@ -438,32 +492,54 @@ export default function OrganizerAllotmentPage() {
       </div>
 
       {/* ======================================================== */}
-      {/* VIEW 1: DELEGATES ALLOTMENT SHEET (Interactive Table)     */}
+      {/* VIEW 1: DELEGATES ALLOTMENT GUI (Spacious & Scalable)     */}
       {/* ======================================================== */}
       {viewMode === "delegates" && (
-        <div className="space-y-3">
-          {/* Controls Bar: Search, Filters, Committee Dropdown */}
-          <div className="bg-white rounded-2xl p-3 sm:p-4 text-[#0B1B33] shadow-sm space-y-3">
+        <div className="space-y-4">
+          {/* Toast Notification Banner */}
+          {toastMessage && (
+            <div
+              className={`p-3.5 rounded-xl font-heading font-extrabold text-sm flex items-center justify-between shadow-md animate-fadeIn ${
+                toastMessage.type === "warning"
+                  ? "bg-amber-400 text-[#0B1B33] border border-amber-500"
+                  : toastMessage.type === "info"
+                  ? "bg-blue-600 text-white border border-blue-500"
+                  : "bg-emerald-600 text-white border border-emerald-500"
+              }`}
+            >
+              <span>{toastMessage.text}</span>
+              <button
+                type="button"
+                onClick={() => setToastMessage(null)}
+                className="text-xs uppercase tracking-wider font-bold underline opacity-80 hover:opacity-100 cursor-pointer ml-3"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Controls Bar: Search, Filters, Committee Dropdown & Pagination Size */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 text-[#0B1B33] shadow-sm space-y-3.5 border border-neutral-200">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               {/* Search Bar */}
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Filter by delegate name, school, reg #, or country..."
+                  placeholder="Search delegate name, school, reg ID, or allotted country..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-neutral-200 text-xs sm:text-sm focus:outline-none focus:border-[#1560BD]"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#1560BD]"
                 />
               </div>
 
               {/* Committee Filter */}
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-bold text-neutral-500 whitespace-nowrap">Committee:</span>
+                <span className="text-xs font-bold text-neutral-500 whitespace-nowrap">Filter Committee:</span>
                 <select
                   value={committeeFilter}
                   onChange={(e) => setCommitteeFilter(e.target.value)}
-                  className="py-1.5 px-3 rounded-xl border border-neutral-200 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-neutral-50 focus:outline-none"
+                  className="py-2 px-3 rounded-xl border border-neutral-200 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-neutral-50 focus:outline-none focus:border-[#1560BD]"
                 >
                   <option value="all">All Committees ({committees.length})</option>
                   {committees.map((c) => (
@@ -473,347 +549,376 @@ export default function OrganizerAllotmentPage() {
                   ))}
                 </select>
               </div>
+
+              {/* Page Size Selector */}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-bold text-neutral-500 whitespace-nowrap">Per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="py-2 px-3 rounded-xl border border-neutral-200 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-neutral-50 focus:outline-none"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={99999}>All ({filteredDelegates.length})</option>
+                </select>
+              </div>
             </div>
 
-            {/* Quick Filter Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-neutral-100 text-xs font-heading font-extrabold">
-              <span className="text-neutral-400 text-[11px] uppercase mr-1">Status:</span>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("all")}
-                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                  statusFilter === "all"
-                    ? "bg-[#0B1B33] text-white"
-                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-                }`}
-              >
-                All ({registrations.length})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStatusFilter("unallotted")}
-                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                  statusFilter === "unallotted"
-                    ? "bg-amber-500 text-white"
-                    : "bg-amber-50 text-amber-900 hover:bg-amber-100"
-                }`}
-              >
-                Unallotted ({unallottedCount})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStatusFilter("allotted")}
-                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                  statusFilter === "allotted"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                }`}
-              >
-                Allotted ({allottedCount})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStatusFilter("paid")}
-                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                  statusFilter === "paid"
-                    ? "bg-[#1560BD] text-white"
-                    : "bg-blue-50 text-[#0F4C96] hover:bg-blue-100"
-                }`}
-              >
-                Paid ({paidCount})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStatusFilter("unpaid")}
-                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                  statusFilter === "unpaid"
-                    ? "bg-red-600 text-white"
-                    : "bg-red-50 text-red-800 hover:bg-red-100"
-                }`}
-              >
-                Unpaid ({unpaidCount})
-              </button>
-
-              {searchQuery && (
+            {/* Quick Status Filter Chips & Pagination Controls */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-neutral-100">
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-heading font-extrabold">
+                <span className="text-neutral-400 text-[11px] uppercase mr-1">Status:</span>
                 <button
                   type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="ml-auto text-neutral-500 hover:text-neutral-800 text-xs font-bold underline"
+                  onClick={() => setStatusFilter("all")}
+                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                    statusFilter === "all"
+                      ? "bg-[#0B1B33] text-white shadow-xs"
+                      : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                  }`}
                 >
-                  Clear search
+                  All ({registrations.length})
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("unallotted")}
+                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                    statusFilter === "unallotted"
+                      ? "bg-amber-500 text-white shadow-xs"
+                      : "bg-amber-50 text-amber-900 hover:bg-amber-100"
+                  }`}
+                >
+                  Unallotted ({unallottedCount})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("allotted")}
+                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                    statusFilter === "allotted"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                  }`}
+                >
+                  Allotted ({allottedCount})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("paid")}
+                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                    statusFilter === "paid"
+                      ? "bg-[#1560BD] text-white shadow-xs"
+                      : "bg-blue-50 text-[#0F4C96] hover:bg-blue-100"
+                  }`}
+                >
+                  Paid ({paidCount})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("unpaid")}
+                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                    statusFilter === "unpaid"
+                      ? "bg-red-600 text-white shadow-xs"
+                      : "bg-red-50 text-red-800 hover:bg-red-100"
+                  }`}
+                >
+                  Unpaid ({unpaidCount})
+                </button>
+              </div>
+
+              {/* Pagination Page Jump */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2 text-xs font-heading font-extrabold text-neutral-600 ml-auto">
+                  <span>Page {currentPage} of {totalPages}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={currentPage <= 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      className="px-2.5 py-1 rounded-lg border border-neutral-300 disabled:opacity-40 hover:bg-neutral-100 cursor-pointer"
+                    >
+                      ← Prev
+                    </button>
+                    <button
+                      type="button"
+                      disabled={currentPage >= totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      className="px-2.5 py-1 rounded-lg border border-neutral-300 disabled:opacity-40 hover:bg-neutral-100 cursor-pointer"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Interactive Tabular Spreadsheet */}
-          <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
-            <div className="overflow-x-auto max-h-[700px]">
-              <table className="w-full text-left text-xs sm:text-sm border-collapse">
-                {/* Table Column Headers */}
-                <thead className="sticky top-0 bg-neutral-100 text-[#0B1B33] font-heading font-extrabold uppercase tracking-wider text-[11px] border-b border-neutral-200 z-10 select-none shadow-xs">
-                  <tr>
-                    <th className="py-2.5 px-3 w-12 text-center border-r border-neutral-200 bg-neutral-100">#</th>
-                    <th
-                      className="py-2.5 px-3 border-r border-neutral-200 cursor-pointer hover:bg-neutral-200"
-                      onClick={() => {
-                        if (sortBy === "name") setSortAsc(!sortAsc);
-                        else {
-                          setSortBy("name");
-                          setSortAsc(true);
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>Delegate</span>
-                        <ArrowUpDown className="w-3 h-3 text-neutral-400" />
-                      </div>
-                    </th>
-                    <th
-                      className="py-2.5 px-3 border-r border-neutral-200 w-32 cursor-pointer hover:bg-neutral-200"
-                      onClick={() => {
-                        if (sortBy === "reg") setSortAsc(!sortAsc);
-                        else {
-                          setSortBy("reg");
-                          setSortAsc(true);
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>Reg ID</span>
-                        <ArrowUpDown className="w-3 h-3 text-neutral-400" />
-                      </div>
-                    </th>
-                    <th className="py-2.5 px-3 border-r border-neutral-200 w-24 text-center">Payment</th>
-                    <th className="py-2.5 px-3 border-r border-neutral-200 min-w-[280px]">
-                      Preferences (Ranked 1 → 3)
-                    </th>
-                    <th className="py-2.5 px-3 min-w-[340px]">
-                      Allotted Committee &amp; Portfolio
-                    </th>
-                  </tr>
-                </thead>
+          {/* User-Friendly GUI Cards List for Delegates */}
+          {paginatedDelegates.length === 0 ? (
+            <div className="bg-white rounded-2xl p-12 text-center text-neutral-500 font-medium border border-neutral-200">
+              <AlertCircle className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
+              <p className="text-base font-heading font-extrabold text-[#0B1B33]">No delegates match your filters</p>
+              <p className="text-xs text-neutral-400 mt-1">Try clearing your search query or status filter.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {paginatedDelegates.map((reg, rowIdx) => {
+                const globalIdx = (currentPage - 1) * pageSize + rowIdx + 1;
+                const isAllotted = Boolean(reg.allotment);
+                const isPaid = reg.paymentStatus === "verified";
+                const isEditing = editingDelegateId === reg.id || !isAllotted;
+                const allottedComm = committees.find((c) => c.id === reg.allotment?.committeeId);
+                const allottedPort = portfolios.find((p) => p.id === reg.allotment?.portfolioId);
+                const matchInfo = getPreferenceMatchRank(
+                  reg,
+                  reg.allotment?.committeeId,
+                  reg.allotment?.portfolioId
+                );
 
-                {/* Spreadsheet Rows */}
-                <tbody className="divide-y divide-neutral-200 text-[#0B1B33]">
-                  {filteredDelegates.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-neutral-500 font-medium">
-                        No delegates match your filters. Try clearing the search or status filter.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredDelegates.map((reg, rowIdx) => {
-                      const isAllotted = Boolean(reg.allotment);
-                      const isPaid = reg.paymentStatus === "verified";
-                      const allottedComm = committees.find((c) => c.id === reg.allotment?.committeeId);
-                      const allottedPort = portfolios.find((p) => p.id === reg.allotment?.portfolioId);
-                      const matchInfo = getPreferenceMatchRank(
-                        reg,
-                        reg.allotment?.committeeId,
-                        reg.allotment?.portfolioId
-                      );
+                // Best available pref for 1-click
+                const bestAvailablePref = !isAllotted ? getBestAvailablePreference(reg) : null;
 
-                      // Check if best preferred choice is available for quick 1-click allot
-                      const bestAvailablePref = !isAllotted ? getBestAvailablePreference(reg) : null;
+                // Current draft committee for this delegate row
+                const draftCommId =
+                  rowDrafts[reg.id]?.committeeId ||
+                  reg.allotment?.committeeId ||
+                  reg.preferences[0]?.committeeId ||
+                  committees[0]?.id ||
+                  "";
 
-                      // Row draft state for custom manual assignment dropdowns
-                      const draftCommId =
-                        rowDrafts[reg.id]?.committeeId ||
-                        reg.allotment?.committeeId ||
-                        reg.preferences[0]?.committeeId ||
-                        committees[0]?.id ||
-                        "";
+                // All portfolios in draft committee, sorted alphabetically!
+                const portsInDraftComm = portfolios
+                  .filter((p) => p.committeeId === draftCommId)
+                  .sort((a, b) => a.countryName.localeCompare(b.countryName, undefined, { sensitivity: "base" }));
 
-                      const availablePortsInDraftComm = portfolios.filter(
-                        (p) =>
-                          p.committeeId === draftCommId &&
-                          (p.status === "open" || p.id === reg.allotment?.portfolioId)
-                      );
+                const draftPortId =
+                  rowDrafts[reg.id]?.portfolioId ||
+                  reg.allotment?.portfolioId ||
+                  (portsInDraftComm.find((p) => p.status === "open")?.id || portsInDraftComm[0]?.id || "");
 
-                      const draftPortId =
-                        rowDrafts[reg.id]?.portfolioId ||
-                        reg.allotment?.portfolioId ||
-                        (availablePortsInDraftComm[0]?.id || "");
+                const selectedPortObj = portfolios.find((p) => p.id === draftPortId);
+                const isSelectedPortTakenByOther =
+                  selectedPortObj?.status === "taken" && selectedPortObj.allottedRegistrationId !== reg.id;
+                const otherHolder = isSelectedPortTakenByOther
+                  ? registrations.find((r) => r.id === selectedPortObj?.allottedRegistrationId)
+                  : null;
 
-                      return (
-                        <tr
-                          key={reg.id}
-                          className={`hover:bg-blue-50/50 transition-colors ${
-                            isAllotted ? "bg-white" : "bg-amber-50/20"
-                          }`}
-                        >
-                          {/* Row Index # */}
-                          <td className="py-2.5 px-3 text-center border-r border-neutral-200 font-mono text-neutral-400 select-none bg-neutral-50/60">
-                            {rowIdx + 1}
-                          </td>
-
-                          {/* Delegate & School */}
-                          <td className="py-2.5 px-3 border-r border-neutral-200">
-                            <div className="font-heading font-extrabold text-[#0B1B33] text-sm">
+                return (
+                  <div
+                    key={reg.id}
+                    className={`rounded-2xl border transition-all p-4 sm:p-5 shadow-xs ${
+                      isAllotted
+                        ? "bg-white border-neutral-200"
+                        : "bg-amber-50/40 border-amber-300 ring-1 ring-amber-300/30"
+                    }`}
+                  >
+                    {/* Card Top: Delegate Identity, Reg ID, Payment Badge */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-neutral-100">
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-xl bg-neutral-100 font-mono text-xs font-bold text-neutral-500 flex items-center justify-center shrink-0">
+                          #{globalIdx}
+                        </span>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base sm:text-lg font-heading font-extrabold text-[#0B1B33]">
                               {reg.delegateName}
-                            </div>
-                            <div className="text-xs text-neutral-500 font-medium truncate max-w-[200px]">
-                              {reg.school}
-                            </div>
-                            <div className="text-[10px] text-neutral-400 mt-0.5">
+                            </h3>
+                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-600 font-bold">
                               {reg.registrationType === "school_team" ? "School Delegation" : "Individual"}
-                            </div>
-                          </td>
-
-                          {/* Reg Number */}
-                          <td className="py-2.5 px-3 border-r border-neutral-200 font-mono text-xs">
-                            <span className="bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded-md font-bold">
-                              {reg.registrationNumber}
                             </span>
-                          </td>
+                          </div>
+                          <p className="text-xs text-neutral-500 font-medium">
+                            {reg.school} {reg.classYear && `• Class: ${reg.classYear}`} • {reg.experienceMuns} prior MUNs
+                          </p>
+                        </div>
+                      </div>
 
-                          {/* Payment */}
-                          <td className="py-2.5 px-3 border-r border-neutral-200 text-center">
-                            {isPaid ? (
-                              <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                Paid
-                              </span>
-                            ) : (
-                              <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                                Unpaid
-                              </span>
-                            )}
-                          </td>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs px-2.5 py-1 rounded-lg bg-neutral-100 text-neutral-700 font-bold border border-neutral-200">
+                          {reg.registrationNumber}
+                        </span>
+                        {isPaid ? (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ✓ Paid
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                            Unpaid
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
-                          {/* Top Preferences */}
-                          <td className="py-2.5 px-3 border-r border-neutral-200">
-                            <div className="space-y-1">
-                              {(reg.preferences || []).slice(0, 2).map((pref, pIdx) => {
-                                const cName = committees.find((c) => c.id === pref.committeeId)?.name || "Comm";
-                                const portNames = (pref.portfolioIds || []).map((pid) => {
-                                  const pObj = portfolios.find((p) => p.id === pid);
-                                  const isOpen = pObj?.status === "open";
-                                  return {
-                                    name: pObj?.countryName || pid,
-                                    isOpen,
-                                  };
-                                });
+                    {/* Card Body: Preferences on Left, Allotment Controls on Right */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-3">
+                      {/* Left Column: Preferences */}
+                      <div className="lg:col-span-5 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                            Submitted Preferences
+                          </span>
+                          {bestAvailablePref && (
+                            <button
+                              type="button"
+                              onClick={() => handleAllot(reg.id, bestAvailablePref.committeeId, bestAvailablePref.portfolioId)}
+                              className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-lg cursor-pointer transition-colors shadow-xs"
+                            >
+                              <Sparkles className="w-3 h-3 text-yellow-500" />
+                              <span>Quick Allot {bestAvailablePref.countryName}</span>
+                            </button>
+                          )}
+                        </div>
 
-                                return (
-                                  <div key={pIdx} className="text-xs">
-                                    <span className="font-bold text-neutral-700 mr-1">
-                                      Pref #{pIdx + 1} ({cName}):
-                                    </span>
-                                    <span className="text-neutral-600">
-                                      {portNames.map((pItem, i) => (
-                                        <span
-                                          key={i}
-                                          className={`inline-block mr-1.5 ${
-                                            pItem.isOpen
-                                              ? "text-emerald-700 font-bold hover:underline"
-                                              : "text-neutral-500"
-                                          }`}
-                                          title={pItem.isOpen ? "Portfolio currently OPEN!" : "Portfolio taken"}
-                                        >
-                                          {pItem.name}
-                                          {pItem.isOpen && <span className="text-[10px] text-emerald-600 ml-0.5">●</span>}
-                                          {i < portNames.length - 1 ? "," : ""}
-                                        </span>
-                                      ))}
-                                    </span>
+                        {(reg.preferences || []).length === 0 ? (
+                          <p className="text-xs text-neutral-400 italic">No preferences recorded.</p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {(reg.preferences || []).map((pref, pIdx) => {
+                              const cObj = committees.find((c) => c.id === pref.committeeId);
+                              return (
+                                <div key={pIdx} className="bg-neutral-50 rounded-xl p-2.5 border border-neutral-100 text-xs">
+                                  <div className="font-bold text-[#0B1B33] mb-1 flex items-center justify-between">
+                                    <span>Pref #{pIdx + 1}: {cObj?.name || "Committee"}</span>
                                   </div>
-                                );
-                              })}
-                            </div>
-                          </td>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {(pref.portfolioIds || []).map((pId) => {
+                                      const pObj = portfolios.find((p) => p.id === pId);
+                                      if (!pObj) return null;
+                                      const isFree = pObj.status === "open" || pObj.allottedRegistrationId === reg.id;
+                                      const holder = !isFree
+                                        ? registrations.find((r) => r.id === pObj.allottedRegistrationId)
+                                        : null;
 
-                          {/* Interactive Allotment Cell */}
-                          <td className="py-2.5 px-3">
-                            {isAllotted ? (
-                              /* ALLOTTED STATE */
-                              <div className="flex flex-wrap items-center justify-between gap-2 p-1.5 bg-blue-50/70 border border-blue-200 rounded-xl">
-                                <div className="flex items-center gap-2">
-                                  <CountryMonogram code={allottedPort?.code || "UN"} size="sm" />
-                                  <div>
-                                    <div className="font-heading font-extrabold text-[#0B1B33] text-sm">
-                                      {allottedPort?.countryName || "Assigned Portfolio"}
-                                    </div>
-                                    <div className="text-[11px] text-[#1560BD] font-bold">
-                                      {allottedComm?.name || "Committee"}
-                                    </div>
+                                      return (
+                                        <button
+                                          key={pId}
+                                          type="button"
+                                          onClick={() => {
+                                            setRowDrafts((prev) => ({
+                                              ...prev,
+                                              [reg.id]: { committeeId: pref.committeeId, portfolioId: pId },
+                                            }));
+                                            setEditingDelegateId(reg.id);
+                                          }}
+                                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                                            isFree
+                                              ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                              : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 border border-neutral-200"
+                                          }`}
+                                          title={isFree ? "Click to select this free seat" : `Taken by ${holder?.delegateName || "another delegate"} - click to reassign`}
+                                        >
+                                          <span>{isFree ? "🟢" : "🔴"}</span>
+                                          <span className="font-bold">{pObj.countryName}</span>
+                                          {isFree ? (
+                                            <span className="text-[10px] text-emerald-600 font-extrabold">(Free)</span>
+                                          ) : (
+                                            <span className="text-[10px] text-neutral-400 font-medium">({holder?.delegateName?.split(" ")[0] || "Taken"})</span>
+                                          )}
+                                        </button>
+                                      );
+                                    })}
                                   </div>
                                 </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
 
-                                <div className="flex items-center gap-2">
-                                  {matchInfo ? (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                      ✓ {matchInfo.label}
-                                    </span>
-                                  ) : (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-200 text-neutral-700">
-                                      Manual
-                                    </span>
+                      {/* Right Column: Allotment Status & Controls */}
+                      <div className="lg:col-span-7 flex flex-col justify-between">
+                        <div>
+                          <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">
+                            Portfolio Allotment
+                          </span>
+
+                          {isAllotted && !isEditing ? (
+                            /* Current Allotted Summary Card */
+                            <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+                              <div className="flex items-center gap-3">
+                                <CountryMonogram code={allottedPort?.code || "UN"} size="md" />
+                                <div>
+                                  <div className="text-base font-heading font-extrabold text-[#0B1B33]">
+                                    {allottedPort?.countryName || "Allotted Country"}
+                                  </div>
+                                  <div className="text-xs font-bold text-[#1560BD]">
+                                    {allottedComm?.name || "Committee"}
+                                  </div>
+                                  {matchInfo && (
+                                    <div className="text-[11px] text-emerald-700 font-extrabold mt-0.5">
+                                      ✓ Matched {matchInfo.label}
+                                    </div>
                                   )}
-
-                                  {/* Unallot Button */}
-                                  <button
-                                    type="button"
-                                    onClick={() => unallotDelegate(reg.id)}
-                                    className="p-1 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                                    title="Unallot delegate (free up seat)"
-                                  >
-                                    <UserX className="w-4 h-4" />
-                                  </button>
                                 </div>
                               </div>
-                            ) : (
-                              /* UNALLOTTED STATE: 1-Click Allot or Custom Dropdown */
-                              <div className="flex flex-col sm:flex-row items-center gap-2">
-                                {/* 1-Click Allot Best Preference if available */}
-                                {bestAvailablePref && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      allotDelegateManual(
-                                        reg.id,
-                                        bestAvailablePref.committeeId,
-                                        bestAvailablePref.portfolioId
-                                      )
-                                    }
-                                    className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-heading font-extrabold text-xs flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer shrink-0 shadow-xs"
-                                    title={`Instantly allot 1st available choice: ${bestAvailablePref.countryName} (${bestAvailablePref.committeeName})`}
-                                  >
-                                    <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                                    <span>Allot {bestAvailablePref.countryName}</span>
-                                  </button>
-                                )}
 
-                                {/* Manual Selector (Select Committee + Select Portfolio) */}
-                                <div className="flex items-center gap-1.5 w-full sm:w-auto flex-1">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingDelegateId(reg.id)}
+                                  className="px-3.5 py-1.5 rounded-xl border border-neutral-300 hover:bg-white text-xs font-heading font-bold text-neutral-700 transition-colors cursor-pointer"
+                                >
+                                  Change Seat
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnallot(reg.id)}
+                                  className="px-3.5 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-heading font-bold text-red-700 transition-colors cursor-pointer flex items-center gap-1.5"
+                                  title="Unallot seat and make it free"
+                                >
+                                  <UserX className="w-3.5 h-3.5" />
+                                  <span>Unallot</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            /* Allotment Control Interface (Spacious & Clean) */
+                            <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 sm:p-4 space-y-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {/* Committee Selector - Shows ALL committees with open count */}
+                                <div>
+                                  <label className="block text-[11px] font-bold text-neutral-600 uppercase mb-1">
+                                    1. Choose Committee:
+                                  </label>
                                   <select
                                     value={draftCommId}
                                     onChange={(e) => {
                                       const nextComm = e.target.value;
-                                      const firstOpenInNext = portfolios.find(
-                                        (p) => p.committeeId === nextComm && p.status === "open"
-                                      );
+                                      const nextPorts = portfolios.filter((p) => p.committeeId === nextComm);
+                                      const firstOpen = nextPorts.find((p) => p.status === "open");
                                       setRowDrafts((prev) => ({
                                         ...prev,
                                         [reg.id]: {
                                           committeeId: nextComm,
-                                          portfolioId: firstOpenInNext?.id || "",
+                                          portfolioId: firstOpen?.id || nextPorts[0]?.id || "",
                                         },
                                       }));
                                     }}
-                                    className="py-1 px-2 rounded-lg border border-neutral-300 text-xs font-bold bg-white text-[#0B1B33] max-w-[110px] focus:outline-none"
+                                    className="w-full py-2 px-3 rounded-xl border border-neutral-300 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-white focus:outline-none focus:border-[#1560BD]"
                                   >
-                                    {committees.map((c) => (
-                                      <option key={c.id} value={c.id}>
-                                        {c.name}
-                                      </option>
-                                    ))}
+                                    {committees.map((c) => {
+                                      const cPorts = portfolios.filter((p) => p.committeeId === c.id);
+                                      const openCount = cPorts.filter((p) => p.status === "open").length;
+                                      return (
+                                        <option key={c.id} value={c.id}>
+                                          {c.name} ({openCount} free / {cPorts.length} total)
+                                        </option>
+                                      );
+                                    })}
                                   </select>
+                                </div>
 
+                                {/* Portfolio Selector - Lists Free vs Taken with holder names */}
+                                <div>
+                                  <label className="block text-[11px] font-bold text-neutral-600 uppercase mb-1">
+                                    2. Choose Portfolio:
+                                  </label>
                                   <select
                                     value={draftPortId}
                                     onChange={(e) => {
@@ -825,63 +930,124 @@ export default function OrganizerAllotmentPage() {
                                         },
                                       }));
                                     }}
-                                    className="py-1 px-2 rounded-lg border border-neutral-300 text-xs font-bold bg-white text-[#0B1B33] flex-1 max-w-[160px] focus:outline-none"
+                                    className="w-full py-2 px-3 rounded-xl border border-neutral-300 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-white focus:outline-none focus:border-[#1560BD]"
                                   >
-                                    {availablePortsInDraftComm.length === 0 ? (
-                                      <option value="">No seats open</option>
+                                    {portsInDraftComm.length === 0 ? (
+                                      <option value="">No portfolios in this committee</option>
                                     ) : (
-                                      availablePortsInDraftComm.map((p) => {
+                                      portsInDraftComm.map((p) => {
+                                        const isTaken = p.status === "taken" && p.allottedRegistrationId !== reg.id;
+                                        const holder = isTaken
+                                          ? registrations.find((r) => r.id === p.allottedRegistrationId)
+                                          : null;
                                         const isPreferred = (reg.preferences || []).some(
                                           (pref) =>
                                             pref.committeeId === draftCommId &&
                                             (pref.portfolioIds || []).includes(p.id)
                                         );
+
+                                        let label = p.countryName;
+                                        if (isPreferred) label = `⭐ ${label}`;
+
+                                        if (isTaken) {
+                                          label = `🔴 ${label} — (Taken by: ${holder?.delegateName || "Another delegate"})`;
+                                        } else {
+                                          label = `🟢 ${label} (Available)`;
+                                        }
+
                                         return (
                                           <option key={p.id} value={p.id}>
-                                            {isPreferred ? `⭐ ${p.countryName}` : p.countryName}
+                                            {label}
                                           </option>
                                         );
                                       })
                                     )}
                                   </select>
+                                </div>
+                              </div>
 
+                              {/* Action & Reassign Warning */}
+                              <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2 border-t border-neutral-200">
+                                {isSelectedPortTakenByOther ? (
+                                  <div className="text-xs text-amber-800 font-medium bg-amber-100/70 px-3 py-1.5 rounded-lg border border-amber-300 w-full sm:w-auto">
+                                    ⚠️ <strong>{selectedPortObj?.countryName}</strong> is taken by <strong>{otherHolder?.delegateName || "another delegate"}</strong>. Selecting this will unallot them.
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-emerald-800 font-medium bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 w-full sm:w-auto">
+                                    🟢 <strong>{selectedPortObj?.countryName || "Portfolio"}</strong> is free to allot.
+                                  </div>
+                                )}
+
+                                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                  {isAllotted && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingDelegateId(null)}
+                                      className="px-3.5 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-100 text-xs font-bold text-neutral-700 cursor-pointer"
+                                    >
+                                      Cancel
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
                                     disabled={!draftPortId}
-                                    onClick={() => {
-                                      if (draftPortId) {
-                                        allotDelegateManual(reg.id, draftCommId, draftPortId);
-                                      }
-                                    }}
-                                    className="px-2.5 py-1 rounded-lg bg-[#1560BD] hover:bg-[#0F4C96] disabled:opacity-50 text-white font-heading font-extrabold text-xs transition-colors cursor-pointer shrink-0"
+                                    onClick={() => handleAllot(reg.id, draftCommId, draftPortId)}
+                                    className={`w-full sm:w-auto px-5 py-2 rounded-xl text-xs sm:text-sm font-heading font-extrabold transition-transform active:scale-95 cursor-pointer shadow-sm ${
+                                      isSelectedPortTakenByOther
+                                        ? "bg-amber-500 hover:bg-amber-600 text-[#0B1B33]"
+                                        : "bg-[#1560BD] hover:bg-[#0F4C96] text-white"
+                                    }`}
                                   >
-                                    Allot
+                                    {isSelectedPortTakenByOther ? "⚠️ Reassign & Allot" : "⚡ Allot Seat"}
                                   </button>
                                 </div>
                               </div>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Bottom Pagination & Counts Bar */}
+          <div className="p-4 bg-white rounded-2xl border border-neutral-200 text-xs font-bold text-neutral-600 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+            <div>
+              Showing <strong>{paginatedDelegates.length}</strong> of <strong>{filteredDelegates.length}</strong> filtered delegates ({totalDelegates} total in conference)
             </div>
 
-            {/* Table Status Footer */}
-            <div className="p-3 bg-neutral-100 border-t border-neutral-200 text-xs font-bold text-neutral-600 flex items-center justify-between">
-              <div>
-                Showing <strong>{filteredDelegates.length}</strong> of <strong>{totalDelegates}</strong> delegates
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span>🟢 <strong>{allottedCount}</strong> allotted</span>
+                <span>🟡 <strong>{unallottedCount}</strong> unallotted</span>
               </div>
-              <div className="flex items-center gap-3">
-                <span>
-                  🟢 <strong>{allottedCount}</strong> allotted
-                </span>
-                <span>
-                  🟡 <strong>{unallottedCount}</strong> unallotted
-                </span>
-              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1.5 ml-2 border-l border-neutral-200 pl-3">
+                  <button
+                    type="button"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="px-2.5 py-1 rounded-lg border border-neutral-300 disabled:opacity-40 hover:bg-neutral-100 cursor-pointer text-xs font-extrabold"
+                  >
+                    ← Prev
+                  </button>
+                  <span className="text-xs font-extrabold text-[#0B1B33]">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="px-2.5 py-1 rounded-lg border border-neutral-300 disabled:opacity-40 hover:bg-neutral-100 cursor-pointer text-xs font-extrabold"
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1163,7 +1329,7 @@ export default function OrganizerAllotmentPage() {
                                       defaultValue=""
                                       onChange={(e) => {
                                         if (e.target.value) {
-                                          allotDelegateManual(e.target.value, activeCommittee.id, port.id);
+                                          handleAllot(e.target.value, activeCommittee.id, port.id);
                                           e.target.value = "";
                                         }
                                       }}
@@ -1193,7 +1359,7 @@ export default function OrganizerAllotmentPage() {
                                   /* Unallot Button */
                                   <button
                                     type="button"
-                                    onClick={() => unallotDelegate(port.delegate!.id)}
+                                    onClick={() => handleUnallot(port.delegate!.id)}
                                     className="px-2.5 py-1 rounded-lg text-xs font-heading font-bold text-red-600 hover:bg-red-50 border border-red-200 transition-colors cursor-pointer flex items-center gap-1"
                                     title="Unallot delegate from this seat"
                                   >

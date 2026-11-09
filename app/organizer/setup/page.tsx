@@ -198,7 +198,7 @@ export default function OrganizerSetupPage() {
     venue.trim().length > 0
   );
 
-  const isCommitteesDone = committees.length > 0;
+  const isCommitteesDone = committees.length >= 3;
 
   const isPortfoliosDone =
     committees.length > 0 &&
@@ -307,8 +307,8 @@ export default function OrganizerSetupPage() {
 
   const handleContinueToPortfolios = () => {
     setValidationError(null);
-    if (committees.length === 0) {
-      setValidationError("Please add at least one committee before proceeding to portfolios.");
+    if (committees.length < 3) {
+      setValidationError(`A minimum of 3 committees is mandatory before proceeding to portfolios (currently added: ${committees.length}/3).`);
       return;
     }
     // Auto-save committees state
@@ -369,8 +369,8 @@ export default function OrganizerSetupPage() {
 
   const handleContinueToRules = () => {
     setValidationError(null);
-    if (committees.length === 0) {
-      setValidationError("Please add at least one committee first.");
+    if (committees.length < 3) {
+      setValidationError(`A minimum of 3 committees is mandatory before configuring rules (currently added: ${committees.length}/3).`);
       setCurrentStep("committees");
       return;
     }
@@ -434,8 +434,8 @@ export default function OrganizerSetupPage() {
       setCurrentStep("basics");
       return;
     }
-    if (!isCommitteesDone) {
-      setValidationError("Please add at least one committee first.");
+    if (!isCommitteesDone || committees.length < 3) {
+      setValidationError(`A minimum of 3 committees is required to complete conference setup (currently added: ${committees.length}/3).`);
       setCurrentStep("committees");
       return;
     }
@@ -869,22 +869,30 @@ export default function OrganizerSetupPage() {
           </div>
 
           {/* Sequential Step Navigation Bar */}
-          <div className="flex items-center justify-between pt-3 border-t border-white/10">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-white/10">
             <button
               type="button"
               onClick={() => setCurrentStep("basics")}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/30 hover:bg-white/10 text-white font-heading font-bold text-xs sm:text-sm transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/30 hover:bg-white/10 text-white font-heading font-bold text-xs sm:text-sm transition-colors cursor-pointer w-full sm:w-auto justify-center"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Basics</span>
             </button>
 
-            <Button
-              onClick={handleContinueToPortfolios}
-              className="py-2.5 px-6 text-xs sm:text-sm rounded-xl font-heading font-extrabold"
-            >
-              Continue to Portfolios →
-            </Button>
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              {committees.length < 3 && (
+                <span className="text-xs font-bold text-amber-300">
+                  {committees.length}/3 committees added ({3 - committees.length} more required)
+                </span>
+              )}
+              <Button
+                onClick={handleContinueToPortfolios}
+                disabled={committees.length < 3}
+                className="py-2.5 px-6 text-xs sm:text-sm rounded-xl font-heading font-extrabold disabled:opacity-50"
+              >
+                Continue to Portfolios →
+              </Button>
+            </div>
           </div>
         </div>
       )}

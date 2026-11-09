@@ -16,7 +16,11 @@ interface TeamMember {
 
 export default function SchoolTeamRegistrationPage() {
   const router = useRouter();
-  const { event, committees, portfolios, loadEventById, addRegistration } = useApp();
+  const { event, committees, portfolios, theme, loadEventById, addRegistration } = useApp();
+
+  const primaryColor = event.branding?.primaryColor || theme.primaryColor || "#1560BD";
+  const accentColor = event.branding?.accentColor || theme.secondaryColor || "#FFD23F";
+  const bgEffect = event.branding?.backgroundEffect || theme.backgroundEffect || "none";
 
   // Load conference from URL query param if present
   React.useEffect(() => {
@@ -122,7 +126,11 @@ export default function SchoolTeamRegistrationPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-6 py-8 sm:px-8 sm:py-12">
+    <main
+      className="min-h-screen flex flex-col justify-between px-6 py-8 sm:px-8 sm:py-12 page-transition"
+      style={{ backgroundColor: primaryColor }}
+      data-bg-effect={bgEffect}
+    >
       <div className="max-w-md w-full mx-auto flex-1 flex flex-col">
         <ProgressBar
           currentStep={step === "delegates" ? 1 : 2}

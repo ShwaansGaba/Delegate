@@ -42,12 +42,13 @@ export default function AvailableConferencesPage() {
       setLoading(true);
       const collected: ConferenceItem[] = [];
 
-      // 1. Fetch from Supabase
+      // 1. Fetch only published conferences from Supabase
       if (isSupabaseConfigured && supabase) {
         try {
           const { data: eventsData, error: evErr } = await supabase
             .from("events")
-            .select("*");
+            .select("*")
+            .eq("status", "published");
 
           if (!evErr && eventsData && eventsData.length > 0) {
             const eventIds = eventsData.map((e) => e.id);
@@ -67,7 +68,7 @@ export default function AvailableConferencesPage() {
             }
 
             eventsData.forEach((ev) => {
-              if (ev.name && ev.name.trim().length > 0) {
+              if (ev.status === "published" && ev.name && ev.name.trim().length > 0) {
                 const evComms = (commsData || [])
                   .filter((c) => c.event_id === ev.id)
                   .map((c) => ({
@@ -99,7 +100,7 @@ export default function AvailableConferencesPage() {
         }
       }
 
-      // 2. Offline / Local Storage fallback & merge
+      // 2. Offline / Local Storage fallback & merge (Only published conferences)
       if (typeof window !== "undefined") {
         try {
           for (let i = 0; i < localStorage.length; i++) {
@@ -110,7 +111,7 @@ export default function AvailableConferencesPage() {
                 const parsed = JSON.parse(raw);
                 const list: ConferenceItem[] = parsed.myConferences || (parsed.name ? [parsed] : []);
                 list.forEach((c) => {
-                  if (c.name && c.name.trim() && !collected.some((existing) => existing.id === c.id)) {
+                  if (c.status === "published" && c.name && c.name.trim() && !collected.some((existing) => existing.id === c.id)) {
                     collected.push({
                       id: c.id,
                       name: c.name,
@@ -132,8 +133,8 @@ export default function AvailableConferencesPage() {
         } catch {}
       }
 
-      // 3. Fallback to active conference if valid
-      if (event.name && event.name.trim() && !collected.some((c) => c.id === event.id)) {
+      // 3. Fallback to active conference ONLY if published
+      if (event.status === "published" && event.name && event.name.trim() && !collected.some((c) => c.id === event.id)) {
         collected.push({
           id: event.id,
           name: event.name,

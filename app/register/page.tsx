@@ -23,7 +23,11 @@ const PRESET_SCHOOLS = [
 
 export default function IndividualRegisterPage() {
   const router = useRouter();
-  const { committees, portfolios, event, loadEventById, refreshPortfoliosLive, addRegistration } = useApp();
+  const { committees, portfolios, event, theme, loadEventById, refreshPortfoliosLive, addRegistration } = useApp();
+
+  const primaryColor = event.branding?.primaryColor || theme.primaryColor || "#1560BD";
+  const accentColor = event.branding?.accentColor || theme.secondaryColor || "#FFD23F";
+  const bgEffect = event.branding?.backgroundEffect || theme.backgroundEffect || "none";
 
   // Load conference from URL query param if present
   React.useEffect(() => {
@@ -238,7 +242,11 @@ export default function IndividualRegisterPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden">
+    <main
+      className="min-h-screen flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition"
+      style={{ backgroundColor: primaryColor }}
+      data-bg-effect={bgEffect}
+    >
       <div className="max-w-[360px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
         {/* Progress bar with back arrow */}
         <ProgressBar

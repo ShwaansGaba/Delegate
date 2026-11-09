@@ -73,7 +73,11 @@ interface AppContextType {
   syncCommitteePortfolios: (committeeId: string, targetCount: number) => void;
   editCommittee: (id: string, updates: Partial<MunCommittee>) => void;
   removeCommittee: (id: string) => void;
-  allotDelegateManual: (regId: string, committeeId: string, portfolioId: string) => Promise<boolean>;
+  allotDelegateManual: (
+    regId: string,
+    committeeId: string,
+    portfolioId: string
+  ) => Promise<{ success: boolean; reassignedDelegateName?: string }>;
   unallotDelegate: (regId: string) => Promise<void>;
   autoAllotSimulation: AutoAllotSimulationResult;
   autoAllotIncludeUnpaid: boolean;
@@ -90,6 +94,7 @@ interface AppContextType {
     mode?: "append" | "replace"
   ) => void;
   findRegistrationByNumber: (num: string, eventId?: string) => Registration | undefined;
+  lookupRegistrationAsync: (num: string, eventId?: string) => Promise<Registration | null>;
   publishAllotmentsToggle: () => void;
   markConferencePublished: () => Promise<boolean>;
   refreshPortfoliosLive: (committeeId?: string) => Promise<MunPortfolio[]>;
@@ -526,6 +531,101 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id, loadOrganizerData]);
 
+  // Realtime Live Subscription: Instant live sync for registrations and portfolios across devices
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+
+    const channel = supabase
+      .channel("delegato_live_sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "registrations" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const row = payload.new as any;
+            if (!row) return;
+            const newReg: Registration = {
+              id: row.id,
+              eventId: row.event_id,
+              delegateName: row.name || "",
+              email: row.email || "",
+              phone: row.phone || "",
+              school: row.school || "",
+              classYear: row.class_year || "",
+              experienceMuns: Number(row.experience_count) || 0,
+              registrationNumber: row.registration_number,
+              registrationType: row.type === "school_team" ? "school_team" : "individual",
+              paymentStatus: (row.payment_status as PaymentStatus) || "unpaid",
+              paymentProofUrl: row.payment_proof_url || undefined,
+              feeAmount: Number(row.fee_amount) || 1500,
+              preferences: row.preferences || [],
+              allotment: row.allotment || undefined,
+              createdAt: row.created_at || new Date().toISOString(),
+            };
+            setRegistrations((prev) => {
+              if (prev.some((r) => r.id === newReg.id)) return prev;
+              return [newReg, ...prev];
+            });
+          } else if (payload.eventType === "UPDATE") {
+            const row = payload.new as any;
+            if (!row) return;
+            setRegistrations((prev) =>
+              prev.map((r) => {
+                if (r.id === row.id) {
+                  return {
+                    ...r,
+                    eventId: row.event_id || r.eventId,
+                    delegateName: row.name || r.delegateName,
+                    email: row.email || r.email,
+                    phone: row.phone || r.phone,
+                    school: row.school || r.school,
+                    paymentStatus: (row.payment_status as PaymentStatus) || r.paymentStatus,
+                    paymentProofUrl:
+                      row.payment_proof_url !== undefined ? row.payment_proof_url : r.paymentProofUrl,
+                    allotment: row.allotment !== undefined ? row.allotment : r.allotment,
+                  };
+                }
+                return r;
+              })
+            );
+          } else if (payload.eventType === "DELETE") {
+            const oldRow = payload.old as any;
+            if (!oldRow?.id) return;
+            setRegistrations((prev) => prev.filter((r) => r.id !== oldRow.id));
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "portfolios" },
+        (payload) => {
+          if (payload.eventType === "UPDATE") {
+            const row = payload.new as any;
+            if (!row) return;
+            setPortfolios((prev) =>
+              prev.map((p) => {
+                if (p.id === row.id) {
+                  return {
+                    ...p,
+                    status: row.status,
+                    allottedRegistrationId: row.allotted_registration_id || undefined,
+                  };
+                }
+                return p;
+              })
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (supabase) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, []);
+
   // Sync state to local storage isolated to this user and per-conference
   useEffect(() => {
     if (user?.id && isLoaded) {
@@ -686,6 +786,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             schoolFeePerStudent: Number(ev.school_fee_per_student) || 0,
             status: ev.status,
             rules: ev.rules || EMPTY_EVENT.rules,
+            branding: ev.branding || ev.rules?.branding || undefined,
           };
           setEvent(parsedEvent);
 
@@ -1529,38 +1630,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  // Atomic Allotment
+  // Manual Allotment with automatic reassignment support
   const allotDelegateManual = async (
     regId: string,
     committeeId: string,
     portfolioId: string
-  ): Promise<boolean> => {
+  ): Promise<{ success: boolean; reassignedDelegateName?: string }> => {
     const targetPort = portfolios.find((p) => p.id === portfolioId);
     if (!targetPort) {
       alert("Selected portfolio does not exist.");
-      return false;
+      return { success: false };
     }
 
-    if (targetPort.status === "taken" && targetPort.allottedRegistrationId !== regId) {
-      alert(`Cannot allot: ${targetPort.countryName} is already allotted to another delegate.`);
-      return false;
-    }
+    let reassignedDelegateName: string | undefined = undefined;
+    const previousRegId = targetPort.allottedRegistrationId;
 
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase.rpc("allot_portfolio_atomic", {
-          p_portfolio_id: portfolioId,
-          p_registration_id: regId,
-          p_committee_id: committeeId,
-        });
-
-        if (error || data === false) {
-          alert("Allotment collision: this country was just taken by another transaction.");
-          return false;
-        }
-      } catch (err) {
-        console.warn("RPC allot_portfolio_atomic error, continuing client update:", err);
-      }
+    if (targetPort.status === "taken" && previousRegId && previousRegId !== regId) {
+      const prevReg = registrations.find((r) => r.id === previousRegId);
+      reassignedDelegateName = prevReg?.delegateName || "previous delegate";
     }
 
     const allotment: MunAllotment = {
@@ -1573,11 +1660,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       status: "tentative",
     };
 
+    // 1. Update portfolios in local state
     setPortfolios((prev) =>
       prev.map((p) => {
+        // Target portfolio assigned to regId
         if (p.id === portfolioId) {
           return { ...p, status: "taken", allottedRegistrationId: regId };
         }
+        // If this delegate already held another portfolio, free it
         if (p.allottedRegistrationId === regId) {
           return { ...p, status: "open", allottedRegistrationId: undefined };
         }
@@ -1585,11 +1675,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       })
     );
 
+    // 2. Update registrations in local state
     setRegistrations((prev) =>
-      prev.map((r) => (r.id === regId ? { ...r, allotment } : r))
+      prev.map((r) => {
+        // If previous holder had this portfolio, unallot them
+        if (previousRegId && r.id === previousRegId && previousRegId !== regId) {
+          const copy = { ...r };
+          delete copy.allotment;
+          return copy;
+        }
+        // Assign allotment to target delegate
+        if (r.id === regId) {
+          return { ...r, allotment };
+        }
+        return r;
+      })
     );
 
-    return true;
+    // 3. Persist directly to Supabase
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // If target port was held by another delegate, clear their registration allotment
+        if (previousRegId && previousRegId !== regId) {
+          await supabase.from("registrations").update({ allotment: null }).eq("id", previousRegId);
+        }
+
+        // If regId already had another portfolio, free that portfolio
+        await supabase
+          .from("portfolios")
+          .update({ status: "open", allotted_registration_id: null })
+          .eq("allotted_registration_id", regId);
+
+        // Assign target portfolio
+        await supabase
+          .from("portfolios")
+          .update({ status: "taken", allotted_registration_id: regId })
+          .eq("id", portfolioId);
+
+        // Update target registration
+        await supabase
+          .from("registrations")
+          .update({ allotment })
+          .eq("id", regId);
+      } catch (err) {
+        console.warn("Direct Supabase allotment update error:", err);
+      }
+    }
+
+    return { success: true, reassignedDelegateName };
   };
 
   const unallotDelegate = async (regId: string) => {
@@ -1694,6 +1827,71 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return true;
     });
+  };
+
+  // Asynchronous status lookup that checks memory first, then queries Supabase directly across any device
+  const lookupRegistrationAsync = async (num: string, conferenceId?: string): Promise<Registration | null> => {
+    const cleaned = num.trim().toUpperCase().replace(/\s+/g, "");
+    if (!cleaned) return null;
+
+    // 1. Check local state
+    const local = findRegistrationByNumber(cleaned, conferenceId);
+    if (local) return local;
+
+    // 2. Query Supabase directly
+    if (isSupabaseConfigured && supabase) {
+      try {
+        let query = supabase
+          .from("registrations")
+          .select("*")
+          .ilike("registration_number", cleaned);
+
+        if (conferenceId && conferenceId !== "new-conference") {
+          query = query.eq("event_id", conferenceId);
+        }
+
+        const { data, error } = await query.limit(1);
+        if (!error && data && data.length > 0) {
+          const row = data[0];
+          const mappedReg: Registration = {
+            id: row.id,
+            eventId: row.event_id,
+            delegateName: row.name || "",
+            email: row.email || "",
+            phone: row.phone || "",
+            school: row.school || "",
+            classYear: row.class_year || "",
+            experienceMuns: Number(row.experience_count) || 0,
+            registrationNumber: row.registration_number,
+            registrationType: row.type === "school_team" ? "school_team" : "individual",
+            paymentStatus: (row.payment_status as PaymentStatus) || "unpaid",
+            paymentProofUrl: row.payment_proof_url || undefined,
+            feeAmount: Number(row.fee_amount) || 1500,
+            preferences: row.preferences || [],
+            allotment: row.allotment || undefined,
+            createdAt: row.created_at || new Date().toISOString(),
+          };
+
+          // Also load conference if not loaded or different
+          if (row.event_id && row.event_id !== event.id) {
+            await loadEventById(row.event_id);
+          }
+
+          setRegistrations((prev) => {
+            if (prev.some((r) => r.id === mappedReg.id)) {
+              return prev.map((r) => (r.id === mappedReg.id ? mappedReg : r));
+            }
+            return [mappedReg, ...prev];
+          });
+
+          return mappedReg;
+        }
+      } catch (err) {
+        console.warn("lookupRegistrationAsync error:", err);
+      }
+    }
+
+    return null;
   };
 
   const publishAllotmentsToggle = () => {
@@ -1934,6 +2132,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addPortfolioToCommittee,
         autoPopulatePortfolios,
         findRegistrationByNumber,
+        lookupRegistrationAsync,
         publishAllotmentsToggle,
         markConferencePublished,
         refreshPortfoliosLive,

@@ -56,6 +56,8 @@ html {
 /* Dynamic Account & Public Portal Background Effects */
 body[data-bg-effect="polka-dots"],
 [data-bg-effect="polka-dots"],
+body[data-bg-effect="polka-dots"] .theme-bg-primary,
+.theme-bg-primary[data-bg-effect="polka-dots"],
 .effect-polka-dots {
   background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1.5px, transparent 1.5px) !important;
   background-size: 20px 20px !important;
@@ -63,12 +65,16 @@ body[data-bg-effect="polka-dots"],
 
 body[data-bg-effect="lines"],
 [data-bg-effect="lines"],
+body[data-bg-effect="lines"] .theme-bg-primary,
+.theme-bg-primary[data-bg-effect="lines"],
 .effect-lines {
   background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08) 12px, transparent 12px, transparent 24px) !important;
 }
 
 body[data-bg-effect="grid"],
 [data-bg-effect="grid"],
+body[data-bg-effect="grid"] .theme-bg-primary,
+.theme-bg-primary[data-bg-effect="grid"],
 .effect-grid {
   background-image: linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px) !important;
   background-size: 28px 28px !important;
@@ -76,6 +82,8 @@ body[data-bg-effect="grid"],
 
 body[data-bg-effect="blur"],
 [data-bg-effect="blur"],
+body[data-bg-effect="blur"] .theme-bg-primary,
+.theme-bg-primary[data-bg-effect="blur"],
 .effect-blur {
   background-image: radial-gradient(circle at 85% 15%, rgba(255, 210, 63, 0.25) 0%, transparent 45%), radial-gradient(circle at 15% 85%, rgba(255, 255, 255, 0.18) 0%, transparent 50%) !important;
 }

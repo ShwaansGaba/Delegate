@@ -11,14 +11,26 @@ import { Registration } from "@/lib/types";
 
 export default function StatusPage() {
   const router = useRouter();
-  const { findRegistrationByNumber, committees, portfolios, event, loadEventById } = useApp();
+  const {
+    findRegistrationByNumber,
+    lookupRegistrationAsync,
+    committees,
+    portfolios,
+    event,
+    theme,
+    loadEventById,
+  } = useApp();
 
   const [inputNum, setInputNum] = useState("");
   const [currentReg, setCurrentReg] = useState<Registration | null>(null);
   const [searched, setSearched] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [showChoicesModal, setShowChoicesModal] = useState(false);
   const [scopedEventId, setScopedEventId] = useState<string | null>(null);
+
+  const primaryColor = event.branding?.primaryColor || theme.primaryColor || "#1560BD";
+  const bgEffect = event.branding?.backgroundEffect || theme.backgroundEffect || "none";
 
   useEffect(() => {
     document.title = "Registration Status | Delegato";
@@ -39,7 +51,7 @@ export default function StatusPage() {
     }
   }, [event.id, loadEventById]);
 
-  const handleLookup = (numberToLookup: string, forceEventId?: string) => {
+  const handleLookup = async (numberToLookup: string, forceEventId?: string) => {
     setErrorMsg("");
     const cleaned = numberToLookup.trim();
     if (!cleaned) {
@@ -47,25 +59,40 @@ export default function StatusPage() {
       return;
     }
 
-    const targetEv = forceEventId || scopedEventId || (event.id !== "new-conference" ? event.id : undefined);
-    const found = findRegistrationByNumber(cleaned, targetEv);
-
+    setIsLoading(true);
     setSearched(true);
-    if (found) {
-      // Check if registration belongs to the scoped conference
-      if (targetEv && found.eventId !== targetEv) {
-        setCurrentReg(null);
-        setErrorMsg("This registration number does not belong to this conference.");
-        return;
+
+    try {
+      const targetEv = forceEventId || scopedEventId || (event.id !== "new-conference" ? event.id : undefined);
+      // Try async lookup which checks memory and Supabase directly
+      let found = await lookupRegistrationAsync(cleaned, targetEv);
+
+      if (!found) {
+        // Fallback to local check
+        found = findRegistrationByNumber(cleaned, targetEv) || null;
       }
 
-      setCurrentReg(found);
-      if (found.eventId && found.eventId !== event.id) {
-        loadEventById(found.eventId);
+      if (found) {
+        // Check if registration belongs to the scoped conference
+        if (targetEv && found.eventId !== targetEv) {
+          setCurrentReg(null);
+          setErrorMsg("This registration number does not belong to this conference.");
+          return;
+        }
+
+        setCurrentReg(found);
+        if (found.eventId && found.eventId !== event.id) {
+          await loadEventById(found.eventId);
+        }
+      } else {
+        setCurrentReg(null);
+        setErrorMsg(`No registration found matching "${cleaned}". Please check the number from your confirmation email.`);
       }
-    } else {
-      setCurrentReg(null);
-      setErrorMsg(`No registration found matching "${cleaned}". Please check the number from your confirmation email.`);
+    } catch (err) {
+      console.error("Status lookup error:", err);
+      setErrorMsg("An error occurred while looking up your registration. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -82,7 +109,11 @@ export default function StatusPage() {
   // State 1: Input form
   if (!currentReg) {
     return (
-      <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition">
+      <main
+        className="min-h-screen flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition"
+        style={{ backgroundColor: primaryColor }}
+        data-bg-effect={bgEffect}
+      >
         <div className="max-w-[360px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
           <div>
             <ProgressBar currentStep={1} totalSteps={1} onBack={handleBack} />
@@ -129,7 +160,12 @@ export default function StatusPage() {
           </div>
 
           <div className="pt-4 pb-2 sm:pt-8 sm:pb-4">
-            <Button onClick={() => handleLookup(inputNum)}>Check status</Button>
+            <Button
+              onClick={() => handleLookup(inputNum)}
+              disabled={isLoading}
+            >
+              {isLoading ? "Checking status..." : "Check status"}
+            </Button>
           </div>
         </div>
       </main>
@@ -147,7 +183,11 @@ export default function StatusPage() {
     const port = portfolios.find((p) => p.id === currentReg.allotment?.portfolioId);
 
     return (
-      <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition">
+      <main
+        className="min-h-screen flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition"
+        style={{ backgroundColor: primaryColor }}
+        data-bg-effect={bgEffect}
+      >
         <div className="max-w-[360px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
           <div>
             <div className="pb-2 sm:pb-4">
@@ -215,7 +255,11 @@ export default function StatusPage() {
   // State 3: Payment Verified, but Allotments are NOT yet published
   if (!isPaymentPending && !areAllotmentsPublished) {
     return (
-      <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition">
+      <main
+        className="min-h-screen flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition"
+        style={{ backgroundColor: primaryColor }}
+        data-bg-effect={bgEffect}
+      >
         <div className="max-w-[360px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
           <div className="space-y-6">
             <button
@@ -290,7 +334,11 @@ export default function StatusPage() {
 
   // State 4: Unpaid / Payment Pending
   return (
-    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition">
+    <main
+      className="min-h-screen flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 overflow-x-hidden page-transition"
+      style={{ backgroundColor: primaryColor }}
+      data-bg-effect={bgEffect}
+    >
       <div className="max-w-[360px] sm:max-w-md w-full mx-auto flex-1 flex flex-col justify-between">
         <div className="space-y-6">
           <button
