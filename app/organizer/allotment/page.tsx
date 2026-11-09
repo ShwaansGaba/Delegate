@@ -1,30 +1,37 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
-import { CountryMonogram } from "@/components/ui/CountryMonogram";
-import { PortfolioCombobox } from "@/components/ui/PortfolioCombobox";
-import { Button } from "@/components/ui/Button";
 import { Registration, MunPortfolio, MunCommittee } from "@/lib/types";
 import {
   Search,
   Download,
-  ArrowUpDown,
-  CheckSquare,
-  Square,
-  Trash2,
-  UserCheck,
-  UserX,
-  FileSpreadsheet,
-  Layers,
   Sparkles,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  SkipForward,
   RotateCcw,
   Check,
+  X,
   AlertCircle,
   HelpCircle,
+  LayoutGrid,
+  ListOrdered,
+  Grid3X3,
+  UserCheck,
+  CheckCircle2,
 } from "lucide-react";
+
+type ViewMode = "grid" | "queue" | "matrix";
+type StatusFilter = "all" | "unallotted" | "attention" | "unpaid";
+
+interface AllotmentHistoryItem {
+  regId: string;
+  delegateName: string;
+  prevCommitteeId?: string;
+  prevPortfolioId?: string;
+}
 
 export default function OrganizerAllotmentPage() {
   const router = useRouter();
@@ -41,11 +48,6 @@ export default function OrganizerAllotmentPage() {
     autoAllotIncludeUnpaid,
     setAutoAllotIncludeUnpaid,
     executeAutoAllot,
-    resolveConflict,
-    publishAllotmentsToggle,
-    deletePortfolio,
-    deleteMultiplePortfolios,
-    addPortfolioToCommittee,
   } = useApp();
 
   // Guard against unauthenticated render
@@ -62,258 +64,344 @@ export default function OrganizerAllotmentPage() {
     }
   }, [event.name, event.id, event.status, router]);
 
-  // View mode: Delegates Sheet vs Committee Seats Matrix
-  const [viewMode, setViewMode] = useState<"delegates" | "matrix">("delegates");
+  // View mode switcher: Grid, Queue, Matrix
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
-  // Filtering & Sorting State
+  // Grid filtering & search
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "unallotted" | "allotted" | "paid" | "unpaid">("all");
-  const [committeeFilter, setCommitteeFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"name" | "school" | "reg" | "status">("name");
-  const [sortAsc, setSortAsc] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  // Matrix View Active Committee & Selection
-  const [activeCommitteeId, setActiveCommitteeId] = useState<string>(committees[0]?.id || "");
-  const [selectedPortfolioIds, setSelectedPortfolioIds] = useState<string[]>([]);
-  const [matrixSortMode, setMatrixSortMode] = useState<"all" | "free" | "paid" | "unpaid" | "az">("all");
+  // Grid focused delegate (for keyboard shortcuts 1, 2, 3 and Z)
+  const [focusedDelegateId, setFocusedDelegateId] = useState<string | null>(null);
 
-  // Inline Allotment selection draft per delegate row: { [regId]: { committeeId: string, portfolioId: string } }
-  const [rowDrafts, setRowDrafts] = useState<Record<string, { committeeId: string; portfolioId: string }>>({});
+  // Undo history stack
+  const [historyStack, setHistoryStack] = useState<AllotmentHistoryItem[]>([]);
 
-  // Pagination & GUI controls for large delegate counts
-  const [pageSize, setPageSize] = useState<number>(25);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [editingDelegateId, setEditingDelegateId] = useState<string | null>(null);
+  // Queue View index
+  const [queueIndex, setQueueIndex] = useState(0);
 
-  // User friendly toast alerts for allot & reassignment
-  const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "warning" | "info" } | null>(null);
-  const showToast = (text: string, type: "success" | "warning" | "info" = "success") => {
-    setToastMessage({ text, type });
-    setTimeout(() => setToastMessage(null), 4500);
-  };
+  // Matrix View selected open seat: { committeeId: string, portfolioId: string }
+  const [matrixSelectedSeat, setMatrixSelectedSeat] = useState<{
+    committeeId: string;
+    portfolioId: string;
+    committeeName: string;
+    countryName: string;
+  } | null>(null);
+  const [matrixSearchQuery, setMatrixSearchQuery] = useState("");
 
-  // Modals state
+  // Manual "Choose" modal state
+  const [chooseModalDelegate, setChooseModalDelegate] = useState<Registration | null>(null);
+  const [chooseCommitteeId, setChooseCommitteeId] = useState<string>("");
+  const [choosePortfolioId, setChoosePortfolioId] = useState<string>("");
+
+  // Auto-allot modal
   const [showAutoAllotModal, setShowAutoAllotModal] = useState(false);
-  const [showConflictsModal, setShowConflictsModal] = useState(false);
-  const [currentConflictIndex, setCurrentConflictIndex] = useState(0);
 
-  // Keep active committee in sync with existing committees
-  useEffect(() => {
-    if (committees.length > 0 && !committees.some((c) => c.id === activeCommitteeId)) {
-      setActiveCommitteeId(committees[0].id);
-    }
-  }, [committees, activeCommitteeId]);
+  // Toast feedback
+  const [toast, setToast] = useState<{ text: string; type: "success" | "warning" | "info" } | null>(null);
+  const showToast = useCallback((text: string, type: "success" | "warning" | "info" = "success") => {
+    setToast({ text, type });
+    setTimeout(() => setToast(null), 4000);
+  }, []);
 
-  // Computed Metrics
+  // Summary Metrics
   const totalDelegates = registrations.length;
   const allottedCount = registrations.filter((r) => r.allotment).length;
   const unallottedCount = totalDelegates - allottedCount;
   const paidCount = registrations.filter((r) => r.paymentStatus === "verified").length;
-  const unpaidCount = totalDelegates - paidCount;
   const totalPortfolios = portfolios.length;
   const filledSeats = portfolios.filter((p) => p.status === "taken").length;
-  const freeSeats = totalPortfolios - filledSeats;
 
-  // Active committee data for Matrix view
-  const activeCommittee =
-    committees.find((c) => c.id === activeCommitteeId) ||
-    committees[0] || { id: "none", name: "No Committees", totalSeats: 0, eventId: "", agenda: "" };
+  // Unallotted delegates list for Queue and Matrix assignment
+  const unallottedDelegates = useMemo(() => {
+    return registrations.filter((r) => !r.allotment);
+  }, [registrations]);
 
-  const committeePortfolios = portfolios.filter((p) => p.committeeId === activeCommittee.id);
-
-  // Helper: check if a portfolio matches delegate's preferences
-  const getPreferenceMatchRank = (reg: Registration, committeeId?: string, portfolioId?: string) => {
-    if (!committeeId || !portfolioId) return null;
-    for (let cIdx = 0; cIdx < (reg.preferences || []).length; cIdx++) {
-      const pref = reg.preferences[cIdx];
-      if (pref.committeeId === committeeId) {
-        const pIdx = (pref.portfolioIds || []).indexOf(portfolioId);
-        if (pIdx !== -1) {
-          return { choiceNum: cIdx + 1, portRank: pIdx + 1, label: `Choice #${cIdx + 1} (${pIdx + 1})` };
-        }
-        return { choiceNum: cIdx + 1, portRank: null, label: `Choice #${cIdx + 1} Comm` };
-      }
-    }
-    return null;
-  };
-
-  // Helper: find best available preferred portfolio for quick 1-click allot
-  const getBestAvailablePreference = (reg: Registration) => {
-    for (const pref of reg.preferences || []) {
-      for (const pId of pref.portfolioIds || []) {
-        const port = portfolios.find((p) => p.id === pId);
-        if (port && port.status === "open") {
-          const comm = committees.find((c) => c.id === pref.committeeId);
-          return {
-            committeeId: pref.committeeId,
-            committeeName: comm?.name || "Committee",
-            portfolioId: port.id,
-            countryName: port.countryName,
-            code: port.code,
-          };
-        }
-      }
-    }
-    return null;
-  };
-
-  // Filter & Sort Delegates for the Excel Spreadsheet view
-  const filteredDelegates = useMemo(() => {
-    return registrations
-      .filter((reg) => {
-        // Search
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const allottedPort = portfolios.find((p) => p.id === reg.allotment?.portfolioId);
-          const allottedComm = committees.find((c) => c.id === reg.allotment?.committeeId);
-          const matches =
-            reg.delegateName.toLowerCase().includes(q) ||
-            reg.school.toLowerCase().includes(q) ||
-            reg.registrationNumber.toLowerCase().includes(q) ||
-            (allottedPort && allottedPort.countryName.toLowerCase().includes(q)) ||
-            (allottedComm && allottedComm.name.toLowerCase().includes(q));
-          if (!matches) return false;
-        }
-
-        // Status Filter
-        if (statusFilter === "unallotted" && reg.allotment) return false;
-        if (statusFilter === "allotted" && !reg.allotment) return false;
-        if (statusFilter === "paid" && reg.paymentStatus !== "verified") return false;
-        if (statusFilter === "unpaid" && reg.paymentStatus === "verified") return false;
-
-        // Committee Filter: matches either allotted committee OR preferred committee
-        if (committeeFilter !== "all") {
-          const inAllotment = reg.allotment?.committeeId === committeeFilter;
-          const inPreferences = (reg.preferences || []).some((p) => p.committeeId === committeeFilter);
-          if (!inAllotment && !inPreferences) return false;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        let cmp = 0;
-        if (sortBy === "name") {
-          cmp = a.delegateName.localeCompare(b.delegateName);
-        } else if (sortBy === "school") {
-          cmp = a.school.localeCompare(b.school);
-        } else if (sortBy === "reg") {
-          cmp = a.registrationNumber.localeCompare(b.registrationNumber);
-        } else if (sortBy === "status") {
-          const aAllotted = Boolean(a.allotment);
-          const bAllotted = Boolean(b.allotment);
-          cmp = aAllotted === bAllotted ? 0 : aAllotted ? -1 : 1;
-        }
-        return sortAsc ? cmp : -cmp;
-      });
-  }, [registrations, portfolios, committees, searchQuery, statusFilter, committeeFilter, sortBy, sortAsc]);
-
-  // Reset pagination on filter change
+  // Keep queue index within bounds
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, statusFilter, committeeFilter, sortBy, sortAsc]);
+    if (unallottedDelegates.length > 0 && queueIndex >= unallottedDelegates.length) {
+      setQueueIndex(Math.max(0, unallottedDelegates.length - 1));
+    }
+  }, [unallottedDelegates.length, queueIndex]);
 
-  const totalPages = Math.ceil(filteredDelegates.length / pageSize) || 1;
-  const paginatedDelegates = useMemo(() => {
-    if (pageSize >= 1000) return filteredDelegates;
-    const start = (currentPage - 1) * pageSize;
-    return filteredDelegates.slice(start, start + pageSize);
-  }, [filteredDelegates, currentPage, pageSize]);
+  // Set default focused delegate in Grid view
+  useEffect(() => {
+    if (!focusedDelegateId && registrations.length > 0) {
+      const firstUnallotted = registrations.find((r) => !r.allotment);
+      setFocusedDelegateId(firstUnallotted ? firstUnallotted.id : registrations[0].id);
+    }
+  }, [registrations, focusedDelegateId]);
 
-  const handleAllot = async (regId: string, committeeId: string, portfolioId: string) => {
+  // Helper: Portfolio availability map
+  const portfolioAvailabilityMap = useMemo(() => {
+    const map = new Map<string, { isTaken: boolean; delegateName?: string; regId?: string }>();
+    for (const p of portfolios) {
+      const assignedReg = registrations.find(
+        (r) => r.id === p.allottedRegistrationId || r.allotment?.portfolioId === p.id
+      );
+      const isTaken = p.status === "taken" || Boolean(assignedReg);
+      map.set(p.id, {
+        isTaken,
+        delegateName: assignedReg?.delegateName,
+        regId: assignedReg?.id,
+      });
+    }
+    return map;
+  }, [portfolios, registrations]);
+
+  // Helper: check if a portfolio is available
+  const isPortfolioAvailable = useCallback(
+    (portfolioId: string) => {
+      const info = portfolioAvailabilityMap.get(portfolioId);
+      return info ? !info.isTaken : true;
+    },
+    [portfolioAvailabilityMap]
+  );
+
+  // Helper: check if all preferences of a delegate are taken
+  const areAllPreferencesTaken = useCallback(
+    (reg: Registration) => {
+      if (!reg.preferences || reg.preferences.length === 0) return false;
+      let totalPrefs = 0;
+      let takenPrefs = 0;
+      for (const pref of reg.preferences) {
+        for (const pId of pref.portfolioIds || []) {
+          totalPrefs++;
+          if (!isPortfolioAvailable(pId)) {
+            takenPrefs++;
+          }
+        }
+      }
+      return totalPrefs > 0 && totalPrefs === takenPrefs;
+    },
+    [isPortfolioAvailable]
+  );
+
+  // Helper: get first available preference for a delegate
+  const getFirstAvailablePreference = useCallback(
+    (reg: Registration) => {
+      for (const pref of reg.preferences || []) {
+        for (const pId of pref.portfolioIds || []) {
+          if (isPortfolioAvailable(pId)) {
+            const port = portfolios.find((p) => p.id === pId);
+            const comm = committees.find((c) => c.id === pref.committeeId);
+            return {
+              committeeId: pref.committeeId,
+              committeeName: comm?.name || "Committee",
+              portfolioId: pId,
+              countryName: port?.countryName || pId,
+            };
+          }
+        }
+      }
+      return null;
+    },
+    [isPortfolioAvailable, portfolios, committees]
+  );
+
+  // Core Allotment action with history recording
+  const handleAllotSeat = async (regId: string, committeeId: string, portfolioId: string) => {
+    const targetReg = registrations.find((r) => r.id === regId);
     const targetPort = portfolios.find((p) => p.id === portfolioId);
     const targetComm = committees.find((c) => c.id === committeeId);
-    const targetReg = registrations.find((r) => r.id === regId);
+
+    // Record in history for Undo
+    setHistoryStack((prev) => [
+      ...prev,
+      {
+        regId,
+        delegateName: targetReg?.delegateName || "Delegate",
+        prevCommitteeId: targetReg?.allotment?.committeeId,
+        prevPortfolioId: targetReg?.allotment?.portfolioId,
+      },
+    ]);
 
     const res = await allotDelegateManual(regId, committeeId, portfolioId);
     if (res.success) {
       if (res.reassignedDelegateName) {
         showToast(
-          `✓ Reassigned ${targetPort?.countryName || "seat"} (${targetComm?.name || "Committee"}) to ${targetReg?.delegateName || "delegate"}. Previous holder (${res.reassignedDelegateName}) is now unallotted.`,
+          `Reassigned ${targetPort?.countryName || "seat"} (${targetComm?.name || "Committee"}) to ${
+            targetReg?.delegateName || "delegate"
+          }. ${res.reassignedDelegateName} is now unallotted.`,
           "warning"
         );
       } else {
         showToast(
-          `✓ Successfully allotted ${targetPort?.countryName || "seat"} (${targetComm?.name || "Committee"}) to ${targetReg?.delegateName || "delegate"}!`,
+          `Allotted ${targetPort?.countryName || "seat"} (${targetComm?.name || "Committee"}) to ${
+            targetReg?.delegateName || "delegate"
+          }!`,
           "success"
         );
       }
-      setEditingDelegateId(null);
     }
   };
 
-  const handleUnallot = async (regId: string) => {
+  // Unallot seat action
+  const handleUnallotSeat = async (regId: string) => {
     const targetReg = registrations.find((r) => r.id === regId);
+    setHistoryStack((prev) => [
+      ...prev,
+      {
+        regId,
+        delegateName: targetReg?.delegateName || "Delegate",
+        prevCommitteeId: targetReg?.allotment?.committeeId,
+        prevPortfolioId: targetReg?.allotment?.portfolioId,
+      },
+    ]);
     await unallotDelegate(regId);
-    showToast(`Seat unallotted for ${targetReg?.delegateName || "delegate"}. Portfolio is now free.`, "info");
+    showToast(`Unallotted ${targetReg?.delegateName || "delegate"}. Seat is now free.`, "info");
   };
 
-  // Matrix View Portfolios with Allotted Delegate info
-  const matrixPortfolios = useMemo(() => {
-    const list = committeePortfolios.map((port) => {
-      const reg = registrations.find(
-        (r) => r.id === port.allottedRegistrationId || r.allotment?.portfolioId === port.id
-      );
-      const isTaken = port.status === "taken" || Boolean(reg);
-      return {
-        ...port,
-        isTaken,
-        delegate: reg,
-        statusType: isTaken
-          ? reg?.paymentStatus === "verified"
-            ? "allotted_paid"
-            : "allotted_unpaid"
-          : "free",
-      };
-    });
+  // Undo last action (Z key or Undo button)
+  const handleUndo = async () => {
+    if (historyStack.length === 0) {
+      showToast("Nothing to undo.", "info");
+      return;
+    }
+    const lastAction = historyStack[historyStack.length - 1];
+    setHistoryStack((prev) => prev.slice(0, -1));
 
-    return list.sort((a, b) => {
-      if (matrixSortMode === "free") {
-        if (!a.isTaken && b.isTaken) return -1;
-        if (a.isTaken && !b.isTaken) return 1;
-      } else if (matrixSortMode === "paid") {
-        if (a.statusType === "allotted_paid" && b.statusType !== "allotted_paid") return -1;
-        if (a.statusType !== "allotted_paid" && b.statusType === "allotted_paid") return 1;
-      } else if (matrixSortMode === "unpaid") {
-        if (a.statusType === "allotted_unpaid" && b.statusType !== "allotted_unpaid") return -1;
-        if (a.statusType !== "allotted_unpaid" && b.statusType === "allotted_unpaid") return 1;
-      } else if (matrixSortMode === "az") {
-        return a.countryName.localeCompare(b.countryName);
+    if (lastAction.prevCommitteeId && lastAction.prevPortfolioId) {
+      await allotDelegateManual(lastAction.regId, lastAction.prevCommitteeId, lastAction.prevPortfolioId);
+      showToast(`Restored previous allotment for ${lastAction.delegateName}.`, "info");
+    } else {
+      await unallotDelegate(lastAction.regId);
+      showToast(`Undid allotment for ${lastAction.delegateName}. Seat is now open.`, "info");
+    }
+  };
+
+  // Keyboard shortcut listener for Grid View (1, 2, 3 for preferences, Z for undo)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is currently typing inside an input or textarea
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA" ||
+        document.activeElement?.tagName === "SELECT"
+      ) {
+        return;
       }
-      return 0;
-    });
-  }, [committeePortfolios, registrations, matrixSortMode]);
 
-  // CSV Export Handler (organizers love exporting allotment lists to Excel)
-  const handleExportCSV = () => {
+      // Undo shortcut: Z (without Ctrl or with Ctrl)
+      if (e.key === "z" || e.key === "Z") {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Preference shortcuts: 1, 2, 3
+      if (viewMode === "grid" && focusedDelegateId && (e.key === "1" || e.key === "2" || e.key === "3")) {
+        const delegate = registrations.find((r) => r.id === focusedDelegateId);
+        if (!delegate) return;
+
+        const prefIndex = parseInt(e.key, 10) - 1;
+        const targetPref = delegate.preferences?.[prefIndex];
+        if (!targetPref) {
+          showToast(`No Preference #${e.key} for ${delegate.delegateName}.`, "warning");
+          return;
+        }
+
+        // Find first available portfolio in this preference
+        const availablePId = (targetPref.portfolioIds || []).find((pId) => isPortfolioAvailable(pId));
+        if (availablePId) {
+          e.preventDefault();
+          handleAllotSeat(delegate.id, targetPref.committeeId, availablePId);
+
+          // Auto-advance focused delegate to the next unallotted delegate
+          const currentIndex = registrations.findIndex((r) => r.id === delegate.id);
+          const nextUnallotted = registrations
+            .slice(currentIndex + 1)
+            .concat(registrations.slice(0, currentIndex))
+            .find((r) => !r.allotment && r.id !== delegate.id);
+          if (nextUnallotted) {
+            setFocusedDelegateId(nextUnallotted.id);
+          }
+        } else {
+          showToast(`All choices in Preference #${e.key} are already taken!`, "warning");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [viewMode, focusedDelegateId, registrations, isPortfolioAvailable, historyStack]);
+
+  // Filtered Delegates for Grid View
+  const gridDelegates = useMemo(() => {
+    return registrations.filter((reg) => {
+      // Search
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const allottedPort = portfolios.find((p) => p.id === reg.allotment?.portfolioId);
+        const allottedComm = committees.find((c) => c.id === reg.allotment?.committeeId);
+        const matches =
+          reg.delegateName.toLowerCase().includes(q) ||
+          reg.school.toLowerCase().includes(q) ||
+          reg.registrationNumber.toLowerCase().includes(q) ||
+          (allottedPort && allottedPort.countryName.toLowerCase().includes(q)) ||
+          (allottedComm && allottedComm.name.toLowerCase().includes(q));
+        if (!matches) return false;
+      }
+
+      // Status Filter
+      if (statusFilter === "unallotted") {
+        return !reg.allotment;
+      }
+      if (statusFilter === "attention") {
+        return !reg.allotment && (areAllPreferencesTaken(reg) || reg.paymentStatus !== "verified");
+      }
+      if (statusFilter === "unpaid") {
+        return reg.paymentStatus !== "verified";
+      }
+
+      return true;
+    });
+  }, [registrations, portfolios, committees, searchQuery, statusFilter, areAllPreferencesTaken]);
+
+  // Export to Excel / CSV
+  const handleExportExcel = () => {
     const headers = [
       "Row",
       "Registration Number",
       "Delegate Name",
       "School",
-      "Registration Type",
       "Payment Status",
       "Allotted Committee",
       "Allotted Portfolio",
-      "Choice Match",
-      "Registered At",
+      "Preference 1 Committee",
+      "Preference 1 Portfolios",
+      "Preference 2 Committee",
+      "Preference 2 Portfolios",
+      "Preference 3 Committee",
+      "Preference 3 Portfolios",
     ];
 
     const rows = registrations.map((r, idx) => {
       const comm = committees.find((c) => c.id === r.allotment?.committeeId);
       const port = portfolios.find((p) => p.id === r.allotment?.portfolioId);
-      const match = getPreferenceMatchRank(r, r.allotment?.committeeId, r.allotment?.portfolioId);
+
+      const pref1 = r.preferences?.[0];
+      const pref2 = r.preferences?.[1];
+      const pref3 = r.preferences?.[2];
+
+      const getCommName = (cId?: string) => committees.find((c) => c.id === cId)?.name || cId || "";
+      const getPortNames = (pIds?: string[]) =>
+        (pIds || []).map((id) => portfolios.find((p) => p.id === id)?.countryName || id).join(" / ");
 
       return [
         idx + 1,
         `"${r.registrationNumber || ""}"`,
         `"${(r.delegateName || "").replace(/"/g, '""')}"`,
         `"${(r.school || "").replace(/"/g, '""')}"`,
-        r.registrationType === "school_team" ? "School Delegation" : "Individual",
         r.paymentStatus === "verified" ? "Paid" : "Unpaid",
         `"${(comm?.name || "Unallotted").replace(/"/g, '""')}"`,
         `"${(port?.countryName || "Unallotted").replace(/"/g, '""')}"`,
-        `"${match?.label || (r.allotment ? "Manual" : "None")}"`,
-        r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "",
+        `"${getCommName(pref1?.committeeId)}"`,
+        `"${getPortNames(pref1?.portfolioIds)}"`,
+        `"${getCommName(pref2?.committeeId)}"`,
+        `"${getPortNames(pref2?.portfolioIds)}"`,
+        `"${getCommName(pref3?.committeeId)}"`,
+        `"${getPortNames(pref3?.portfolioIds)}"`,
       ].join(",");
     });
 
@@ -328,1257 +416,1147 @@ export default function OrganizerAllotmentPage() {
     document.body.removeChild(link);
   };
 
-  // Matrix selection actions
-  const handleToggleSelectPortfolio = (id: string) => {
-    setSelectedPortfolioIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+  // Open manual Choose modal
+  const openChooseModal = (reg: Registration) => {
+    setChooseModalDelegate(reg);
+    const defaultCommId = reg.preferences?.[0]?.committeeId || committees[0]?.id || "";
+    setChooseCommitteeId(defaultCommId);
+    setChoosePortfolioId("");
+  };
+
+  const handleConfirmChoose = async () => {
+    if (!chooseModalDelegate || !chooseCommitteeId || !choosePortfolioId) return;
+    await handleAllotSeat(chooseModalDelegate.id, chooseCommitteeId, choosePortfolioId);
+    setChooseModalDelegate(null);
+  };
+
+  // Matrix View: All distinct country names across all committees
+  const matrixCountryRows = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of portfolios) {
+      const clean = p.countryName.trim();
+      const lower = clean.toLowerCase();
+      if (!map.has(lower)) {
+        map.set(lower, clean);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+  }, [portfolios]);
+
+  // Matrix View: Unallotted delegates filtered for assign panel
+  const matrixFilteredUnallotted = useMemo(() => {
+    if (!matrixSearchQuery.trim()) return unallottedDelegates;
+    const q = matrixSearchQuery.toLowerCase();
+    return unallottedDelegates.filter(
+      (r) =>
+        r.delegateName.toLowerCase().includes(q) ||
+        r.school.toLowerCase().includes(q) ||
+        r.registrationNumber.toLowerCase().includes(q)
     );
-  };
+  }, [unallottedDelegates, matrixSearchQuery]);
 
-  const handleSelectAllInCommittee = () => {
-    const allIds = committeePortfolios.map((p) => p.id);
-    if (selectedPortfolioIds.length === allIds.length && allIds.length > 0) {
-      setSelectedPortfolioIds([]);
-    } else {
-      setSelectedPortfolioIds(allIds);
-    }
-  };
-
-  const handleDeleteSelectedPortfolios = () => {
-    if (selectedPortfolioIds.length === 0) return;
-    if (confirm(`Delete ${selectedPortfolioIds.length} selected country portfolios?`)) {
-      deleteMultiplePortfolios(selectedPortfolioIds);
-      setSelectedPortfolioIds([]);
-    }
-  };
-
-  // Auto-allot execution
-  const sim = autoAllotSimulation;
-  const currentConflict = sim.conflicts[currentConflictIndex] || sim.conflicts[0];
-
-  const handleExecuteAllot = () => {
-    executeAutoAllot();
-    setShowAutoAllotModal(false);
-  };
-
-  const handleResolveSingleConflict = (chosenRegId: string) => {
-    if (!currentConflict) return;
-    resolveConflict(currentConflict.portfolioId, chosenRegId);
-    if (currentConflictIndex < sim.conflicts.length - 1) {
-      setCurrentConflictIndex(currentConflictIndex + 1);
-    } else {
-      setShowConflictsModal(false);
-      alert("All conflicts reviewed and resolved!");
-    }
-  };
-
-  if (!event.name || event.id === "new-conference" || event.status !== "published") {
-    return null;
-  }
+  // Current delegate in Queue view
+  const currentQueueDelegate = unallottedDelegates[queueIndex] || null;
+  const currentQueueFirstAvailable = currentQueueDelegate ? getFirstAvailablePreference(currentQueueDelegate) : null;
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Top Header & Actions Ribbon */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-white/10 pb-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-4xl font-heading font-extrabold text-white">
-              Allotment Matrix
-            </h1>
-            <button
-              type="button"
-              onClick={publishAllotmentsToggle}
-              className={`px-3 py-1 rounded-xl text-xs sm:text-sm font-heading font-extrabold transition-colors cursor-pointer border ${
-                event.rules.allotmentsPublished
-                  ? "bg-emerald-500 border-emerald-400 text-white"
-                  : "bg-white/20 border-white/30 text-white hover:bg-white/30"
-              }`}
-              title="Toggle whether delegates can see their allotted portfolios via Check Status"
-            >
-              {event.rules.allotmentsPublished ? "✓ Published to delegates" : "Publish allotments"}
-            </button>
-          </div>
-          <p className="text-blue-100 text-xs sm:text-sm font-medium mt-0.5">
-            Interactive roster for allotting committee seats and country portfolios
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* CSV / Excel Export */}
+    <div className="w-full text-white page-transition space-y-6">
+      {/* Toast Alert */}
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-2xl shadow-2xl flex items-center gap-3 border text-sm font-bold animate-slideDown ${
+            toast.type === "success"
+              ? "bg-emerald-600 border-emerald-400 text-white"
+              : toast.type === "warning"
+              ? "bg-amber-500 border-amber-300 text-neutral-900"
+              : "bg-blue-600 border-blue-400 text-white"
+          }`}
+        >
+          <span className="flex-1">{toast.text}</span>
           <button
             type="button"
-            onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/30 text-white text-xs sm:text-sm font-heading font-extrabold flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="Download full allotment spreadsheet in CSV format"
+            onClick={() => setToast(null)}
+            className="p-1 rounded-lg hover:bg-black/10 active:scale-95 cursor-pointer"
           >
-            <Download className="w-4 h-4" />
-            <span>Export CSV</span>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* TOP HEADER: Title, View Switcher & Action Buttons */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-heading font-extrabold text-white tracking-tight">
+            Allotment
+          </h1>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Segmented View Switcher: Grid | Queue | Matrix */}
+          <div className="inline-flex items-center p-1 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              className={`px-4 py-1.5 rounded-xl text-xs sm:text-sm font-heading font-extrabold transition-all cursor-pointer ${
+                viewMode === "grid"
+                  ? "bg-white text-[#0B1B33] shadow-md"
+                  : "text-white hover:text-white/80"
+              }`}
+            >
+              Grid
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("queue")}
+              className={`px-4 py-1.5 rounded-xl text-xs sm:text-sm font-heading font-extrabold transition-all cursor-pointer ${
+                viewMode === "queue"
+                  ? "bg-white text-[#0B1B33] shadow-md"
+                  : "text-white hover:text-white/80"
+              }`}
+            >
+              Queue
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("matrix")}
+              className={`px-4 py-1.5 rounded-xl text-xs sm:text-sm font-heading font-extrabold transition-all cursor-pointer ${
+                viewMode === "matrix"
+                  ? "bg-white text-[#0B1B33] shadow-md"
+                  : "text-white hover:text-white/80"
+              }`}
+            >
+              Matrix
+            </button>
+          </div>
+
+          {/* Action Buttons: Export Excel & Auto allot */}
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-100 text-[#0B1B33] font-heading font-extrabold text-xs sm:text-sm shadow-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+          >
+            <Download className="w-4 h-4 text-[#0B1B33]" />
+            <span>Export Excel</span>
           </button>
 
-          {/* Auto Allot Button */}
           <button
             type="button"
             onClick={() => setShowAutoAllotModal(true)}
-            className="px-4 py-2 rounded-xl bg-[#FFD23F] hover:bg-yellow-400 text-[#0B1B33] text-xs sm:text-sm font-heading font-extrabold flex items-center gap-1.5 transition-transform active:scale-95 cursor-pointer shadow-sm"
+            className="px-4 py-2 rounded-xl bg-[#FFC72C] hover:bg-yellow-400 text-neutral-900 font-heading font-extrabold text-xs sm:text-sm shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
           >
-            <Sparkles className="w-4 h-4" />
-            <span>Auto Allot ({unallottedCount})</span>
+            <Sparkles className="w-4 h-4 text-neutral-900" />
+            <span>Auto allot</span>
           </button>
         </div>
       </div>
 
-      {/* Spreadsheet Metrics Ribbon (KPIs) */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 text-white">
-        <div className="bg-white/10 backdrop-blur-xs border border-white/15 rounded-xl p-2.5 sm:p-3">
-          <div className="text-[11px] uppercase tracking-wider text-blue-200 font-bold">Total Delegates</div>
-          <div className="text-xl sm:text-2xl font-heading font-extrabold mt-0.5">{totalDelegates}</div>
-        </div>
-
-        <div className="bg-white/10 backdrop-blur-xs border border-white/15 rounded-xl p-2.5 sm:p-3">
-          <div className="text-[11px] uppercase tracking-wider text-emerald-300 font-bold">Allotted</div>
-          <div className="text-xl sm:text-2xl font-heading font-extrabold text-emerald-300 mt-0.5">
-            {allottedCount}{" "}
-            <span className="text-xs font-normal text-white/70">
-              ({totalDelegates > 0 ? Math.round((allottedCount / totalDelegates) * 100) : 0}%)
-            </span>
+      {/* 5 STAT CARDS: Delegates | Allotted | Not allotted | Paid | Seats filled */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-neutral-100 text-[#0B1B33] flex flex-col justify-between">
+          <div className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0B1B33] tracking-tight">
+            {totalDelegates}
           </div>
+          <div className="text-xs sm:text-sm font-semibold text-neutral-500 mt-1">Delegates</div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-xs border border-white/15 rounded-xl p-2.5 sm:p-3">
-          <div className="text-[11px] uppercase tracking-wider text-amber-300 font-bold">Unallotted</div>
-          <div className="text-xl sm:text-2xl font-heading font-extrabold text-amber-300 mt-0.5">{unallottedCount}</div>
-        </div>
-
-        <div className="bg-white/10 backdrop-blur-xs border border-white/15 rounded-xl p-2.5 sm:p-3">
-          <div className="text-[11px] uppercase tracking-wider text-blue-200 font-bold">Verified Paid</div>
-          <div className="text-xl sm:text-2xl font-heading font-extrabold mt-0.5">{paidCount}</div>
-        </div>
-
-        <div className="col-span-2 sm:col-span-1 bg-white/10 backdrop-blur-xs border border-white/15 rounded-xl p-2.5 sm:p-3">
-          <div className="text-[11px] uppercase tracking-wider text-blue-200 font-bold">Seats Filled</div>
-          <div className="text-xl sm:text-2xl font-heading font-extrabold mt-0.5">
-            {filledSeats} / {totalPortfolios}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-neutral-100 text-[#0B1B33] flex flex-col justify-between">
+          <div className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0B1B33] tracking-tight">
+            {allottedCount}
           </div>
+          <div className="text-xs sm:text-sm font-semibold text-neutral-500 mt-1">Allotted</div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-neutral-100 text-[#0B1B33] flex flex-col justify-between">
+          <div className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0B1B33] tracking-tight">
+            {unallottedCount}
+          </div>
+          <div className="text-xs sm:text-sm font-semibold text-neutral-500 mt-1">Not allotted</div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-neutral-100 text-[#0B1B33] flex flex-col justify-between">
+          <div className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0B1B33] tracking-tight">
+            {paidCount}
+          </div>
+          <div className="text-xs sm:text-sm font-semibold text-neutral-500 mt-1">Paid</div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-neutral-100 text-[#0B1B33] col-span-2 sm:col-span-1 flex flex-col justify-between">
+          <div className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0B1B33] tracking-tight">
+            {allottedCount} of {totalPortfolios}
+          </div>
+          <div className="text-xs sm:text-sm font-semibold text-neutral-500 mt-1">Seats filled</div>
         </div>
       </div>
 
-      {/* Main Tab Switcher: Delegates Sheet vs Committee Seats Matrix */}
-      <div className="flex items-center gap-2 border-b border-white/15 pb-2">
-        <button
-          type="button"
-          onClick={() => setViewMode("delegates")}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-heading font-extrabold transition-all cursor-pointer flex items-center gap-2 ${
-            viewMode === "delegates"
-              ? "bg-white text-[#0B1B33] shadow-md"
-              : "bg-white/10 hover:bg-white/20 text-white"
-          }`}
-        >
-          <FileSpreadsheet className="w-4 h-4" />
-          <span>Delegates Allotment Sheet ({totalDelegates})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setViewMode("matrix")}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-heading font-extrabold transition-all cursor-pointer flex items-center gap-2 ${
-            viewMode === "matrix"
-              ? "bg-white text-[#0B1B33] shadow-md"
-              : "bg-white/10 hover:bg-white/20 text-white"
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          <span>Committee Seats Matrix ({committees.length})</span>
-        </button>
-      </div>
-
-      {/* ======================================================== */}
-      {/* VIEW 1: DELEGATES ALLOTMENT GUI (Spacious & Scalable)     */}
-      {/* ======================================================== */}
-      {viewMode === "delegates" && (
+      {/* ========================================================================= */}
+      {/* 1. GRID VIEW LAYOUT                                                       */}
+      {/* ========================================================================= */}
+      {viewMode === "grid" && (
         <div className="space-y-4">
-          {/* Toast Notification Banner */}
-          {toastMessage && (
-            <div
-              className={`p-3.5 rounded-xl font-heading font-extrabold text-sm flex items-center justify-between shadow-md animate-fadeIn ${
-                toastMessage.type === "warning"
-                  ? "bg-amber-400 text-[#0B1B33] border border-amber-500"
-                  : toastMessage.type === "info"
-                  ? "bg-blue-600 text-white border border-blue-500"
-                  : "bg-emerald-600 text-white border border-emerald-500"
-              }`}
-            >
-              <span>{toastMessage.text}</span>
+          {/* Filter Bar: Search Input + Filter Pills */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search name, school, or number"
+                className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white text-[#0B1B33] placeholder-neutral-400 text-sm font-medium border border-neutral-200 focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-sm"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setToastMessage(null)}
-                className="text-xs uppercase tracking-wider font-bold underline opacity-80 hover:opacity-100 cursor-pointer ml-3"
+                onClick={() => setStatusFilter("all")}
+                className={`px-4 py-2 rounded-full text-xs sm:text-sm font-heading font-extrabold transition-all cursor-pointer ${
+                  statusFilter === "all"
+                    ? "bg-white text-[#0B1B33] shadow-sm"
+                    : "bg-transparent text-white border border-white/30 hover:border-white"
+                }`}
               >
-                Dismiss
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("unallotted")}
+                className={`px-4 py-2 rounded-full text-xs sm:text-sm font-heading font-extrabold transition-all cursor-pointer ${
+                  statusFilter === "unallotted"
+                    ? "bg-white text-[#0B1B33] shadow-sm"
+                    : "bg-transparent text-white border border-white/30 hover:border-white"
+                }`}
+              >
+                Not allotted
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("attention")}
+                className={`px-4 py-2 rounded-full text-xs sm:text-sm font-heading font-extrabold transition-all cursor-pointer ${
+                  statusFilter === "attention"
+                    ? "bg-white text-[#0B1B33] shadow-sm"
+                    : "bg-transparent text-white border border-white/30 hover:border-white"
+                }`}
+              >
+                Needs attention
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("unpaid")}
+                className={`px-4 py-2 rounded-full text-xs sm:text-sm font-heading font-extrabold transition-all cursor-pointer ${
+                  statusFilter === "unpaid"
+                    ? "bg-white text-[#0B1B33] shadow-sm"
+                    : "bg-transparent text-white border border-white/30 hover:border-white"
+                }`}
+              >
+                Unpaid
               </button>
             </div>
-          )}
+          </div>
 
-          {/* Controls Bar: Search, Filters, Committee Dropdown & Pagination Size */}
-          <div className="bg-white rounded-2xl p-4 sm:p-5 text-[#0B1B33] shadow-sm space-y-3.5 border border-neutral-200">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-              {/* Search Bar */}
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search delegate name, school, reg ID, or allotted country..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#1560BD]"
-                />
+          {/* Grid Table Container */}
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-neutral-200 overflow-hidden text-[#0B1B33]">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[880px]">
+                <thead>
+                  <tr className="border-b border-neutral-200 bg-neutral-50/70 text-xs font-heading font-extrabold text-neutral-600 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 sm:px-6 w-[240px]">Delegate</th>
+                    <th className="py-3.5 px-4 w-[200px]">Preference 1</th>
+                    <th className="py-3.5 px-4 w-[200px]">Preference 2</th>
+                    <th className="py-3.5 px-4 w-[200px]">Preference 3</th>
+                    <th className="py-3.5 px-4 sm:px-6 w-[180px]">Allotted</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100 text-sm">
+                  {gridDelegates.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-neutral-500 font-medium">
+                        No delegates match your current search or filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    gridDelegates.map((reg) => {
+                      const isFocused = focusedDelegateId === reg.id;
+                      const isAllotted = Boolean(reg.allotment);
+                      const isPaid = reg.paymentStatus === "verified";
+                      const allTaken = !isAllotted && areAllPreferencesTaken(reg);
+                      const firstAvail = !isAllotted ? getFirstAvailablePreference(reg) : null;
+
+                      const allottedComm = committees.find((c) => c.id === reg.allotment?.committeeId);
+                      const allottedPort = portfolios.find((p) => p.id === reg.allotment?.portfolioId);
+
+                      return (
+                        <tr
+                          key={reg.id}
+                          onClick={() => setFocusedDelegateId(reg.id)}
+                          className={`transition-colors cursor-pointer group ${
+                            isFocused
+                              ? "bg-amber-50/60 ring-2 ring-inset ring-amber-400"
+                              : "hover:bg-neutral-50/80"
+                          }`}
+                        >
+                          {/* 1. Delegate Column */}
+                          <td className="py-4 px-4 sm:px-6 align-top">
+                            <div className="flex items-center gap-2">
+                              <span className="font-heading font-extrabold text-neutral-900 text-sm sm:text-base">
+                                {reg.delegateName}
+                              </span>
+                              {allTaken && (
+                                <span className="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                  All choices taken
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-neutral-500 font-medium mt-0.5">
+                              <span>{reg.school}</span>
+                              <span className="mx-1">•</span>
+                              <span
+                                className={`font-semibold ${
+                                  isPaid ? "text-neutral-600" : "text-rose-600"
+                                }`}
+                              >
+                                {isPaid ? "Paid" : "Unpaid"}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* 2. Preference 1 Column */}
+                          <td className="py-4 px-4 align-top">
+                            {renderPreferenceCell(
+                              reg,
+                              0,
+                              firstAvail?.portfolioId,
+                              handleAllotSeat,
+                              isPortfolioAvailable,
+                              portfolios,
+                              committees
+                            )}
+                          </td>
+
+                          {/* 3. Preference 2 Column */}
+                          <td className="py-4 px-4 align-top">
+                            {renderPreferenceCell(
+                              reg,
+                              1,
+                              firstAvail?.portfolioId,
+                              handleAllotSeat,
+                              isPortfolioAvailable,
+                              portfolios,
+                              committees
+                            )}
+                          </td>
+
+                          {/* 4. Preference 3 Column */}
+                          <td className="py-4 px-4 align-top">
+                            {renderPreferenceCell(
+                              reg,
+                              2,
+                              firstAvail?.portfolioId,
+                              handleAllotSeat,
+                              isPortfolioAvailable,
+                              portfolios,
+                              committees
+                            )}
+                          </td>
+
+                          {/* 5. Allotted Column */}
+                          <td className="py-4 px-4 sm:px-6 align-top">
+                            {isAllotted ? (
+                              <div className="flex items-center justify-between gap-2">
+                                <div>
+                                  <div className="font-heading font-extrabold text-[#0B1B33] text-sm">
+                                    {allottedComm?.name || "Committee"},{" "}
+                                    {allottedPort?.countryName || "Country"}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUnallotSeat(reg.id);
+                                  }}
+                                  className="text-neutral-400 hover:text-rose-600 text-xs font-bold p-1 rounded-md transition-colors"
+                                  title="Unallot seat"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : !isPaid ? (
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-semibold text-neutral-400">Not paid</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openChooseModal(reg);
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg border border-neutral-300 hover:border-neutral-400 text-xs font-bold text-neutral-700 hover:bg-neutral-50 transition-colors"
+                                >
+                                  Choose
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openChooseModal(reg);
+                                }}
+                                className="px-3 py-1.5 rounded-xl border border-neutral-300 hover:border-amber-400 text-xs font-heading font-extrabold text-[#0B1B33] hover:bg-amber-50/40 transition-colors cursor-pointer"
+                              >
+                                Choose
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Bottom Keyboard Hint Bar */}
+            <div className="px-4 sm:px-6 py-3 bg-neutral-50/80 border-t border-neutral-200 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500 font-medium">
+              <div>
+                Click a yellow portfolio to allot it. Press 1, 2, or 3 to accept the focused delegate&apos;s preference. Press Z to undo.
+              </div>
+              {historyStack.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleUndo}
+                  className="font-bold text-[#1560BD] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Undo last ({historyStack[historyStack.length - 1].delegateName})</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. QUEUE VIEW LAYOUT                                                      */}
+      {/* ========================================================================= */}
+      {viewMode === "queue" && (
+        <div className="space-y-4">
+          <div className="text-center">
+            <span className="text-sm font-semibold text-blue-100">
+              {unallottedDelegates.length > 0
+                ? `Delegate ${queueIndex + 1} of ${unallottedDelegates.length}`
+                : "Queue Complete"}
+            </span>
+          </div>
+
+          {unallottedDelegates.length === 0 ? (
+            <div className="max-w-2xl w-full mx-auto bg-white rounded-3xl p-8 sm:p-12 shadow-xl text-[#0B1B33] text-center space-y-4 border border-neutral-200">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0B1B33]">
+                All Delegates Allotted!
+              </h2>
+              <p className="text-neutral-500 text-sm max-w-md mx-auto">
+                Every registered delegate has been assigned a seat. You can review and adjust seats in the Grid or Matrix view.
+              </p>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className="px-6 py-2.5 rounded-xl bg-[#1560BD] hover:bg-blue-700 text-white font-heading font-extrabold text-sm shadow-md transition-all cursor-pointer"
+                >
+                  Return to Grid View
+                </button>
+              </div>
+            </div>
+          ) : currentQueueDelegate ? (
+            <div className="max-w-2xl w-full mx-auto space-y-4">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl text-[#0B1B33] border border-neutral-200 space-y-6">
+                {/* Delegate Heading & Metadata */}
+                <div className="border-b border-neutral-100 pb-5">
+                  <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0B1B33] tracking-tight">
+                    {currentQueueDelegate.delegateName}
+                  </h2>
+                  <div className="text-xs sm:text-sm font-semibold text-neutral-600 mt-1 flex flex-wrap items-center gap-1.5">
+                    <span>{currentQueueDelegate.school}</span>
+                    {currentQueueDelegate.classYear && (
+                      <>
+                        <span>•</span>
+                        <span>Class {currentQueueDelegate.classYear}</span>
+                      </>
+                    )}
+                    <span>•</span>
+                    <span>{currentQueueDelegate.experienceMuns || 0} MUNs</span>
+                    <span>•</span>
+                    <span
+                      className={`font-bold ${
+                        currentQueueDelegate.paymentStatus === "verified"
+                          ? "text-emerald-700"
+                          : "text-rose-600"
+                      }`}
+                    >
+                      {currentQueueDelegate.paymentStatus === "verified" ? "Paid" : "Unpaid"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3 Preferences Stack */}
+                <div className="space-y-4">
+                  {[0, 1, 2].map((prefIdx) => {
+                    const pref = currentQueueDelegate.preferences?.[prefIdx];
+                    const comm = committees.find((c) => c.id === pref?.committeeId);
+                    const label = prefIdx === 0 ? "First" : prefIdx === 1 ? "Second" : "Third";
+
+                    if (!pref || !comm) {
+                      return (
+                        <div key={prefIdx} className="space-y-1.5">
+                          <div className="text-xs font-heading font-extrabold text-neutral-700 uppercase tracking-wider">
+                            {label} committee: None
+                          </div>
+                          <div className="text-xs text-neutral-400 italic">No preference submitted</div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={prefIdx} className="space-y-2">
+                        <div className="text-xs sm:text-sm font-heading font-extrabold text-neutral-800">
+                          {label} committee: {comm.name}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {(pref.portfolioIds || []).map((pId) => {
+                            const port = portfolios.find((p) => p.id === pId);
+                            const name = port?.countryName || pId;
+                            const isAvailable = isPortfolioAvailable(pId);
+                            const isFirstAvail = currentQueueFirstAvailable?.portfolioId === pId;
+
+                            if (!isAvailable) {
+                              return (
+                                <span
+                                  key={pId}
+                                  className="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium line-through text-neutral-400 bg-neutral-100 border border-neutral-200 cursor-not-allowed select-none"
+                                  title="Taken"
+                                >
+                                  {name}
+                                </span>
+                              );
+                            }
+
+                            if (isFirstAvail) {
+                              return (
+                                <button
+                                  key={pId}
+                                  type="button"
+                                  onClick={async () => {
+                                    await handleAllotSeat(currentQueueDelegate.id, pref.committeeId, pId);
+                                    setQueueIndex((prev) => Math.min(prev, unallottedDelegates.length - 2));
+                                  }}
+                                  className="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-extrabold bg-[#FFC72C] hover:bg-yellow-400 text-neutral-900 border border-amber-400 shadow-xs cursor-pointer active:scale-95 transition-all"
+                                  title="Click to allot this portfolio"
+                                >
+                                  {name}
+                                </button>
+                              );
+                            }
+
+                            return (
+                              <button
+                                key={pId}
+                                type="button"
+                                onClick={async () => {
+                                  await handleAllotSeat(currentQueueDelegate.id, pref.committeeId, pId);
+                                  setQueueIndex((prev) => Math.min(prev, unallottedDelegates.length - 2));
+                                }}
+                                className="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-white text-neutral-800 border-2 border-neutral-800 hover:border-amber-400 hover:bg-amber-50 cursor-pointer active:scale-95 transition-all"
+                                title="Click to allot this portfolio"
+                              >
+                                {name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Big Action Button: Allot First Available */}
+                <div className="pt-2">
+                  {currentQueueFirstAvailable ? (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await handleAllotSeat(
+                          currentQueueDelegate.id,
+                          currentQueueFirstAvailable.committeeId,
+                          currentQueueFirstAvailable.portfolioId
+                        );
+                        setQueueIndex((prev) => Math.min(prev, unallottedDelegates.length - 2));
+                      }}
+                      className="w-full py-3.5 px-6 rounded-2xl bg-[#FFC72C] hover:bg-yellow-400 text-neutral-900 font-heading font-extrabold text-sm sm:text-base shadow-md cursor-pointer transition-all active:scale-[0.99] flex items-center justify-center gap-2"
+                    >
+                      <Sparkles className="w-5 h-5 text-neutral-900" />
+                      <span>
+                        Allot first available: {currentQueueFirstAvailable.committeeName},{" "}
+                        {currentQueueFirstAvailable.countryName}
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => openChooseModal(currentQueueDelegate)}
+                      className="w-full py-3.5 px-6 rounded-2xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-heading font-extrabold text-sm sm:text-base border border-neutral-300 cursor-pointer transition-all"
+                    >
+                      All choices taken • Choose manual seat
+                    </button>
+                  )}
+                </div>
+
+                {/* Navigation Buttons: Previous | Skip | Next */}
+                <div className="grid grid-cols-3 gap-3 pt-2">
+                  <button
+                    type="button"
+                    disabled={queueIndex === 0}
+                    onClick={() => setQueueIndex((prev) => Math.max(0, prev - 1))}
+                    className={`py-2.5 px-4 rounded-xl border-2 border-neutral-800 font-heading font-extrabold text-xs sm:text-sm text-neutral-900 text-center transition-all ${
+                      queueIndex === 0
+                        ? "opacity-40 cursor-not-allowed border-neutral-300 text-neutral-400"
+                        : "hover:bg-neutral-50 active:scale-95 cursor-pointer"
+                    }`}
+                  >
+                    Previous
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setQueueIndex((prev) => (prev + 1) % unallottedDelegates.length)
+                    }
+                    className="py-2.5 px-4 rounded-xl border-2 border-neutral-800 font-heading font-extrabold text-xs sm:text-sm text-neutral-900 text-center hover:bg-neutral-50 active:scale-95 cursor-pointer transition-all"
+                  >
+                    Skip
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={queueIndex >= unallottedDelegates.length - 1}
+                    onClick={() =>
+                      setQueueIndex((prev) => Math.min(unallottedDelegates.length - 1, prev + 1))
+                    }
+                    className={`py-2.5 px-4 rounded-xl border-2 border-neutral-800 font-heading font-extrabold text-xs sm:text-sm text-neutral-900 text-center transition-all ${
+                      queueIndex >= unallottedDelegates.length - 1
+                        ? "opacity-40 cursor-not-allowed border-neutral-300 text-neutral-400"
+                        : "hover:bg-neutral-50 active:scale-95 cursor-pointer"
+                    }`}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
 
-              {/* Committee Filter */}
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-bold text-neutral-500 whitespace-nowrap">Filter Committee:</span>
+              {/* Legend Caption */}
+              <div className="text-center text-xs sm:text-sm font-medium text-blue-100">
+                Yellow means available. Struck out means already allotted to someone else.
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. MATRIX VIEW LAYOUT                                                     */}
+      {/* ========================================================================= */}
+      {viewMode === "matrix" && (
+        <div className="flex flex-col lg:flex-row items-start gap-6">
+          {/* Left Table Container */}
+          <div className="flex-1 w-full min-w-0 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl border border-neutral-200 overflow-hidden text-[#0B1B33]">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[640px]">
+                <thead>
+                  <tr className="border-b border-neutral-200">
+                    <th className="py-3 px-4 font-heading font-extrabold text-xs text-neutral-500 uppercase tracking-wider w-[140px]">
+                      Country / Seat
+                    </th>
+                    {committees.map((comm) => (
+                      <th
+                        key={comm.id}
+                        className="py-3 px-3 font-heading font-extrabold text-xs sm:text-sm text-neutral-800 text-center"
+                      >
+                        {comm.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100 text-xs sm:text-sm">
+                  {matrixCountryRows.map((countryName) => (
+                    <tr key={countryName} className="hover:bg-neutral-50/60 transition-colors">
+                      {/* Country Name */}
+                      <td className="py-2.5 px-4 font-heading font-extrabold text-neutral-800 whitespace-nowrap">
+                        {countryName}
+                      </td>
+
+                      {/* Committee Columns */}
+                      {committees.map((comm) => {
+                        const port = portfolios.find(
+                          (p) =>
+                            p.committeeId === comm.id &&
+                            p.countryName.trim().toLowerCase() === countryName.trim().toLowerCase()
+                        );
+
+                        if (!port) {
+                          return (
+                            <td key={comm.id} className="py-2.5 px-2 text-center text-neutral-300">
+                              -
+                            </td>
+                          );
+                        }
+
+                        const assignedReg = registrations.find(
+                          (r) => r.id === port.allottedRegistrationId || r.allotment?.portfolioId === port.id
+                        );
+                        const isTaken = port.status === "taken" || Boolean(assignedReg);
+                        const isSelected =
+                          matrixSelectedSeat?.portfolioId === port.id &&
+                          matrixSelectedSeat?.committeeId === comm.id;
+
+                        return (
+                          <td key={comm.id} className="py-2 px-2 text-center">
+                            {isTaken ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (assignedReg) {
+                                    if (confirm(`Unallot ${assignedReg.delegateName} from ${countryName} (${comm.name})?`)) {
+                                      handleUnallotSeat(assignedReg.id);
+                                    }
+                                  }
+                                }}
+                                className="w-full py-2 px-2.5 rounded-xl border border-neutral-200 bg-white hover:border-rose-400 text-center font-bold text-xs text-neutral-900 shadow-2xs transition-all cursor-pointer group"
+                                title={`Allotted to ${assignedReg?.delegateName || "Delegate"}. Click to unallot.`}
+                              >
+                                <span className="truncate block max-w-[120px] mx-auto group-hover:text-rose-600">
+                                  {assignedReg?.delegateName || "Allotted"}
+                                </span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setMatrixSelectedSeat({
+                                    committeeId: comm.id,
+                                    portfolioId: port.id,
+                                    committeeName: comm.name,
+                                    countryName: port.countryName,
+                                  })
+                                }
+                                className={`w-full py-2 px-2.5 rounded-xl border text-center font-semibold text-xs transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "border-2 border-dashed border-amber-500 bg-amber-50 text-amber-950 font-extrabold shadow-xs"
+                                    : "border-dashed border-neutral-300 text-neutral-400 hover:border-amber-400 hover:text-neutral-700 bg-neutral-50/40"
+                                }`}
+                              >
+                                Open
+                              </button>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Right Assign Sidebar Panel */}
+          <div className="w-full lg:w-80 xl:w-96 shrink-0 bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xl border border-neutral-200 text-[#0B1B33] sticky top-4 space-y-4">
+            {matrixSelectedSeat ? (
+              <>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-heading font-extrabold text-[#0B1B33]">
+                    Assign {matrixSelectedSeat.committeeName}, {matrixSelectedSeat.countryName}
+                  </h3>
+                  <p className="text-xs font-semibold text-neutral-500 mt-0.5">
+                    Type to search {unallottedDelegates.length} not allotted
+                  </p>
+                </div>
+
+                {/* Search unallotted delegates */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <input
+                    type="text"
+                    value={matrixSearchQuery}
+                    onChange={(e) => setMatrixSearchQuery(e.target.value)}
+                    placeholder="Type name or school..."
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border-2 border-amber-400 text-sm font-medium text-[#0B1B33] focus:outline-hidden"
+                  />
+                  {matrixSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setMatrixSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Delegate List */}
+                <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                  {matrixFilteredUnallotted.length === 0 ? (
+                    <div className="py-8 text-center text-neutral-400 text-xs">
+                      No matching unallotted delegates found.
+                    </div>
+                  ) : (
+                    matrixFilteredUnallotted.map((reg) => {
+                      // Check if delegate preferred this seat
+                      const preferredRank = (reg.preferences || []).findIndex(
+                        (p) =>
+                          p.committeeId === matrixSelectedSeat.committeeId &&
+                          (p.portfolioIds || []).includes(matrixSelectedSeat.portfolioId)
+                      );
+
+                      return (
+                        <div
+                          key={reg.id}
+                          className="p-3 rounded-xl border border-neutral-200 hover:border-amber-400 hover:bg-amber-50/30 transition-all flex items-center justify-between gap-2 group"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-heading font-extrabold text-sm text-[#0B1B33] truncate">
+                                {reg.delegateName}
+                              </span>
+                              {preferredRank !== -1 && (
+                                <span className="text-[10px] font-extrabold bg-[#FFC72C] text-neutral-900 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                                  Pref #{preferredRank + 1}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-neutral-500 font-medium truncate">
+                              {reg.school}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await handleAllotSeat(
+                                reg.id,
+                                matrixSelectedSeat.committeeId,
+                                matrixSelectedSeat.portfolioId
+                              );
+                              setMatrixSelectedSeat(null);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-[#FFC72C] hover:bg-yellow-400 text-neutral-900 font-heading font-extrabold text-xs shadow-xs transition-all shrink-0 cursor-pointer active:scale-95"
+                          >
+                            Assign
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setMatrixSelectedSeat(null)}
+                    className="w-full py-2 rounded-xl border border-neutral-200 text-xs font-bold text-neutral-600 hover:bg-neutral-50 transition-colors"
+                  >
+                    Cancel selection
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="py-12 text-center text-neutral-500 space-y-2">
+                <HelpCircle className="w-8 h-8 mx-auto text-neutral-300" />
+                <div className="font-heading font-extrabold text-sm text-[#0B1B33]">
+                  Select an Open Seat
+                </div>
+                <p className="text-xs text-neutral-400 max-w-[220px] mx-auto">
+                  Click any &quot;Open&quot; dashed box in the matrix to search and allot an unallotted delegate.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MANUAL "CHOOSE" MODAL                                                     */}
+      {/* ========================================================================= */}
+      {chooseModalDelegate && (
+        <div className="fixed inset-0 z-50 bg-[#0B1B33]/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-[#0B1B33] space-y-5 animate-slideDown">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-heading font-extrabold text-[#0B1B33]">
+                  Choose Portfolio
+                </h3>
+                <p className="text-xs text-neutral-500 font-semibold mt-0.5">
+                  Manual allotment for {chooseModalDelegate.delegateName}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChooseModalDelegate(null)}
+                className="p-1.5 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-heading font-extrabold text-neutral-700 uppercase tracking-wider mb-1.5">
+                  Select Committee
+                </label>
                 <select
-                  value={committeeFilter}
-                  onChange={(e) => setCommitteeFilter(e.target.value)}
-                  className="py-2 px-3 rounded-xl border border-neutral-200 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-neutral-50 focus:outline-none focus:border-[#1560BD]"
+                  value={chooseCommitteeId}
+                  onChange={(e) => {
+                    setChooseCommitteeId(e.target.value);
+                    setChoosePortfolioId("");
+                  }}
+                  className="w-full p-3 rounded-xl border-2 border-neutral-200 text-sm font-semibold text-[#0B1B33] focus:outline-hidden focus:border-amber-400 bg-white"
                 >
-                  <option value="all">All Committees ({committees.length})</option>
-                  {committees.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
+                  {committees.map((comm) => (
+                    <option key={comm.id} value={comm.id}>
+                      {comm.name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Page Size Selector */}
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-bold text-neutral-500 whitespace-nowrap">Per page:</span>
+              <div>
+                <label className="block text-xs font-heading font-extrabold text-neutral-700 uppercase tracking-wider mb-1.5">
+                  Select Portfolio
+                </label>
                 <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="py-2 px-3 rounded-xl border border-neutral-200 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-neutral-50 focus:outline-none"
+                  value={choosePortfolioId}
+                  onChange={(e) => setChoosePortfolioId(e.target.value)}
+                  className="w-full p-3 rounded-xl border-2 border-neutral-200 text-sm font-semibold text-[#0B1B33] focus:outline-hidden focus:border-amber-400 bg-white"
                 >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                  <option value={99999}>All ({filteredDelegates.length})</option>
+                  <option value="">-- Choose Country / Portfolio --</option>
+                  {portfolios
+                    .filter((p) => p.committeeId === chooseCommitteeId)
+                    .map((p) => {
+                      const avail = isPortfolioAvailable(p.id);
+                      const assignedInfo = portfolioAvailabilityMap.get(p.id);
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {p.countryName} {avail ? "(Available)" : `(Taken: ${assignedInfo?.delegateName || "Allotted"})`}
+                        </option>
+                      );
+                    })}
                 </select>
               </div>
             </div>
 
-            {/* Quick Status Filter Chips & Pagination Controls */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-neutral-100">
-              <div className="flex flex-wrap items-center gap-1.5 text-xs font-heading font-extrabold">
-                <span className="text-neutral-400 text-[11px] uppercase mr-1">Status:</span>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("all")}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                    statusFilter === "all"
-                      ? "bg-[#0B1B33] text-white shadow-xs"
-                      : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-                  }`}
-                >
-                  All ({registrations.length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("unallotted")}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                    statusFilter === "unallotted"
-                      ? "bg-amber-500 text-white shadow-xs"
-                      : "bg-amber-50 text-amber-900 hover:bg-amber-100"
-                  }`}
-                >
-                  Unallotted ({unallottedCount})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("allotted")}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                    statusFilter === "allotted"
-                      ? "bg-emerald-600 text-white shadow-xs"
-                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                  }`}
-                >
-                  Allotted ({allottedCount})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("paid")}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                    statusFilter === "paid"
-                      ? "bg-[#1560BD] text-white shadow-xs"
-                      : "bg-blue-50 text-[#0F4C96] hover:bg-blue-100"
-                  }`}
-                >
-                  Paid ({paidCount})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("unpaid")}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                    statusFilter === "unpaid"
-                      ? "bg-red-600 text-white shadow-xs"
-                      : "bg-red-50 text-red-800 hover:bg-red-100"
-                  }`}
-                >
-                  Unpaid ({unpaidCount})
-                </button>
-              </div>
-
-              {/* Pagination Page Jump */}
-              {totalPages > 1 && (
-                <div className="flex items-center gap-2 text-xs font-heading font-extrabold text-neutral-600 ml-auto">
-                  <span>Page {currentPage} of {totalPages}</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled={currentPage <= 1}
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      className="px-2.5 py-1 rounded-lg border border-neutral-300 disabled:opacity-40 hover:bg-neutral-100 cursor-pointer"
-                    >
-                      ← Prev
-                    </button>
-                    <button
-                      type="button"
-                      disabled={currentPage >= totalPages}
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      className="px-2.5 py-1 rounded-lg border border-neutral-300 disabled:opacity-40 hover:bg-neutral-100 cursor-pointer"
-                    >
-                      Next →
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* User-Friendly GUI Cards List for Delegates */}
-          {paginatedDelegates.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center text-neutral-500 font-medium border border-neutral-200">
-              <AlertCircle className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
-              <p className="text-base font-heading font-extrabold text-[#0B1B33]">No delegates match your filters</p>
-              <p className="text-xs text-neutral-400 mt-1">Try clearing your search query or status filter.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {paginatedDelegates.map((reg, rowIdx) => {
-                const globalIdx = (currentPage - 1) * pageSize + rowIdx + 1;
-                const isAllotted = Boolean(reg.allotment);
-                const isPaid = reg.paymentStatus === "verified";
-                const isEditing = editingDelegateId === reg.id || !isAllotted;
-                const allottedComm = committees.find((c) => c.id === reg.allotment?.committeeId);
-                const allottedPort = portfolios.find((p) => p.id === reg.allotment?.portfolioId);
-                const matchInfo = getPreferenceMatchRank(
-                  reg,
-                  reg.allotment?.committeeId,
-                  reg.allotment?.portfolioId
-                );
-
-                // Best available pref for 1-click
-                const bestAvailablePref = !isAllotted ? getBestAvailablePreference(reg) : null;
-
-                // Current draft committee for this delegate row
-                const draftCommId =
-                  rowDrafts[reg.id]?.committeeId ||
-                  reg.allotment?.committeeId ||
-                  reg.preferences[0]?.committeeId ||
-                  committees[0]?.id ||
-                  "";
-
-                // All portfolios in draft committee, sorted alphabetically!
-                const portsInDraftComm = portfolios
-                  .filter((p) => p.committeeId === draftCommId)
-                  .sort((a, b) => a.countryName.localeCompare(b.countryName, undefined, { sensitivity: "base" }));
-
-                const draftPortId =
-                  rowDrafts[reg.id]?.portfolioId ||
-                  reg.allotment?.portfolioId ||
-                  (portsInDraftComm.find((p) => p.status === "open")?.id || portsInDraftComm[0]?.id || "");
-
-                const selectedPortObj = portfolios.find((p) => p.id === draftPortId);
-                const isSelectedPortTakenByOther =
-                  selectedPortObj?.status === "taken" && selectedPortObj.allottedRegistrationId !== reg.id;
-                const otherHolder = isSelectedPortTakenByOther
-                  ? registrations.find((r) => r.id === selectedPortObj?.allottedRegistrationId)
-                  : null;
-
-                return (
-                  <div
-                    key={reg.id}
-                    className={`rounded-2xl transition-all p-5 sm:p-6 shadow-md bg-white text-[#0B1B33] border-2 ${
-                      isAllotted
-                        ? "border-neutral-200"
-                        : "border-amber-400 ring-2 ring-amber-400/20"
-                    }`}
-                  >
-                    {/* Card Top: Delegate Identity, Reg ID, Payment & Allotment Status */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-neutral-100">
-                      <div className="flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-xl bg-neutral-100 font-mono text-xs font-extrabold text-[#0B1B33] flex items-center justify-center shrink-0 border border-neutral-200">
-                          #{globalIdx}
-                        </span>
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-base sm:text-lg font-heading font-extrabold text-[#0B1B33]">
-                              {reg.delegateName}
-                            </h3>
-                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-700 font-bold border border-neutral-200">
-                              {reg.registrationType === "school_team" ? "School Delegation" : "Individual"}
-                            </span>
-                            {isAllotted ? (
-                              <span className="px-2.5 py-0.5 rounded-full text-xs font-heading font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                                Allotted
-                              </span>
-                            ) : (
-                              <span className="px-2.5 py-0.5 rounded-full text-xs font-heading font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                                Unallotted
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-neutral-600 mt-1">
-                            <span className="font-bold text-neutral-800">{reg.school}</span>
-                            {reg.classYear && (
-                              <>
-                                <span className="text-neutral-300">|</span>
-                                <span>Class {reg.classYear}</span>
-                              </>
-                            )}
-                            <span className="text-neutral-300">|</span>
-                            <span>{reg.experienceMuns} prior MUNs</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs px-2.5 py-1 rounded-lg bg-neutral-100 text-neutral-800 font-bold border border-neutral-200">
-                          {reg.registrationNumber}
-                        </span>
-                        {isPaid ? (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                            ✓ Paid
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                            Unpaid
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Card Body: Preferences on Left, Allotment Controls on Right */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-3.5">
-                      {/* Left Column: Preferences */}
-                      <div className="lg:col-span-5 space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-heading font-extrabold text-[#0B1B33] uppercase tracking-wider">
-                            Submitted Preferences
-                          </span>
-                          {bestAvailablePref && (
-                            <button
-                              type="button"
-                              onClick={() => handleAllot(reg.id, bestAvailablePref.committeeId, bestAvailablePref.portfolioId)}
-                              className="inline-flex items-center gap-1 text-xs font-heading font-extrabold text-emerald-800 hover:text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 px-3 py-1 rounded-xl cursor-pointer transition-colors shadow-xs"
-                            >
-                              <span>Quick Allot {bestAvailablePref.countryName}</span>
-                            </button>
-                          )}
-                        </div>
-
-                        {(reg.preferences || []).length === 0 ? (
-                          <p className="text-xs text-neutral-400 italic">No preferences recorded.</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {(reg.preferences || []).map((pref, pIdx) => {
-                              const cObj = committees.find((c) => c.id === pref.committeeId);
-                              return (
-                                <div key={pIdx} className="bg-neutral-50 rounded-xl p-3 border border-neutral-200 text-xs shadow-2xs">
-                                  <div className="font-heading font-extrabold text-[#0B1B33] mb-1.5 flex items-center justify-between">
-                                    <span>Pref #{pIdx + 1}: {cObj?.name || "Committee"}</span>
-                                  </div>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {(pref.portfolioIds || []).map((pId) => {
-                                      const pObj = portfolios.find((p) => p.id === pId);
-                                      if (!pObj) return null;
-                                      const isFree = pObj.status === "open" || pObj.allottedRegistrationId === reg.id;
-                                      const holder = !isFree
-                                        ? registrations.find((r) => r.id === pObj.allottedRegistrationId)
-                                        : null;
-
-                                      return (
-                                        <button
-                                          key={pId}
-                                          type="button"
-                                          onClick={() => {
-                                            setRowDrafts((prev) => ({
-                                              ...prev,
-                                              [reg.id]: { committeeId: pref.committeeId, portfolioId: pId },
-                                            }));
-                                            setEditingDelegateId(reg.id);
-                                          }}
-                                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-heading font-bold transition-all cursor-pointer shadow-xs ${
-                                            isFree
-                                              ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300"
-                                              : "bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-300"
-                                          }`}
-                                          title={isFree ? "Click to select this free seat" : `Taken by ${holder?.delegateName || "another delegate"} - click to reassign`}
-                                        >
-                                          <span>{pObj.countryName}</span>
-                                          <span className={`text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded ${
-                                            isFree ? "bg-emerald-200/90 text-emerald-950" : "bg-rose-200/90 text-rose-950"
-                                          }`}>
-                                            {isFree ? "Free" : holder?.delegateName ? `Taken: ${holder.delegateName.split(" ")[0]}` : "Taken"}
-                                          </span>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Right Column: Allotment Status & Controls */}
-                      <div className="lg:col-span-7 flex flex-col justify-between">
-                        <div>
-                          <span className="text-xs font-heading font-extrabold text-[#0B1B33] uppercase tracking-wider block mb-1.5">
-                            Portfolio Allotment
-                          </span>
-
-                          {isAllotted && !isEditing ? (
-                            /* Current Allotted Summary Card */
-                            <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
-                              <div className="flex items-center gap-3">
-                                <CountryMonogram code={allottedPort?.code || "UN"} size="md" />
-                                <div>
-                                  <div className="text-base font-heading font-extrabold text-[#0B1B33]">
-                                    {allottedPort?.countryName || "Allotted Country"}
-                                  </div>
-                                  <div className="text-xs font-bold text-[#1560BD]">
-                                    {allottedComm?.name || "Committee"}
-                                  </div>
-                                  {matchInfo && (
-                                    <div className="text-[11px] text-emerald-700 font-extrabold mt-0.5">
-                                      ✓ Matched {matchInfo.label}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingDelegateId(reg.id)}
-                                  className="px-3.5 py-1.5 rounded-xl border border-neutral-300 hover:bg-white text-xs font-heading font-bold text-neutral-700 transition-colors cursor-pointer"
-                                >
-                                  Change Seat
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleUnallot(reg.id)}
-                                  className="px-3.5 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-heading font-bold text-red-700 transition-colors cursor-pointer flex items-center gap-1.5"
-                                  title="Unallot seat and make it free"
-                                >
-                                  <UserX className="w-3.5 h-3.5" />
-                                  <span>Unallot</span>
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            /* Allotment Control Interface (Spacious & Clean) */
-                            <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-3.5 shadow-2xs">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {/* Committee Selector - Shows ALL committees with open count */}
-                                <div>
-                                  <label className="block text-xs font-heading font-extrabold text-[#0B1B33] uppercase mb-1">
-                                    1. Choose Committee:
-                                  </label>
-                                  <select
-                                    value={draftCommId}
-                                    onChange={(e) => {
-                                      const nextComm = e.target.value;
-                                      const nextPorts = portfolios.filter((p) => p.committeeId === nextComm);
-                                      const firstOpen = nextPorts.find((p) => p.status === "open");
-                                      setRowDrafts((prev) => ({
-                                        ...prev,
-                                        [reg.id]: {
-                                          committeeId: nextComm,
-                                          portfolioId: firstOpen?.id || nextPorts[0]?.id || "",
-                                        },
-                                      }));
-                                    }}
-                                    className="w-full py-2.5 px-3 rounded-xl border border-neutral-300 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-white focus:outline-none focus:border-[#1560BD]"
-                                  >
-                                    {committees.map((c) => {
-                                      const cPorts = portfolios.filter((p) => p.committeeId === c.id);
-                                      const openCount = cPorts.filter((p) => p.status === "open").length;
-                                      return (
-                                        <option key={c.id} value={c.id}>
-                                          {c.name} ({openCount} free / {cPorts.length} total)
-                                        </option>
-                                      );
-                                    })}
-                                  </select>
-                                </div>
-
-                                {/* Portfolio Selector - Lists Free vs Taken with holder names */}
-                                <div>
-                                  <label className="block text-xs font-heading font-extrabold text-[#0B1B33] uppercase mb-1">
-                                    2. Choose Portfolio:
-                                  </label>
-                                  <select
-                                    value={draftPortId}
-                                    onChange={(e) => {
-                                      setRowDrafts((prev) => ({
-                                        ...prev,
-                                        [reg.id]: {
-                                          committeeId: draftCommId,
-                                          portfolioId: e.target.value,
-                                        },
-                                      }));
-                                    }}
-                                    className="w-full py-2.5 px-3 rounded-xl border border-neutral-300 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-white focus:outline-none focus:border-[#1560BD]"
-                                  >
-                                    {portsInDraftComm.length === 0 ? (
-                                      <option value="">No portfolios in this committee</option>
-                                    ) : (
-                                      portsInDraftComm.map((p) => {
-                                        const isTaken = p.status === "taken" && p.allottedRegistrationId !== reg.id;
-                                        const holder = isTaken
-                                          ? registrations.find((r) => r.id === p.allottedRegistrationId)
-                                          : null;
-                                        const isPreferred = (reg.preferences || []).some(
-                                          (pref) =>
-                                            pref.committeeId === draftCommId &&
-                                            (pref.portfolioIds || []).includes(p.id)
-                                        );
-
-                                        let label = p.countryName;
-                                        if (isPreferred) label = `[⭐ Preferred] ${label}`;
-
-                                        if (isTaken) {
-                                          label = `${label} — [Taken: ${holder?.delegateName || "Another delegate"}]`;
-                                        } else {
-                                          label = `${label} [Free]`;
-                                        }
-
-                                        return (
-                                          <option key={p.id} value={p.id}>
-                                            {label}
-                                          </option>
-                                        );
-                                      })
-                                    )}
-                                  </select>
-                                </div>
-                              </div>
-
-                              {/* Action & Reassign Warning */}
-                              <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2.5 border-t border-neutral-200">
-                                {isSelectedPortTakenByOther ? (
-                                  <div className="text-xs text-amber-950 font-bold bg-amber-100 px-3.5 py-2 rounded-xl border border-amber-300 w-full sm:w-auto">
-                                    <strong>{selectedPortObj?.countryName}</strong> is taken by <strong>{otherHolder?.delegateName || "another delegate"}</strong>. Selecting will reassign and unallot them.
-                                  </div>
-                                ) : (
-                                  <div className="text-xs text-emerald-950 font-bold bg-emerald-100 px-3.5 py-2 rounded-xl border border-emerald-300 w-full sm:w-auto">
-                                    <strong>{selectedPortObj?.countryName || "Portfolio"}</strong> is free to allot.
-                                  </div>
-                                )}
-
-                                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                                  {isAllotted && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditingDelegateId(null)}
-                                      className="px-3.5 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-100 text-xs font-bold text-neutral-700 cursor-pointer"
-                                    >
-                                      Cancel
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    disabled={!draftPortId}
-                                    onClick={() => handleAllot(reg.id, draftCommId, draftPortId)}
-                                    className={`w-full sm:w-auto px-5 py-2 rounded-xl text-xs sm:text-sm font-heading font-extrabold transition-transform active:scale-95 cursor-pointer shadow-sm ${
-                                      isSelectedPortTakenByOther
-                                        ? "bg-amber-500 hover:bg-amber-600 text-[#0B1B33]"
-                                        : "bg-[#1560BD] hover:bg-[#0F4C96] text-white"
-                                    }`}
-                                  >
-                                    {isSelectedPortTakenByOther ? "Reassign & Allot" : "Allot Seat"}
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Bottom Pagination & Counts Bar */}
-          <div className="p-4 bg-white rounded-2xl border border-neutral-200 text-xs font-bold text-neutral-600 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
-            <div>
-              Showing <strong>{paginatedDelegates.length}</strong> of <strong>{filteredDelegates.length}</strong> filtered delegates ({totalDelegates} total in conference)
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-900 font-extrabold">
-                  {allottedCount} allotted
-                </span>
-                <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-950 font-extrabold">
-                  {unallottedCount} unallotted
-                </span>
-              </div>
-
-              {totalPages > 1 && (
-                <div className="flex items-center gap-1.5 ml-2 border-l border-neutral-200 pl-3">
-                  <button
-                    type="button"
-                    disabled={currentPage <= 1}
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className="px-2.5 py-1 rounded-lg border border-neutral-300 disabled:opacity-40 hover:bg-neutral-100 cursor-pointer text-xs font-extrabold"
-                  >
-                    ← Prev
-                  </button>
-                  <span className="text-xs font-extrabold text-[#0B1B33]">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className="px-2.5 py-1 rounded-lg border border-neutral-300 disabled:opacity-40 hover:bg-neutral-100 cursor-pointer text-xs font-extrabold"
-                  >
-                    Next →
-                  </button>
-                </div>
-              )}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setChooseModalDelegate(null)}
+                className="flex-1 py-2.5 rounded-xl border border-neutral-200 font-bold text-xs sm:text-sm text-neutral-600 hover:bg-neutral-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!chooseCommitteeId || !choosePortfolioId}
+                onClick={handleConfirmChoose}
+                className={`flex-1 py-2.5 rounded-xl font-heading font-extrabold text-xs sm:text-sm transition-all shadow-md ${
+                  !chooseCommitteeId || !choosePortfolioId
+                    ? "bg-neutral-200 text-neutral-400 cursor-not-allowed"
+                    : "bg-[#FFC72C] hover:bg-yellow-400 text-neutral-900 cursor-pointer active:scale-95"
+                }`}
+              >
+                Confirm Allot
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* VIEW 2: COMMITTEE SEATS MATRIX (Seats Grid View)          */}
-      {/* ======================================================== */}
-      {viewMode === "matrix" && (
-        <div className="space-y-4">
-          {/* Committee Switcher Pills */}
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {committees.map((c) => {
-              const commPorts = portfolios.filter((p) => p.committeeId === c.id);
-              const filledInComm = commPorts.filter((p) => p.status === "taken").length;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveCommitteeId(c.id);
-                    setSelectedPortfolioIds([]);
-                  }}
-                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-heading font-extrabold transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
-                    activeCommittee.id === c.id
-                      ? "bg-white text-[#0B1B33] shadow-md"
-                      : "bg-white/10 hover:bg-white/20 text-white"
-                  }`}
-                >
-                  <span>{c.name}</span>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full ${
-                      activeCommittee.id === c.id
-                        ? "bg-[#1560BD] text-white"
-                        : "bg-white/20 text-white"
-                    }`}
-                  >
-                    {filledInComm} / {commPorts.length}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="bg-white rounded-2xl p-4 sm:p-6 text-[#0B1B33] shadow-sm space-y-4">
-            {/* Active Committee Status Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-100 pb-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-[#0B1B33]">
-                  {activeCommittee.name} — Seats Roster
-                </h2>
-                <p className="text-xs sm:text-sm text-neutral-500 font-medium mt-0.5">
-                  {matrixPortfolios.filter((p) => p.isTaken).length} of {matrixPortfolios.length} seats allotted
-                </p>
-              </div>
-
-              {/* Add Country / Leader Combobox */}
-              <div className="sm:max-w-xs w-full">
-                <PortfolioCombobox
-                  placeholder={`+ Add country to ${activeCommittee.name}...`}
-                  existingNames={committeePortfolios.map((p) => p.countryName)}
-                  onAdd={(item) => addPortfolioToCommittee(activeCommittee.id, item)}
-                />
-              </div>
-            </div>
-
-            {/* Matrix Filters & Bulk Action Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-              {/* Filter Pills */}
-              <div className="flex flex-wrap items-center gap-1.5 text-xs font-heading font-extrabold">
-                <button
-                  type="button"
-                  onClick={() => setMatrixSortMode("all")}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                    matrixSortMode === "all"
-                      ? "bg-[#0B1B33] text-white"
-                      : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
-                  }`}
-                >
-                  All ({matrixPortfolios.length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMatrixSortMode("free")}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                    matrixSortMode === "free"
-                      ? "bg-emerald-600 text-white"
-                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                  }`}
-                >
-                  Free Seats ({matrixPortfolios.filter((p) => !p.isTaken).length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMatrixSortMode("paid")}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                    matrixSortMode === "paid"
-                      ? "bg-[#1560BD] text-white"
-                      : "bg-blue-50 text-[#0F4C96] hover:bg-blue-100"
-                  }`}
-                >
-                  Paid ({matrixPortfolios.filter((p) => p.statusType === "allotted_paid").length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMatrixSortMode("unpaid")}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                    matrixSortMode === "unpaid"
-                      ? "bg-amber-600 text-white"
-                      : "bg-amber-50 text-amber-900 hover:bg-amber-100"
-                  }`}
-                >
-                  Unpaid ({matrixPortfolios.filter((p) => p.statusType === "allotted_unpaid").length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMatrixSortMode("az")}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                    matrixSortMode === "az"
-                      ? "bg-[#0B1B33] text-white"
-                      : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
-                  }`}
-                >
-                  A - Z
-                </button>
-              </div>
-
-              {/* Bulk Actions */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleSelectAllInCommittee}
-                  className="text-xs font-heading font-bold text-neutral-600 hover:text-neutral-900 cursor-pointer flex items-center gap-1"
-                >
-                  {selectedPortfolioIds.length === committeePortfolios.length && committeePortfolios.length > 0 ? (
-                    <>
-                      <CheckSquare className="w-4 h-4 text-[#1560BD]" /> Deselect All
-                    </>
-                  ) : (
-                    <>
-                      <Square className="w-4 h-4" /> Select All
-                    </>
-                  )}
-                </button>
-
-                {selectedPortfolioIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteSelectedPortfolios}
-                    className="px-3 py-1 rounded-lg text-xs font-heading font-extrabold bg-red-600 hover:bg-red-700 text-white cursor-pointer flex items-center gap-1 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Delete ({selectedPortfolioIds.length})
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Matrix Table */}
-            <div className="border border-neutral-200 rounded-xl overflow-hidden">
-              <div className="overflow-x-auto max-h-[600px]">
-                <table className="w-full text-left text-xs sm:text-sm border-collapse">
-                  <thead className="sticky top-0 bg-neutral-100 text-[#0B1B33] font-heading font-extrabold uppercase tracking-wider text-[11px] border-b border-neutral-200 z-10 select-none shadow-xs">
-                    <tr>
-                      <th className="py-2.5 px-3 w-10 text-center border-r border-neutral-200">
-                        <input
-                          type="checkbox"
-                          checked={
-                            selectedPortfolioIds.length === committeePortfolios.length &&
-                            committeePortfolios.length > 0
-                          }
-                          onChange={handleSelectAllInCommittee}
-                          className="w-4 h-4 text-[#1560BD] rounded"
-                        />
-                      </th>
-                      <th className="py-2.5 px-3 border-r border-neutral-200 min-w-[200px]">
-                        Country / Portfolio
-                      </th>
-                      <th className="py-2.5 px-3 border-r border-neutral-200 w-28 text-center">Seat Status</th>
-                      <th className="py-2.5 px-3 border-r border-neutral-200 min-w-[240px]">
-                        Assigned Delegate
-                      </th>
-                      <th className="py-2.5 px-3 w-40 text-center">Allotment Action</th>
-                    </tr>
-                  </thead>
-
-                  <tbody className="divide-y divide-neutral-200 text-[#0B1B33]">
-                    {matrixPortfolios.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="py-12 text-center text-neutral-500 font-medium">
-                          No country portfolios in this committee yet. Add countries using the search bar above.
-                        </td>
-                      </tr>
-                    ) : (
-                      matrixPortfolios.map((port, idx) => {
-                        const isSelected = selectedPortfolioIds.includes(port.id);
-                        const isFree = !port.isTaken;
-                        const isPaid = port.statusType === "allotted_paid";
-                        const isUnpaid = port.statusType === "allotted_unpaid";
-
-                        return (
-                          <tr
-                            key={port.id}
-                            className={`hover:bg-blue-50/40 transition-colors ${
-                              isFree ? "bg-emerald-50/20" : isPaid ? "bg-blue-50/20" : "bg-amber-50/20"
-                            } ${isSelected ? "bg-yellow-50" : ""}`}
-                          >
-                            {/* Checkbox */}
-                            <td className="py-2.5 px-3 text-center border-r border-neutral-200">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => handleToggleSelectPortfolio(port.id)}
-                                className="w-4 h-4 text-[#1560BD] rounded cursor-pointer"
-                              />
-                            </td>
-
-                            {/* Portfolio / Country */}
-                            <td className="py-2.5 px-3 border-r border-neutral-200">
-                              <div className="flex items-center gap-2.5">
-                                <CountryMonogram code={port.code} size="sm" />
-                                <div>
-                                  <div className="font-heading font-extrabold text-[#0B1B33] text-sm">
-                                    {port.countryName}
-                                  </div>
-                                  <div className="text-[11px] text-neutral-400 font-mono">
-                                    Code: {port.code}
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Status */}
-                            <td className="py-2.5 px-3 border-r border-neutral-200 text-center">
-                              {isFree ? (
-                                <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                  Free
-                                </span>
-                              ) : isPaid ? (
-                                <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-100 text-[#0F4C96] border border-blue-300">
-                                  Allotted (Paid)
-                                </span>
-                              ) : (
-                                <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                                  Allotted (Unpaid)
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Assigned Delegate */}
-                            <td className="py-2.5 px-3 border-r border-neutral-200">
-                              {port.delegate ? (
-                                <div>
-                                  <div className="font-heading font-extrabold text-[#0B1B33] text-sm">
-                                    {port.delegate.delegateName}
-                                  </div>
-                                  <div className="text-xs text-neutral-500 font-medium">
-                                    {port.delegate.school} |{" "}
-                                    <span className="font-mono">{port.delegate.registrationNumber}</span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-neutral-400 italic font-medium">
-                                  — Open Seat (Not Assigned) —
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Actions */}
-                            <td className="py-2.5 px-3 text-center">
-                              <div className="flex items-center justify-center gap-2">
-                                {isFree ? (
-                                  /* Assign Dropdown */
-                                  unallottedCount > 0 ? (
-                                    <select
-                                      defaultValue=""
-                                      onChange={(e) => {
-                                        if (e.target.value) {
-                                          handleAllot(e.target.value, activeCommittee.id, port.id);
-                                          e.target.value = "";
-                                        }
-                                      }}
-                                      className="py-1 px-2 rounded-lg border border-neutral-300 text-xs font-heading font-bold text-[#0B1B33] bg-white cursor-pointer hover:border-[#1560BD]"
-                                    >
-                                      <option value="">+ Assign Delegate</option>
-                                      {registrations
-                                        .filter((r) => !r.allotment)
-                                        .map((r) => {
-                                          const preferredThisPort = (r.preferences || []).some(
-                                            (pref) =>
-                                              pref.committeeId === activeCommittee.id &&
-                                              (pref.portfolioIds || []).includes(port.id)
-                                          );
-                                          return (
-                                            <option key={r.id} value={r.id}>
-                                              {preferredThisPort ? `⭐ ${r.delegateName}` : r.delegateName} (
-                                              {r.school})
-                                            </option>
-                                          );
-                                        })}
-                                    </select>
-                                  ) : (
-                                    <span className="text-xs text-neutral-400">All delegates allotted</span>
-                                  )
-                                ) : (
-                                  /* Unallot Button */
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUnallot(port.delegate!.id)}
-                                    className="px-2.5 py-1 rounded-lg text-xs font-heading font-bold text-red-600 hover:bg-red-50 border border-red-200 transition-colors cursor-pointer flex items-center gap-1"
-                                    title="Unallot delegate from this seat"
-                                  >
-                                    <UserX className="w-3.5 h-3.5" />
-                                    <span>Unallot</span>
-                                  </button>
-                                )}
-
-                                {/* Delete Single Country */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (confirm(`Delete ${port.countryName} from ${activeCommittee.name}?`)) {
-                                      deletePortfolio(port.id);
-                                    }
-                                  }}
-                                  className="p-1 rounded text-neutral-400 hover:text-red-600 hover:bg-red-50"
-                                  title="Delete portfolio"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* AUTO ALLOT PREVIEW MODAL                                 */}
-      {/* ======================================================== */}
+      {/* ========================================================================= */}
+      {/* AUTO-ALLOT SIMULATION & EXECUTION MODAL                                   */}
+      {/* ========================================================================= */}
       {showAutoAllotModal && (
         <div className="fixed inset-0 z-50 bg-[#0B1B33]/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 shadow-2xl animate-fadeIn">
-            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-              <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0B1B33]">
-                Auto-Allotment Simulation
-              </h2>
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl text-[#0B1B33] space-y-5 animate-slideDown">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-heading font-extrabold text-[#0B1B33]">
+                    Auto-Allotment Algorithm
+                  </h3>
+                  <p className="text-xs text-neutral-500 font-semibold">
+                    Simulate & execute automated preference matching
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAutoAllotModal(false)}
-                className="text-neutral-400 hover:text-neutral-900 text-xl font-bold p-1 cursor-pointer"
+                className="p-1.5 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* 3 Metric Cards */}
-            <div className="grid grid-cols-3 gap-2.5 text-center">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3">
-                <div className="text-2xl sm:text-3xl font-heading font-extrabold text-emerald-800">
-                  {sim.firstChoiceCount}
-                </div>
-                <div className="text-xs font-heading font-bold text-emerald-700 mt-0.5">
-                  1st Choice
+            {/* Algorithm settings */}
+            <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200 space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={autoAllotIncludeUnpaid}
+                  onChange={(e) => setAutoAllotIncludeUnpaid(e.target.checked)}
+                  className="w-4 h-4 rounded-md accent-[#1560BD]"
+                />
+                <span className="text-xs sm:text-sm font-semibold text-neutral-700">
+                  Include Unpaid delegates in auto-allotment
+                </span>
+              </label>
+
+              <div className="text-xs text-neutral-500 leading-relaxed">
+                Prioritizes delegates by prior MUN experience and submission timestamps. Resolves 1st, 2nd, and 3rd choices automatically.
+              </div>
+            </div>
+
+            {/* Simulation Preview */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3.5 rounded-xl bg-neutral-100/70 border border-neutral-200">
+                <div className="text-xs text-neutral-500 font-bold uppercase">To Be Allotted</div>
+                <div className="text-2xl font-heading font-extrabold text-neutral-900 mt-0.5">
+                  {autoAllotSimulation.proposedAllotments.length}
                 </div>
               </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3">
-                <div className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0F4C96]">
-                  {sim.secondChoiceCount}
-                </div>
-                <div className="text-xs font-heading font-bold text-[#0F4C96] mt-0.5">
-                  2nd Choice
-                </div>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3">
-                <div className="text-2xl sm:text-3xl font-heading font-extrabold text-amber-800">
-                  {sim.conflictsCount}
-                </div>
-                <div className="text-xs font-heading font-bold text-amber-700 mt-0.5">
-                  Conflicts
+              <div className="p-3.5 rounded-xl bg-neutral-100/70 border border-neutral-200">
+                <div className="text-xs text-neutral-500 font-bold uppercase">Conflicts / Manual</div>
+                <div className="text-2xl font-heading font-extrabold text-neutral-900 mt-0.5">
+                  {autoAllotSimulation.conflicts.length}
                 </div>
               </div>
             </div>
 
-            {/* Include Unpaid Toggle */}
-            <div className="bg-neutral-50 p-3.5 rounded-2xl border border-neutral-200 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-heading font-extrabold text-[#0B1B33]">
-                  Include unpaid delegates
-                </div>
-                <div className="text-xs text-neutral-500 font-medium mt-0.5">
-                  By default, only delegates with verified payment are allotted
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={autoAllotIncludeUnpaid}
-                onChange={(e) => setAutoAllotIncludeUnpaid(e.target.checked)}
-                className="w-5 h-5 accent-[#1560BD] cursor-pointer"
-              />
-            </div>
-
-            <p className="text-xs text-neutral-500 font-medium">
-              Simulation results are deterministic and based on registration timestamp order. No changes are applied until you confirm.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
-              <Button
-                variant="primary"
-                onClick={handleExecuteAllot}
-                className="flex-1 py-3"
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowAutoAllotModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-neutral-200 font-bold text-xs sm:text-sm text-neutral-600 hover:bg-neutral-50 transition-colors"
               >
-                Execute Allotment ({sim.totalEligible})
-              </Button>
-
-              {sim.conflictsCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAutoAllotModal(false);
-                    setShowConflictsModal(true);
-                    setCurrentConflictIndex(0);
-                  }}
-                  className="flex-1 border-2 border-neutral-300 hover:border-[#0B1B33] text-[#0B1B33] rounded-2xl p-3 text-xs sm:text-sm font-heading font-extrabold text-center transition-colors cursor-pointer"
-                >
-                  Review Conflicts ({sim.conflictsCount})
-                </button>
-              )}
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await executeAutoAllot();
+                  setShowAutoAllotModal(false);
+                  showToast("Automated allotment executed successfully!", "success");
+                }}
+                className="flex-1 py-2.5 rounded-xl font-heading font-extrabold text-xs sm:text-sm bg-[#FFC72C] hover:bg-yellow-400 text-neutral-900 shadow-md cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Execute Allotment</span>
+              </button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* ======================================================== */}
-      {/* CONFLICT RESOLUTION MODAL                                */}
-      {/* ======================================================== */}
-      {showConflictsModal && currentConflict && (
-        <div className="fixed inset-0 z-50 bg-[#0B1B33]/90 flex flex-col justify-between p-4 sm:p-8 overflow-y-auto">
-          <div className="max-w-md w-full mx-auto my-auto space-y-5 bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-              <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
-                Conflict {currentConflictIndex + 1} of {sim.conflicts.length}
+// =========================================================================
+// HELPER: Preference Cell Renderer in Grid View
+// =========================================================================
+function renderPreferenceCell(
+  reg: Registration,
+  prefIdx: number,
+  firstAvailablePId: string | undefined,
+  handleAllotSeat: (regId: string, committeeId: string, portfolioId: string) => Promise<void>,
+  isPortfolioAvailable: (portfolioId: string) => boolean,
+  portfolios: MunPortfolio[],
+  committees: MunCommittee[]
+) {
+  const pref = reg.preferences?.[prefIdx];
+  if (!pref) {
+    return <span className="text-xs text-neutral-300 italic">-</span>;
+  }
+
+  const comm = committees.find((c) => c.id === pref.committeeId);
+  const isDelegateAllotted = Boolean(reg.allotment);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="text-xs font-heading font-extrabold text-neutral-700 uppercase tracking-wider">
+        {comm?.name || pref.committeeId}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {(pref.portfolioIds || []).map((pId) => {
+          const port = portfolios.find((p) => p.id === pId);
+          const name = port?.countryName || pId;
+          const isAvail = isPortfolioAvailable(pId);
+          const isFirstAvail = !isDelegateAllotted && firstAvailablePId === pId;
+
+          if (!isAvail) {
+            return (
+              <span
+                key={pId}
+                className="px-2 py-0.5 rounded-lg text-xs font-medium line-through text-neutral-400 bg-neutral-100 border border-neutral-200 cursor-not-allowed whitespace-nowrap select-none"
+                title="Already allotted"
+              >
+                {name}
               </span>
+            );
+          }
+
+          if (isFirstAvail) {
+            return (
               <button
+                key={pId}
                 type="button"
-                onClick={() => setShowConflictsModal(false)}
-                className="text-neutral-400 hover:text-black font-bold text-lg cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAllotSeat(reg.id, pref.committeeId, pId);
+                }}
+                className="px-2.5 py-0.5 rounded-lg text-xs font-heading font-extrabold bg-[#FFC72C] hover:bg-yellow-400 text-neutral-900 border border-amber-400 shadow-2xs cursor-pointer active:scale-95 transition-all whitespace-nowrap"
+                title="Click to allot this portfolio"
               >
-                ✕
+                {name}
               </button>
-            </div>
+            );
+          }
 
-            <div>
-              <h2 className="text-2xl font-heading font-extrabold text-[#0B1B33] leading-tight">
-                {currentConflict.portfolioName} in {currentConflict.committeeName}
-              </h2>
-              <p className="text-sm text-neutral-600 font-medium mt-1">
-                Multiple delegates ranked this exact seat. Choose who receives it:
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {currentConflict.competingDelegates.map((comp, cIdx) => (
-                <div
-                  key={cIdx}
-                  className="p-4 rounded-2xl border-2 border-neutral-200 hover:border-[#1560BD] transition-colors space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="font-heading font-extrabold text-[#0B1B33] text-base">
-                      {comp.registration.delegateName}
-                    </div>
-                    <span className="text-xs bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded font-bold">
-                      {comp.registration.school}
-                    </span>
-                  </div>
-                  <div className="text-xs text-neutral-500">{comp.reason}</div>
-                  <Button
-                    size="md"
-                    variant="primary"
-                    onClick={() => handleResolveSingleConflict(comp.registration.id)}
-                    className="w-full mt-1"
-                  >
-                    Assign {currentConflict.portfolioName} to {comp.registration.delegateName.split(" ")[0]}
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={() => setShowConflictsModal(false)}
-                className="text-xs font-bold text-neutral-500 hover:text-neutral-800 underline cursor-pointer"
-              >
-                Skip / Return to Allotment Overview
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          return (
+            <button
+              key={pId}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAllotSeat(reg.id, pref.committeeId, pId);
+              }}
+              className="px-2 py-0.5 rounded-lg text-xs font-bold bg-white text-neutral-800 border border-neutral-300 hover:border-amber-400 hover:bg-amber-50 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
+              title="Click to allot this portfolio"
+            >
+              {name}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
