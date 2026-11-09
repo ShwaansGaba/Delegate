@@ -60,6 +60,7 @@ export interface EventModel {
   dateFrom?: string;
   dateTo?: string;
   venue: string;
+  city?: string;
   fee: number; // Individual delegation fee
   schoolFeePerStudent?: number; // School delegation fee (per student)
   deadline: string;

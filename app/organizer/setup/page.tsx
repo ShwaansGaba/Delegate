@@ -134,6 +134,7 @@ export default function OrganizerSetupPage() {
   const [dateTo, setDateTo] = useState(event.dateTo || "");
   const [deadlineDate, setDeadlineDate] = useState(event.deadlineDate || "");
   const [venue, setVenue] = useState(event.venue || "");
+  const [city, setCity] = useState(event.city || "");
   const [bannerUrl, setBannerUrl] = useState(event.bannerUrl || event.imageUrl || "");
   const [fee, setFee] = useState(event.fee ? event.fee.toString() : "1500");
   const [schoolFee, setSchoolFee] = useState(
@@ -150,6 +151,7 @@ export default function OrganizerSetupPage() {
       setDateTo(event.dateTo || "");
       setDeadlineDate(event.deadlineDate || "");
       setVenue(event.venue || "");
+      setCity(event.city || "");
       setBannerUrl(event.bannerUrl || event.imageUrl || "");
       setFee(event.fee ? event.fee.toString() : "1500");
       setSchoolFee(
@@ -199,7 +201,8 @@ export default function OrganizerSetupPage() {
     dateTo >= dateFrom &&
     deadlineDate &&
     deadlineDate <= dateFrom &&
-    venue.trim().length > 0
+    venue.trim().length > 0 &&
+    city.trim().length > 0
   );
 
   const isCommitteesDone = committees.length >= 3;
@@ -258,6 +261,10 @@ export default function OrganizerSetupPage() {
       setValidationError("Please enter the conference venue.");
       return;
     }
+    if (!city.trim()) {
+      setValidationError("Please enter the city where the conference is hosted (e.g. Delhi, Mumbai).");
+      return;
+    }
 
     const computedDates = formatRangeDDMMYYYY(dateFrom, dateTo);
     const computedDeadline = formatDateDDMMYYYY(deadlineDate);
@@ -267,6 +274,7 @@ export default function OrganizerSetupPage() {
       dateFrom,
       dateTo,
       venue: venue.trim(),
+      city: city.trim(),
       fee: Math.max(0, Number(fee) || 0),
       schoolFeePerStudent: Math.max(0, Number(schoolFee) || 0),
       deadline: computedDeadline,
@@ -732,17 +740,31 @@ export default function OrganizerSetupPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs sm:text-sm font-bold text-neutral-700 mb-1">
-                Venue
-              </label>
-              <input
-                type="text"
-                value={venue}
-                onChange={(e) => setVenue(e.target.value)}
-                placeholder="e.g. Main Auditorium / Campus Campus"
-                className="w-full bg-neutral-100 rounded-xl px-3.5 py-2.5 sm:py-3 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <label className="block text-xs sm:text-sm font-bold text-neutral-700 mb-1">
+                  Venue / Campus
+                </label>
+                <input
+                  type="text"
+                  value={venue}
+                  onChange={(e) => setVenue(e.target.value)}
+                  placeholder="e.g. Main Auditorium, DPS RK Puram"
+                  className="w-full bg-neutral-100 rounded-xl px-3.5 py-2.5 sm:py-3 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-bold text-neutral-700 mb-1">
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="e.g. Delhi, Mumbai, Bengaluru"
+                  className="w-full bg-neutral-100 rounded-xl px-3.5 py-2.5 sm:py-3 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]"
+                />
+              </div>
             </div>
 
             <div>

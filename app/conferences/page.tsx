@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { DelegatoIcon, DelegatoHorizontalLogo } from "@/components/ui/DelegatoBrand";
 import { formatDateDDMMYYYY, formatRangeDDMMYYYY } from "@/lib/dateUtils";
-import { Search, X, MapPin, Calendar, Users, Award, ChevronDown, User, Check, ExternalLink } from "lucide-react";
+import { Search, X, MapPin, Calendar, Users, Award, ChevronDown, User, Check, ExternalLink, LocateFixed } from "lucide-react";
 
 interface ConferenceItem {
   id: string;
@@ -16,6 +16,7 @@ interface ConferenceItem {
   date_from?: string;
   date_to?: string;
   venue?: string;
+  city?: string;
   fee?: number;
   school_fee_per_student?: number;
   deadline?: string;
@@ -31,6 +32,38 @@ interface ConferenceItem {
     total_seats: number;
     portfolios?: { id: string; status: string }[];
   }[];
+}
+
+const MAJOR_HUBS: { name: string; lat: number; lon: number }[] = [
+  { name: "Delhi", lat: 28.6139, lon: 77.2090 },
+  { name: "Gurugram", lat: 28.4595, lon: 77.0266 },
+  { name: "Noida", lat: 28.5355, lon: 77.3910 },
+  { name: "Faridabad", lat: 28.4089, lon: 77.3178 },
+  { name: "Mumbai", lat: 19.0760, lon: 72.8777 },
+  { name: "Bengaluru", lat: 12.9716, lon: 77.5946 },
+  { name: "Kolkata", lat: 22.5726, lon: 88.3639 },
+  { name: "Chennai", lat: 13.0827, lon: 80.2707 },
+  { name: "Hyderabad", lat: 17.3850, lon: 78.4867 },
+  { name: "Pune", lat: 18.5204, lon: 73.8567 },
+  { name: "Ahmedabad", lat: 23.0225, lon: 72.5714 },
+  { name: "Jaipur", lat: 26.9124, lon: 75.7873 },
+  { name: "Chandigarh", lat: 30.7333, lon: 76.7794 },
+  { name: "Lucknow", lat: 26.8467, lon: 80.9462 },
+  { name: "Dehradun", lat: 30.3165, lon: 78.0322 },
+];
+
+function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 const BANNER_PALETTES = [
@@ -53,6 +86,8 @@ export default function AvailableConferencesPage() {
   const [activeChip, setActiveChip] = useState<"all" | "this_month" | "closing_soon" | "school_teams" | "under_1500">("all");
   const [selectedCity, setSelectedCity] = useState<string>("All");
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [detectedCity, setDetectedCity] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Explore MUN Conferences | Delegato";
@@ -104,6 +139,7 @@ export default function AvailableConferencesPage() {
                   date_from: ev.date_from,
                   date_to: ev.date_to,
                   venue: ev.venue,
+                  city: ev.city || ev.rules?.city || (ev.venue ? ev.venue.split(",").pop()?.trim() : ""),
                   fee: Number(ev.fee) || 0,
                   school_fee_per_student: Number(ev.school_fee_per_student) || 0,
                   deadline: ev.deadline,
@@ -139,6 +175,7 @@ export default function AvailableConferencesPage() {
                       date_from: c.date_from || (c as unknown as { dateFrom?: string }).dateFrom,
                       date_to: c.date_to || (c as unknown as { dateTo?: string }).dateTo,
                       venue: c.venue,
+                      city: c.city || (c as unknown as { rules?: { city?: string } }).rules?.city || (c.venue ? c.venue.split(",").pop()?.trim() : ""),
                       fee: c.fee,
                       school_fee_per_student: c.school_fee_per_student || (c as unknown as { schoolFeePerStudent?: number }).schoolFeePerStudent,
                       deadline: c.deadline,
@@ -163,6 +200,7 @@ export default function AvailableConferencesPage() {
           date_from: event.dateFrom,
           date_to: event.dateTo,
           venue: event.venue,
+          city: event.city || (event.venue ? event.venue.split(",").pop()?.trim() : ""),
           fee: event.fee,
           school_fee_per_student: event.schoolFeePerStudent,
           deadline: event.deadline,
@@ -199,19 +237,77 @@ export default function AvailableConferencesPage() {
     }
   }, [event.name, event.id, event.dates, event.dateFrom, event.dateTo, event.venue, event.fee, event.schoolFeePerStudent, event.deadline, event.status, event.bannerUrl, event.imageUrl, committees, portfolios]);
 
-  // Extract cities from venues
+  // Request approximate device location permission on mount or on button click
+  const requestApproxLocation = useCallback(async () => {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) return;
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        let matchedCity: string | null = null;
+        let minD = Infinity;
+        for (const hub of MAJOR_HUBS) {
+          const d = getDistanceKm(lat, lon, hub.lat, hub.lon);
+          if (d < minD) {
+            minD = d;
+            matchedCity = hub.name;
+          }
+        }
+        if (matchedCity && minD <= 120) {
+          setDetectedCity(matchedCity);
+          setSelectedCity(matchedCity);
+        } else {
+          try {
+            const res = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
+            );
+            if (res.ok) {
+              const data = await res.json();
+              const cName = data.city || data.locality || data.principalSubdivision;
+              if (cName) {
+                setDetectedCity(cName);
+                setSelectedCity(cName);
+              }
+            }
+          } catch {}
+        }
+        setIsLocating(false);
+      },
+      (err) => {
+        console.warn("Approx location notice:", err.message);
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 }
+    );
+  }, []);
+
+  // Request approx permission when user enters the page
+  useEffect(() => {
+    requestApproxLocation();
+  }, [requestApproxLocation]);
+
+  // Extract cities from conferences (from dedicated city field or venue)
   const detectedCities = useMemo(() => {
     const set = new Set<string>();
     conferences.forEach((c) => {
-      if (c.venue) {
-        const parts = c.venue.split(",").map((s) => s.trim());
-        const last = parts[parts.length - 1];
-        if (last && last.length < 30) {
-          set.add(last);
-        }
+      const cityName = c.city?.trim() || (c.venue ? c.venue.split(",").pop()?.trim() : "");
+      if (cityName && cityName.length < 35) {
+        set.add(cityName);
       }
     });
     return Array.from(set).sort();
+  }, [conferences]);
+
+  const cityCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    conferences.forEach((c) => {
+      const cityName = c.city?.trim() || (c.venue ? c.venue.split(",").pop()?.trim() : "");
+      if (cityName) {
+        counts[cityName] = (counts[cityName] || 0) + 1;
+      }
+    });
+    return counts;
   }, [conferences]);
 
   // Compute seats for a conference
@@ -233,8 +329,14 @@ export default function AvailableConferencesPage() {
     return conferences.filter((conf) => {
       // 1. City filter
       if (selectedCity !== "All") {
-        const venueLower = (conf.venue || "").toLowerCase();
-        if (!venueLower.includes(selectedCity.toLowerCase())) {
+        const target = selectedCity.toLowerCase().trim();
+        const confCity = (conf.city || "").toLowerCase().trim();
+        const confVenue = (conf.venue || "").toLowerCase().trim();
+        const isMatch =
+          confCity.includes(target) ||
+          confVenue.includes(target) ||
+          (target === "delhi" && (confCity.includes("noida") || confCity.includes("gurugram") || confCity.includes("faridabad") || confVenue.includes("noida") || confVenue.includes("gurugram") || confVenue.includes("faridabad")));
+        if (!isMatch) {
           return false;
         }
       }
@@ -292,40 +394,75 @@ export default function AvailableConferencesPage() {
           <div className="relative shrink-0">
             <button
               type="button"
-              onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
+              onClick={() => {
+                const nextState = !isCityDropdownOpen;
+                setIsCityDropdownOpen(nextState);
+                if (nextState && !detectedCity && !isLocating) {
+                  requestApproxLocation();
+                }
+              }}
               className="inline-flex items-center gap-1.5 border-2 border-white rounded-full px-4 py-2 font-bold text-base bg-white text-[#0B1B33] hover:bg-neutral-100 transition-colors cursor-pointer shadow-sm"
+              title="Filter by City or use device location"
             >
+              <MapPin className="w-4 h-4 text-[#1560BD]" />
               <span>{selectedCity === "All" ? "All Cities" : selectedCity}</span>
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className={`w-4 h-4 transition-transform ${isCityDropdownOpen ? "rotate-180" : ""}`} />
             </button>
 
             {isCityDropdownOpen && (
-              <div className="absolute left-0 mt-2 w-48 bg-white text-[#0B1B33] rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-fadeIn">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedCity("All");
-                    setIsCityDropdownOpen(false);
-                  }}
-                  className={`w-full text-left px-4 py-2 text-sm font-bold flex items-center justify-between hover:bg-blue-50 transition-colors ${selectedCity === "All" ? "text-[#1560BD]" : "text-gray-700"}`}
-                >
-                  All Cities
-                  {selectedCity === "All" && <Check className="w-4 h-4 text-[#1560BD]" />}
-                </button>
-                {detectedCities.map((city) => (
+              <div className="absolute left-0 mt-2 w-64 bg-white text-[#0B1B33] rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-fadeIn divide-y divide-gray-100">
+                <div className="p-2">
                   <button
-                    key={city}
                     type="button"
                     onClick={() => {
-                      setSelectedCity(city);
+                      requestApproxLocation();
+                    }}
+                    disabled={isLocating}
+                    className="w-full text-left px-3 py-2 text-xs font-bold rounded-xl bg-blue-50 hover:bg-blue-100 text-[#1560BD] flex items-center justify-between transition-colors cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <LocateFixed className={`w-3.5 h-3.5 ${isLocating ? "animate-spin text-[#1560BD]" : ""}`} />
+                      <span>{isLocating ? "Detecting approx location..." : detectedCity ? `Nearby: ${detectedCity}` : "Detect my city"}</span>
+                    </span>
+                    <span className="text-[10px] text-blue-500 underline font-normal">Approx</span>
+                  </button>
+                </div>
+
+                <div className="py-1 max-h-60 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCity("All");
                       setIsCityDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-sm font-bold flex items-center justify-between hover:bg-blue-50 transition-colors ${selectedCity === city ? "text-[#1560BD]" : "text-gray-700"}`}
+                    className={`w-full text-left px-4 py-2 text-sm font-bold flex items-center justify-between hover:bg-blue-50 transition-colors ${selectedCity === "All" ? "text-[#1560BD] bg-blue-50/50" : "text-gray-700"}`}
                   >
-                    {city}
-                    {selectedCity === city && <Check className="w-4 h-4 text-[#1560BD]" />}
+                    <span className="flex items-center gap-2">
+                      All Cities
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">{conferences.length}</span>
+                    </span>
+                    {selectedCity === "All" && <Check className="w-4 h-4 text-[#1560BD]" />}
                   </button>
-                ))}
+                  {detectedCities.map((city) => (
+                    <button
+                      key={city}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCity(city);
+                        setIsCityDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm font-bold flex items-center justify-between hover:bg-blue-50 transition-colors ${selectedCity === city ? "text-[#1560BD] bg-blue-50/50" : "text-gray-700"}`}
+                    >
+                      <span className="flex items-center gap-2">
+                        {city}
+                        {cityCounts[city] ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">{cityCounts[city]}</span>
+                        ) : null}
+                      </span>
+                      {selectedCity === city && <Check className="w-4 h-4 text-[#1560BD]" />}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -389,9 +526,16 @@ export default function AvailableConferencesPage() {
               {/* City pill */}
               <button
                 type="button"
-                onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
+                onClick={() => {
+                  const nextState = !isCityDropdownOpen;
+                  setIsCityDropdownOpen(nextState);
+                  if (nextState && !detectedCity && !isLocating) {
+                    requestApproxLocation();
+                  }
+                }}
                 className="inline-flex items-center gap-1 border border-white rounded-full px-3 py-1 text-xs font-bold bg-white text-[#0B1B33]"
               >
+                <MapPin className="w-3 h-3 text-[#1560BD]" />
                 <span>{selectedCity === "All" ? "Cities" : selectedCity}</span>
                 <ChevronDown className="w-3 h-3" />
               </button>
@@ -409,30 +553,48 @@ export default function AvailableConferencesPage() {
 
           {/* Mobile City Dropdown */}
           {isCityDropdownOpen && (
-            <div className="bg-white text-[#0B1B33] rounded-2xl shadow-xl border border-gray-100 p-2 z-50">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedCity("All");
-                  setIsCityDropdownOpen(false);
-                }}
-                className="w-full text-left px-3 py-1.5 text-xs font-bold text-gray-700"
-              >
-                All Cities
-              </button>
-              {detectedCities.map((c) => (
+            <div className="bg-white text-[#0B1B33] rounded-2xl shadow-xl border border-gray-100 p-2 z-50 divide-y divide-gray-100">
+              <div className="pb-1.5">
                 <button
-                  key={c}
+                  type="button"
+                  onClick={() => requestApproxLocation()}
+                  disabled={isLocating}
+                  className="w-full text-left px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-50 text-[#1560BD] flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <LocateFixed className={`w-3 h-3 ${isLocating ? "animate-spin" : ""}`} />
+                    <span>{isLocating ? "Detecting approx..." : detectedCity ? `Nearby: ${detectedCity}` : "Detect my city"}</span>
+                  </span>
+                  <span className="text-[10px] text-blue-500 underline">Approx</span>
+                </button>
+              </div>
+              <div className="pt-1 max-h-48 overflow-y-auto">
+                <button
                   type="button"
                   onClick={() => {
-                    setSelectedCity(c);
+                    setSelectedCity("All");
                     setIsCityDropdownOpen(false);
                   }}
-                  className="w-full text-left px-3 py-1.5 text-xs font-bold text-gray-700"
+                  className={`w-full text-left px-3 py-1.5 text-xs font-bold flex items-center justify-between ${selectedCity === "All" ? "text-[#1560BD] bg-blue-50/50" : "text-gray-700"}`}
                 >
-                  {c}
+                  <span>All Cities ({conferences.length})</span>
+                  {selectedCity === "All" && <Check className="w-3.5 h-3.5 text-[#1560BD]" />}
                 </button>
-              ))}
+                {detectedCities.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCity(c);
+                      setIsCityDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs font-bold flex items-center justify-between ${selectedCity === c ? "text-[#1560BD] bg-blue-50/50" : "text-gray-700"}`}
+                  >
+                    <span>{c} {cityCounts[c] ? `(${cityCounts[c]})` : ""}</span>
+                    {selectedCity === c && <Check className="w-3.5 h-3.5 text-[#1560BD]" />}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -634,6 +796,19 @@ export default function AvailableConferencesPage() {
           >
             Under Rs 1,500
           </button>
+
+          {selectedCity !== "All" && (
+            <button
+              type="button"
+              onClick={() => setSelectedCity("All")}
+              className="px-3.5 py-1.5 rounded-full font-bold text-xs sm:text-sm bg-[#FFD23F] text-[#0B1B33] shadow-sm hover:bg-yellow-400 transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5 shrink-0"
+              title="Click to clear city filter"
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              <span>City: {selectedCity}</span>
+              <X className="w-3.5 h-3.5 ml-0.5" />
+            </button>
+          )}
         </div>
 
         {/* Empty state when no conferences match filter */}

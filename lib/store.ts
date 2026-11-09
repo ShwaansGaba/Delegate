@@ -14,6 +14,7 @@ export const EMPTY_EVENT: EventModel = {
   dateFrom: "",
   dateTo: "",
   venue: "",
+  city: "",
   fee: 1500,
   schoolFeePerStudent: 1200,
   deadline: "",
