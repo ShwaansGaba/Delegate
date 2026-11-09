@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Component, ErrorInfo, ReactNode } from "react";
-import { DelegatoIcon, DelegatoWordmark } from "@/components/ui/DelegatoBrand";
+import { DelegatoIcon, DelegatoWordmark, DelegatoHorizontalLogo } from "@/components/ui/DelegatoBrand";
 import { RefreshCw, Home } from "lucide-react";
 
 interface Props {
@@ -86,9 +86,10 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen bg-[#1560BD] flex items-center justify-center p-4 sm:p-6 text-white font-sans">
           <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-10 max-w-lg w-full shadow-2xl text-center space-y-6 border border-white/20 animate-in fade-in zoom-in-95 duration-200">
             {/* Logo */}
-            <div className="flex flex-col items-center gap-2">
-              <DelegatoIcon size="xl" rounded="2xl" className="shadow-lg ring-4 ring-blue-50" />
-              <DelegatoWordmark size="lg" />
+            <div className="flex flex-col items-center">
+              <div className="inline-flex bg-[#1560BD] px-4 py-2 rounded-2xl shadow-sm">
+                <DelegatoHorizontalLogo className="h-9 w-auto" />
+              </div>
             </div>
 
             {/* Error Message */}

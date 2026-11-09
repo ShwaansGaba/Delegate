@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { DelegatoIcon } from "@/components/ui/DelegatoBrand";
+import { DelegatoIcon, DelegatoHorizontalLogo } from "@/components/ui/DelegatoBrand";
 import { Search, X, MapPin, Calendar, Users, Award, ChevronDown, User, Check, ExternalLink } from "lucide-react";
 
 interface ConferenceItem {
@@ -283,11 +283,8 @@ export default function AvailableConferencesPage() {
         ======================================================== */}
         <header className="hidden md:flex items-center gap-5 h-24">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group select-none shrink-0" aria-label="Delegato Home">
-            <DelegatoIcon size="sm" rounded="md" />
-            <span className="font-heading font-extrabold text-[32px] text-[#FFD23F] tracking-tight group-hover:opacity-95 transition-opacity">
-              Delegato
-            </span>
+          <Link href="/" className="flex items-center group select-none shrink-0" aria-label="Delegato Home">
+            <DelegatoHorizontalLogo className="h-8 lg:h-10 w-auto group-hover:scale-105 transition-transform" />
           </Link>
 
           {/* City Dropdown Chip */}
@@ -383,11 +380,8 @@ export default function AvailableConferencesPage() {
         <header className="md:hidden pt-3 pb-2 space-y-3">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-1.5 select-none" aria-label="Delegato Home">
-              <DelegatoIcon size="sm" rounded="md" />
-              <span className="font-heading font-extrabold text-2xl text-[#FFD23F]">
-                Delegato
-              </span>
+            <Link href="/" className="flex items-center select-none" aria-label="Delegato Home">
+              <DelegatoHorizontalLogo className="h-6 sm:h-7 w-auto" />
             </Link>
 
             <div className="flex items-center gap-2">
@@ -909,7 +903,7 @@ export default function AvailableConferencesPage() {
         ======================================================== */}
         <footer className="mt-16 pt-8 pb-10 border-t border-white/20 text-blue-100 text-sm flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="font-heading font-extrabold text-white text-base">Delegato</span>
+            <DelegatoHorizontalLogo className="h-5 sm:h-6 w-auto" />
             <span>• The MUN Operations Platform</span>
           </div>
 

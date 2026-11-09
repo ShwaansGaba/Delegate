@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/lib/AppContext";
 import { Button } from "@/components/ui/Button";
-import { DelegatoIcon, DelegatoWordmark } from "@/components/ui/DelegatoBrand";
+import { DelegatoIcon, DelegatoWordmark, DelegatoHorizontalLogo } from "@/components/ui/DelegatoBrand";
 
 interface AuthScreenProps {
   onSuccess?: () => void;
@@ -81,14 +81,11 @@ export function AuthScreen({ onSuccess, onClose, initialMode = "login" }: AuthSc
             </button>
           </div>
         )}
-        <div className="text-center mb-4 sm:mb-8">
-          <div className="mb-3 sm:mb-4 inline-block">
-            <DelegatoIcon size="xl" rounded="2xl" className="shadow-2xl ring-4 ring-white/20" />
+        <div className="text-center mb-5 sm:mb-8 flex flex-col items-center">
+          <div className="mb-2 sm:mb-3">
+            <DelegatoHorizontalLogo className="h-12 sm:h-16 w-auto object-contain" />
           </div>
-          <h1 className="text-3xl sm:text-5xl text-white font-heading font-extrabold tracking-tight flex items-center justify-center">
-            <DelegatoWordmark size="xl" />
-          </h1>
-          <p className="text-blue-100 text-sm sm:text-base mt-1.5 sm:mt-2 font-medium">
+          <p className="text-blue-100 text-sm sm:text-base font-medium">
             Official MUN & Student Conference Platform
           </p>
         </div>

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import { AccountMenu } from "@/components/auth/AccountMenu";
-import { DelegatoIcon, DelegatoWordmark } from "@/components/ui/DelegatoBrand";
+import { DelegatoIcon, DelegatoWordmark, DelegatoHorizontalLogo } from "@/components/ui/DelegatoBrand";
 import { Menu, X, Plus } from "lucide-react";
 
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
@@ -65,8 +65,8 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   if (!isAuthLoaded || (user && !isLoaded)) {
     return (
       <div className="min-h-screen bg-[#1560BD] flex items-center justify-center text-white">
-        <div className="flex flex-col items-center gap-3">
-          <DelegatoIcon size="lg" rounded="2xl" className="animate-pulse shadow-xl ring-2 ring-white/20" />
+        <div className="flex flex-col items-center gap-4">
+          <DelegatoHorizontalLogo className="h-12 sm:h-16 w-auto animate-pulse" />
           <div className="text-xl font-heading font-extrabold text-blue-100">
             Loading Delegato...
           </div>
@@ -102,11 +102,8 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
               </Link>
             )}
             <Link href="/organizer/conferences" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-              <DelegatoIcon size="md" rounded="xl" className="ring-2 ring-white/20" />
-              <div>
-                <div className="text-xl font-heading font-extrabold text-white leading-tight">
-                  <DelegatoWordmark size="md" />
-                </div>
+              <DelegatoHorizontalLogo className="h-8 sm:h-10 w-auto" />
+              <div className="border-l border-white/20 pl-3">
                 <div className="text-[11px] text-blue-200 font-bold uppercase tracking-wider">
                   {isSetup ? (isConferenceCreated ? "Conference" : "Conference Setup") : "My Conferences"}
                 </div>
@@ -144,7 +141,9 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
-          <DelegatoIcon size="sm" rounded="lg" className="shrink-0 ring-1 ring-white/20" />
+          <Link href="/organizer/conferences" className="shrink-0 flex items-center mr-1">
+            <DelegatoHorizontalLogo className="h-6 sm:h-7 w-auto" />
+          </Link>
           <div className="truncate">
             <div className="text-base sm:text-lg font-heading font-extrabold text-white truncate leading-tight">
               {event.name || "Conference Workspace"}
@@ -198,17 +197,12 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         {/* Delegato Platform Brand */}
         <Link
           href="/organizer/conferences"
-          className="flex items-center gap-3 pb-5 mb-5 border-b border-white/10 hover:opacity-90 transition-opacity"
+          className="flex items-center justify-between pb-5 mb-5 border-b border-white/10 hover:opacity-90 transition-opacity"
         >
-          <DelegatoIcon size="md" rounded="xl" className="ring-2 ring-white/20" />
-          <div>
-            <div className="text-xl font-heading font-extrabold text-white leading-tight">
-              <DelegatoWordmark size="md" />
-            </div>
-            <div className="text-[10px] text-blue-200 font-bold uppercase tracking-wider">
-              Organizer Suite
-            </div>
-          </div>
+          <DelegatoHorizontalLogo className="h-8 lg:h-9 w-auto" />
+          <span className="text-[10px] text-blue-200 font-bold uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded-md">
+            Suite
+          </span>
         </Link>
 
         {/* Back to My Conferences Button */}

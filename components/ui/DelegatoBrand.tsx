@@ -97,19 +97,16 @@ interface DelegatoLogoProps {
 
 export function DelegatoLogo({
   size = "md",
-  iconSize,
-  showWordmark = true,
-  theme = "light",
   className = "",
 }: DelegatoLogoProps) {
-  const effectiveIconSize = iconSize || size;
+  const heightClass = {
+    sm: "h-6 sm:h-7",
+    md: "h-8 sm:h-10",
+    lg: "h-12 sm:h-14",
+    xl: "h-16 sm:h-20",
+  }[size || "md"];
 
   return (
-    <div className={`inline-flex items-center gap-2.5 ${className}`}>
-      <DelegatoIcon size={effectiveIconSize} />
-      {showWordmark && (
-        <DelegatoWordmark size={size} theme={theme} />
-      )}
-    </div>
+    <DelegatoHorizontalLogo className={`${heightClass} ${className}`} />
   );
 }
