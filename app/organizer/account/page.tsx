@@ -83,6 +83,9 @@ export default function OrganizerAccountPage() {
   const [workspacePrimary, setWorkspacePrimary] = useState(theme.primaryColor);
   const [workspaceSecondary, setWorkspaceSecondary] = useState(theme.secondaryColor);
   const [workspaceEffect, setWorkspaceEffect] = useState<BackgroundEffect>(theme.backgroundEffect);
+  const [workspaceCardStyle, setWorkspaceCardStyle] = useState<"solid" | "glass" | "minimal">(
+    theme.cardStyle || "solid"
+  );
 
   // Conference registration link branding state
   const [selectedConfId, setSelectedConfId] = useState<string>(event.id || "");
@@ -118,6 +121,7 @@ export default function OrganizerAccountPage() {
     setWorkspacePrimary(theme.primaryColor);
     setWorkspaceSecondary(theme.secondaryColor);
     setWorkspaceEffect(theme.backgroundEffect);
+    setWorkspaceCardStyle(theme.cardStyle || "solid");
   }, [theme]);
 
   // When conference selection changes, update branding inputs
@@ -147,6 +151,11 @@ export default function OrganizerAccountPage() {
     updateTheme({ backgroundEffect: eff });
   };
 
+  const handleWorkspaceCardStyleChange = (st: "solid" | "glass" | "minimal") => {
+    setWorkspaceCardStyle(st);
+    updateTheme({ cardStyle: st });
+  };
+
   const handleSaveAll = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -155,6 +164,7 @@ export default function OrganizerAccountPage() {
       primaryColor: workspacePrimary,
       secondaryColor: workspaceSecondary,
       backgroundEffect: workspaceEffect,
+      cardStyle: workspaceCardStyle,
     });
 
     // 2. Commit conference registration link branding
@@ -423,6 +433,43 @@ export default function OrganizerAccountPage() {
                     </div>
                     <span className="text-xs text-neutral-500 block">
                       {eff.desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Organizer Card Aesthetic Style */}
+          <div className="pt-2 border-t border-neutral-100">
+            <label className="block text-xs uppercase font-extrabold text-neutral-700 mb-1 tracking-wider">
+              Organizer Card Aesthetic Style
+            </label>
+            <span className="text-xs text-neutral-500 block mb-3">
+              Sets the visual rendering of cards, containers, and sheets across your organizer workspace.
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {CARD_STYLES.map((st) => {
+                const isSelected = workspaceCardStyle === st.id;
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => handleWorkspaceCardStyleChange(st.id)}
+                    className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? "border-[#1560BD] bg-blue-50/80 shadow-sm"
+                        : "border-neutral-200 hover:border-neutral-300 bg-white"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-heading font-extrabold text-sm text-[#0B1B33]">
+                        {st.label}
+                      </span>
+                      {isSelected && <Check className="w-4 h-4 text-[#1560BD]" />}
+                    </div>
+                    <span className="text-xs text-neutral-500 block">
+                      {st.desc}
                     </span>
                   </button>
                 );

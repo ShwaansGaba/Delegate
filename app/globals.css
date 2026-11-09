@@ -195,3 +195,35 @@ svg {
   background: #2575dc;
   border-radius: 4px;
 }
+
+/* ========================================================================= */
+/* Card Aesthetic Styling System for Workspace & Organizer                   */
+/* ========================================================================= */
+[data-card-style="glass"] .organizer-card,
+[data-card-style="glass"] .theme-card,
+[data-card-style="glass"] .bg-white.shadow-xl,
+[data-card-style="glass"] .bg-white.shadow-md,
+[data-card-style="glass"] .bg-white.shadow-sm {
+  background-color: rgba(255, 255, 255, 0.90) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.4) inset !important;
+}
+
+[data-card-style="minimal"] .organizer-card,
+[data-card-style="minimal"] .theme-card,
+[data-card-style="minimal"] .bg-white.shadow-xl,
+[data-card-style="minimal"] .bg-white.shadow-md,
+[data-card-style="minimal"] .bg-white.shadow-sm {
+  background-color: #ffffff !important;
+  border-width: 2px !important;
+  border-color: #0B1B33 !important;
+  box-shadow: 4px 4px 0px 0px rgba(11, 27, 51, 0.2) !important;
+}
+
+[data-card-style="solid"] .organizer-card,
+[data-card-style="solid"] .theme-card {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}

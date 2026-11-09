@@ -26,12 +26,14 @@ export interface AccountTheme {
   primaryColor: string;
   secondaryColor: string;
   backgroundEffect: BackgroundEffect;
+  cardStyle?: "solid" | "glass" | "minimal";
 }
 
 export const DEFAULT_THEME: AccountTheme = {
   primaryColor: "#1560BD",
   secondaryColor: "#FFD23F",
   backgroundEffect: "none",
+  cardStyle: "solid",
 };
 
 export function adjustHexBrightness(hex: string, percent: number): string {
@@ -142,6 +144,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       root.style.setProperty("--un-yellow", theme.secondaryColor);
       document.body.style.backgroundColor = theme.primaryColor;
       document.body.setAttribute("data-bg-effect", theme.backgroundEffect);
+      document.body.setAttribute("data-card-style", theme.cardStyle || "solid");
     }
   }, [theme]);
 

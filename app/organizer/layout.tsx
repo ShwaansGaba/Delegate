@@ -78,6 +78,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
       <div
         className="min-h-screen theme-bg-primary flex flex-col text-white transition-colors duration-300"
         data-bg-effect={theme.backgroundEffect}
+        data-card-style={theme.cardStyle || "solid"}
       >
         <header className="theme-bg-sidebar border-b border-white/10 px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
           <div className="flex items-center gap-3">
@@ -120,6 +121,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
     <div
       className="min-h-screen theme-bg-primary flex flex-col lg:flex-row text-white transition-colors duration-300"
       data-bg-effect={theme.backgroundEffect}
+      data-card-style={theme.cardStyle || "solid"}
     >
       {/* Mobile & Tablet Top Bar */}
       <div className="lg:hidden theme-bg-sidebar p-4 flex items-center justify-between border-b border-white/10 sticky top-0 z-40 transition-colors duration-300">

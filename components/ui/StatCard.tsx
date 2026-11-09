@@ -11,7 +11,7 @@ export function StatCard({ value, label, onClick, className = "" }: StatCardProp
   return (
     <div
       onClick={onClick}
-      className={`bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 ${
+      className={`organizer-card theme-card bg-white text-[#0B1B33] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 ${
         onClick ? "cursor-pointer hover:bg-neutral-50 active:bg-neutral-100 interactive-card" : "animate-fadeIn"
       } ${className}`}
     >
