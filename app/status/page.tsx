@@ -80,10 +80,11 @@ export default function StatusPage() {
           return;
         }
 
-        setCurrentReg(found);
-        if (found.eventId && found.eventId !== event.id) {
+        // Always load conference data (committees, portfolios) before displaying
+        if (found.eventId) {
           await loadEventById(found.eventId);
         }
+        setCurrentReg(found);
       } else {
         setCurrentReg(null);
         setErrorMsg(`No registration found matching "${cleaned}". Please check the number from your confirmation email.`);
@@ -172,15 +173,23 @@ export default function StatusPage() {
     );
   }
 
-  // Allotment publication status: Allotments are only visible if the organizer published them!
+  // If delegate has been allotted a portfolio, display their allotment placard immediately!
+  const isAllotted = Boolean(currentReg.allotment);
   const areAllotmentsPublished = Boolean(event.rules?.allotmentsPublished);
-  const isAllotted = !!currentReg.allotment && areAllotmentsPublished;
   const isPaymentPending = currentReg.paymentStatus !== "verified";
 
   // State 2: Published Allotment Placard
-  if (isAllotted && !isPaymentPending) {
+  if (isAllotted) {
     const comm = committees.find((c) => c.id === currentReg.allotment?.committeeId);
-    const port = portfolios.find((p) => p.id === currentReg.allotment?.portfolioId);
+    let port = portfolios.find((p) => p.id === currentReg.allotment?.portfolioId);
+
+    // Fallback display if portfolios are reconciling
+    let countryDisplay = port?.countryName;
+    if (!countryDisplay && currentReg.allotment?.portfolioId) {
+      const parts = currentReg.allotment.portfolioId.split("-");
+      const lastPart = parts[parts.length - 1];
+      countryDisplay = lastPart ? lastPart.toUpperCase() : "Allotted Portfolio";
+    }
 
     return (
       <main
@@ -201,6 +210,9 @@ export default function StatusPage() {
             </div>
 
             <div className="mb-4 sm:mb-6">
+              <div className="text-xs uppercase tracking-wider font-extrabold text-blue-200 mb-1">
+                {event.name || "Conference Portal"}
+              </div>
               <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white">
                 You are in.
               </h1>
@@ -208,12 +220,19 @@ export default function StatusPage() {
 
             <PlacardCard
               committeeName={comm?.name || "Committee"}
-              countryName={port?.countryName || "Allotted Portfolio"}
+              countryName={countryDisplay || "Allotted Portfolio"}
               delegateName={currentReg.delegateName}
               schoolName={currentReg.school}
               guideUrl={comm?.backgroundGuideUrl}
               onViewRegistration={() => setShowChoicesModal(true)}
             />
+
+            {isPaymentPending && (
+              <div className="mt-3.5 p-3.5 bg-amber-400 text-[#0B1B33] rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-between shadow-md">
+                <span>Payment: Pending / Unpaid</span>
+                <span>Fee: ₹{(currentReg.feeAmount || 0).toLocaleString()}</span>
+              </div>
+            )}
           </div>
 
           <div className="pt-4 pb-2 sm:pt-8 sm:pb-4">

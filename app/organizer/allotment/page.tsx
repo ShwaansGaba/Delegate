@@ -712,16 +712,16 @@ export default function OrganizerAllotmentPage() {
                 return (
                   <div
                     key={reg.id}
-                    className={`rounded-2xl border transition-all p-4 sm:p-5 shadow-xs ${
+                    className={`rounded-2xl transition-all p-5 sm:p-6 shadow-md bg-white text-[#0B1B33] border-2 ${
                       isAllotted
-                        ? "bg-white border-neutral-200"
-                        : "bg-amber-50/40 border-amber-300 ring-1 ring-amber-300/30"
+                        ? "border-neutral-200"
+                        : "border-amber-400 ring-2 ring-amber-400/20"
                     }`}
                   >
-                    {/* Card Top: Delegate Identity, Reg ID, Payment Badge */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-neutral-100">
+                    {/* Card Top: Delegate Identity, Reg ID, Payment & Allotment Status */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-neutral-100">
                       <div className="flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-xl bg-neutral-100 font-mono text-xs font-bold text-neutral-500 flex items-center justify-center shrink-0">
+                        <span className="w-8 h-8 rounded-xl bg-neutral-100 font-mono text-xs font-extrabold text-[#0B1B33] flex items-center justify-center shrink-0 border border-neutral-200">
                           #{globalIdx}
                         </span>
                         <div>
@@ -729,18 +729,35 @@ export default function OrganizerAllotmentPage() {
                             <h3 className="text-base sm:text-lg font-heading font-extrabold text-[#0B1B33]">
                               {reg.delegateName}
                             </h3>
-                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-600 font-bold">
+                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-700 font-bold border border-neutral-200">
                               {reg.registrationType === "school_team" ? "School Delegation" : "Individual"}
                             </span>
+                            {isAllotted ? (
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-heading font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                Allotted
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-heading font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                Unallotted
+                              </span>
+                            )}
                           </div>
-                          <p className="text-xs text-neutral-500 font-medium">
-                            {reg.school} {reg.classYear && `• Class: ${reg.classYear}`} • {reg.experienceMuns} prior MUNs
-                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-neutral-600 mt-1">
+                            <span className="font-bold text-neutral-800">{reg.school}</span>
+                            {reg.classYear && (
+                              <>
+                                <span className="text-neutral-300">|</span>
+                                <span>Class {reg.classYear}</span>
+                              </>
+                            )}
+                            <span className="text-neutral-300">|</span>
+                            <span>{reg.experienceMuns} prior MUNs</span>
+                          </div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs px-2.5 py-1 rounded-lg bg-neutral-100 text-neutral-700 font-bold border border-neutral-200">
+                        <span className="font-mono text-xs px-2.5 py-1 rounded-lg bg-neutral-100 text-neutral-800 font-bold border border-neutral-200">
                           {reg.registrationNumber}
                         </span>
                         {isPaid ? (
@@ -756,20 +773,19 @@ export default function OrganizerAllotmentPage() {
                     </div>
 
                     {/* Card Body: Preferences on Left, Allotment Controls on Right */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-3">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-3.5">
                       {/* Left Column: Preferences */}
-                      <div className="lg:col-span-5 space-y-2">
+                      <div className="lg:col-span-5 space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                          <span className="text-xs font-heading font-extrabold text-[#0B1B33] uppercase tracking-wider">
                             Submitted Preferences
                           </span>
                           {bestAvailablePref && (
                             <button
                               type="button"
                               onClick={() => handleAllot(reg.id, bestAvailablePref.committeeId, bestAvailablePref.portfolioId)}
-                              className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-lg cursor-pointer transition-colors shadow-xs"
+                              className="inline-flex items-center gap-1 text-xs font-heading font-extrabold text-emerald-800 hover:text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 px-3 py-1 rounded-xl cursor-pointer transition-colors shadow-xs"
                             >
-                              <Sparkles className="w-3 h-3 text-yellow-500" />
                               <span>Quick Allot {bestAvailablePref.countryName}</span>
                             </button>
                           )}
@@ -778,12 +794,12 @@ export default function OrganizerAllotmentPage() {
                         {(reg.preferences || []).length === 0 ? (
                           <p className="text-xs text-neutral-400 italic">No preferences recorded.</p>
                         ) : (
-                          <div className="space-y-1.5">
+                          <div className="space-y-2">
                             {(reg.preferences || []).map((pref, pIdx) => {
                               const cObj = committees.find((c) => c.id === pref.committeeId);
                               return (
-                                <div key={pIdx} className="bg-neutral-50 rounded-xl p-2.5 border border-neutral-100 text-xs">
-                                  <div className="font-bold text-[#0B1B33] mb-1 flex items-center justify-between">
+                                <div key={pIdx} className="bg-neutral-50 rounded-xl p-3 border border-neutral-200 text-xs shadow-2xs">
+                                  <div className="font-heading font-extrabold text-[#0B1B33] mb-1.5 flex items-center justify-between">
                                     <span>Pref #{pIdx + 1}: {cObj?.name || "Committee"}</span>
                                   </div>
                                   <div className="flex flex-wrap gap-1.5">
@@ -806,20 +822,19 @@ export default function OrganizerAllotmentPage() {
                                             }));
                                             setEditingDelegateId(reg.id);
                                           }}
-                                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-heading font-bold transition-all cursor-pointer shadow-xs ${
                                             isFree
-                                              ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
-                                              : "bg-neutral-100 hover:bg-neutral-200 text-neutral-600 border border-neutral-200"
+                                              ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300"
+                                              : "bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-300"
                                           }`}
                                           title={isFree ? "Click to select this free seat" : `Taken by ${holder?.delegateName || "another delegate"} - click to reassign`}
                                         >
-                                          <span>{isFree ? "🟢" : "🔴"}</span>
-                                          <span className="font-bold">{pObj.countryName}</span>
-                                          {isFree ? (
-                                            <span className="text-[10px] text-emerald-600 font-extrabold">(Free)</span>
-                                          ) : (
-                                            <span className="text-[10px] text-neutral-400 font-medium">({holder?.delegateName?.split(" ")[0] || "Taken"})</span>
-                                          )}
+                                          <span>{pObj.countryName}</span>
+                                          <span className={`text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded ${
+                                            isFree ? "bg-emerald-200/90 text-emerald-950" : "bg-rose-200/90 text-rose-950"
+                                          }`}>
+                                            {isFree ? "Free" : holder?.delegateName ? `Taken: ${holder.delegateName.split(" ")[0]}` : "Taken"}
+                                          </span>
                                         </button>
                                       );
                                     })}
@@ -834,7 +849,7 @@ export default function OrganizerAllotmentPage() {
                       {/* Right Column: Allotment Status & Controls */}
                       <div className="lg:col-span-7 flex flex-col justify-between">
                         <div>
-                          <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">
+                          <span className="text-xs font-heading font-extrabold text-[#0B1B33] uppercase tracking-wider block mb-1.5">
                             Portfolio Allotment
                           </span>
 
@@ -879,11 +894,11 @@ export default function OrganizerAllotmentPage() {
                             </div>
                           ) : (
                             /* Allotment Control Interface (Spacious & Clean) */
-                            <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 sm:p-4 space-y-3">
+                            <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-3.5 shadow-2xs">
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {/* Committee Selector - Shows ALL committees with open count */}
                                 <div>
-                                  <label className="block text-[11px] font-bold text-neutral-600 uppercase mb-1">
+                                  <label className="block text-xs font-heading font-extrabold text-[#0B1B33] uppercase mb-1">
                                     1. Choose Committee:
                                   </label>
                                   <select
@@ -900,7 +915,7 @@ export default function OrganizerAllotmentPage() {
                                         },
                                       }));
                                     }}
-                                    className="w-full py-2 px-3 rounded-xl border border-neutral-300 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-white focus:outline-none focus:border-[#1560BD]"
+                                    className="w-full py-2.5 px-3 rounded-xl border border-neutral-300 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-white focus:outline-none focus:border-[#1560BD]"
                                   >
                                     {committees.map((c) => {
                                       const cPorts = portfolios.filter((p) => p.committeeId === c.id);
@@ -916,7 +931,7 @@ export default function OrganizerAllotmentPage() {
 
                                 {/* Portfolio Selector - Lists Free vs Taken with holder names */}
                                 <div>
-                                  <label className="block text-[11px] font-bold text-neutral-600 uppercase mb-1">
+                                  <label className="block text-xs font-heading font-extrabold text-[#0B1B33] uppercase mb-1">
                                     2. Choose Portfolio:
                                   </label>
                                   <select
@@ -930,7 +945,7 @@ export default function OrganizerAllotmentPage() {
                                         },
                                       }));
                                     }}
-                                    className="w-full py-2 px-3 rounded-xl border border-neutral-300 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-white focus:outline-none focus:border-[#1560BD]"
+                                    className="w-full py-2.5 px-3 rounded-xl border border-neutral-300 text-xs sm:text-sm font-heading font-bold text-[#0B1B33] bg-white focus:outline-none focus:border-[#1560BD]"
                                   >
                                     {portsInDraftComm.length === 0 ? (
                                       <option value="">No portfolios in this committee</option>
@@ -947,12 +962,12 @@ export default function OrganizerAllotmentPage() {
                                         );
 
                                         let label = p.countryName;
-                                        if (isPreferred) label = `⭐ ${label}`;
+                                        if (isPreferred) label = `[⭐ Preferred] ${label}`;
 
                                         if (isTaken) {
-                                          label = `🔴 ${label} — (Taken by: ${holder?.delegateName || "Another delegate"})`;
+                                          label = `${label} — [Taken: ${holder?.delegateName || "Another delegate"}]`;
                                         } else {
-                                          label = `🟢 ${label} (Available)`;
+                                          label = `${label} [Free]`;
                                         }
 
                                         return (
@@ -967,14 +982,14 @@ export default function OrganizerAllotmentPage() {
                               </div>
 
                               {/* Action & Reassign Warning */}
-                              <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2 border-t border-neutral-200">
+                              <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2.5 border-t border-neutral-200">
                                 {isSelectedPortTakenByOther ? (
-                                  <div className="text-xs text-amber-800 font-medium bg-amber-100/70 px-3 py-1.5 rounded-lg border border-amber-300 w-full sm:w-auto">
-                                    ⚠️ <strong>{selectedPortObj?.countryName}</strong> is taken by <strong>{otherHolder?.delegateName || "another delegate"}</strong>. Selecting this will unallot them.
+                                  <div className="text-xs text-amber-950 font-bold bg-amber-100 px-3.5 py-2 rounded-xl border border-amber-300 w-full sm:w-auto">
+                                    <strong>{selectedPortObj?.countryName}</strong> is taken by <strong>{otherHolder?.delegateName || "another delegate"}</strong>. Selecting will reassign and unallot them.
                                   </div>
                                 ) : (
-                                  <div className="text-xs text-emerald-800 font-medium bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 w-full sm:w-auto">
-                                    🟢 <strong>{selectedPortObj?.countryName || "Portfolio"}</strong> is free to allot.
+                                  <div className="text-xs text-emerald-950 font-bold bg-emerald-100 px-3.5 py-2 rounded-xl border border-emerald-300 w-full sm:w-auto">
+                                    <strong>{selectedPortObj?.countryName || "Portfolio"}</strong> is free to allot.
                                   </div>
                                 )}
 
@@ -998,7 +1013,7 @@ export default function OrganizerAllotmentPage() {
                                         : "bg-[#1560BD] hover:bg-[#0F4C96] text-white"
                                     }`}
                                   >
-                                    {isSelectedPortTakenByOther ? "⚠️ Reassign & Allot" : "⚡ Allot Seat"}
+                                    {isSelectedPortTakenByOther ? "Reassign & Allot" : "Allot Seat"}
                                   </button>
                                 </div>
                               </div>
@@ -1021,8 +1036,12 @@ export default function OrganizerAllotmentPage() {
 
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span>🟢 <strong>{allottedCount}</strong> allotted</span>
-                <span>🟡 <strong>{unallottedCount}</strong> unallotted</span>
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-900 font-extrabold">
+                  {allottedCount} allotted
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-950 font-extrabold">
+                  {unallottedCount} unallotted
+                </span>
               </div>
 
               {totalPages > 1 && (
@@ -1308,7 +1327,7 @@ export default function OrganizerAllotmentPage() {
                                     {port.delegate.delegateName}
                                   </div>
                                   <div className="text-xs text-neutral-500 font-medium">
-                                    {port.delegate.school} •{" "}
+                                    {port.delegate.school} |{" "}
                                     <span className="font-mono">{port.delegate.registrationNumber}</span>
                                   </div>
                                 </div>
