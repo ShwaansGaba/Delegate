@@ -315,9 +315,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
             const chosen =
               (targetEventId && targetEventId !== "new-conference" && !targetEventId.startsWith("new-") && parsed.find((e) => e.id === targetEventId || e.slug === targetEventId)) ||
+              parsed.find((e) => e.status === "published") ||
               parsed[0];
 
             setEvent(chosen);
+            if (chosen && chosen.id && chosen.id !== "new-conference" && !chosen.id.startsWith("new-") && typeof window !== "undefined") {
+              try {
+                localStorage.setItem("delegate_active_conf_id", chosen.id);
+              } catch {}
+            }
 
             // Load committees for this conference
             let commsData = null;
@@ -482,9 +488,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setMyConferences(cleanConfs);
       setAllEvents(cleanConfs);
       const chosen =
-        (targetEventId && cleanConfs.find((e: EventModel) => e.id === targetEventId)) ||
+        (targetEventId && targetEventId !== "new-conference" && !targetEventId.startsWith("new-") && cleanConfs.find((e: EventModel) => e.id === targetEventId || e.slug === targetEventId)) ||
+        cleanConfs.find((e: EventModel) => e.status === "published") ||
         cleanConfs[0];
       setEvent(chosen);
+      if (chosen && chosen.id && chosen.id !== "new-conference" && !chosen.id.startsWith("new-") && typeof window !== "undefined") {
+        try {
+          localStorage.setItem("delegate_active_conf_id", chosen.id);
+        } catch {}
+      }
 
       // Strictly load isolated data for this conference
       try {
@@ -521,7 +533,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user?.id) {
       const sp = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-      const targetId = sp?.get("event") || sp?.get("eventId") || sp?.get("id") || "";
+      const savedActiveId =
+        typeof window !== "undefined" ? localStorage.getItem("delegate_active_conf_id") || "" : "";
+      const targetId =
+        sp?.get("event") || sp?.get("eventId") || sp?.get("id") || savedActiveId;
       loadOrganizerData(user.id, targetId);
     } else {
       // For anonymous delegates: load requested conference from URL query param
@@ -776,12 +791,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setRegistrations([]);
     try {
       localStorage.removeItem("delegate_auth_user");
+      localStorage.removeItem("delegate_active_conf_id");
     } catch {}
   };
 
   // Switch active conference in organizer portal
   const selectConference = async (conferenceId: string): Promise<boolean> => {
     if (!conferenceId) return false;
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("delegate_active_conf_id", conferenceId);
+      } catch {}
+    }
     if (user?.id) {
       await loadOrganizerData(user.id, conferenceId);
       return true;
@@ -966,6 +987,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCommittees([]);
     setPortfolios([]);
     setRegistrations([]);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("delegate_active_conf_id", uniqueId);
+      } catch {}
+    }
 
     // Clear any previous setup step for this new id
     try {
@@ -1032,6 +1058,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (event.id === conferenceId) {
       if (remaining.length > 0) {
         setEvent(remaining[0]);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("delegate_active_conf_id", remaining[0].id);
+          } catch {}
+        }
         if (user?.id && remaining[0].id && remaining[0].id !== "new-conference" && !remaining[0].id.startsWith("new-")) {
           await loadOrganizerData(user.id, remaining[0].id);
         }
@@ -1040,6 +1071,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setCommittees([]);
         setPortfolios([]);
         setRegistrations([]);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.removeItem("delegate_active_conf_id");
+          } catch {}
+        }
       }
     }
 
@@ -1181,6 +1217,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       try {
         if (updated.id) {
+          localStorage.setItem("delegate_active_conf_id", updated.id);
           localStorage.setItem(`delegate_public_conf_${updated.id}`, JSON.stringify(updated));
         }
         if (updated.slug) {
@@ -1984,6 +2021,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       try {
         if (updated.id) {
+          localStorage.setItem("delegate_active_conf_id", updated.id);
           localStorage.setItem(`delegate_public_conf_${updated.id}`, JSON.stringify(updated));
           localStorage.setItem(
             `delegate_conf_data_${updated.id}`,

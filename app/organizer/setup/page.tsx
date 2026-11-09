@@ -70,6 +70,7 @@ export default function OrganizerSetupPage() {
   const {
     user,
     isAuthLoaded,
+    isLoaded,
     event,
     committees,
     portfolios,
@@ -86,8 +87,8 @@ export default function OrganizerSetupPage() {
     markConferencePublished,
   } = useApp();
 
-  // Guard against unauthenticated render
-  if (!isAuthLoaded || !user) {
+  // Guard against unauthenticated render or pending data load
+  if (!isAuthLoaded || !isLoaded || !user) {
     return null;
   }
 

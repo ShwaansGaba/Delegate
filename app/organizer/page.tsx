@@ -9,22 +9,23 @@ import { Button } from "@/components/ui/Button";
 
 export default function OrganizerDashboardPage() {
   const router = useRouter();
-  const { user, isAuthLoaded, event, myConferences, registrations, committees, portfolios } = useApp();
+  const { user, isAuthLoaded, isLoaded, event, myConferences, registrations, committees, portfolios } = useApp();
   const [filter, setFilter] = useState<"all" | "unpaid" | "first_comm">("all");
 
-  // Guard against unauthenticated render
-  if (!isAuthLoaded || !user) {
+  // Guard against unauthenticated render or pending data load
+  if (!isAuthLoaded || !isLoaded || !user) {
     return null;
   }
 
   // If conference is still in setup/draft, disallow dashboard access completely
   React.useEffect(() => {
+    if (!isLoaded) return;
     if (!event.name || event.id === "new-conference") {
       router.replace("/organizer/conferences");
     } else if (event.status !== "published") {
       router.replace("/organizer/setup?step=basics");
     }
-  }, [event.name, event.id, event.status, router]);
+  }, [isLoaded, event.name, event.id, event.status, router]);
 
   if (!event.name || event.id === "new-conference" || event.status !== "published") {
     return null;

@@ -12,7 +12,7 @@ import { Menu, X, Plus } from "lucide-react";
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isAuthLoaded, event, myConferences, selectConference, createNewConference, theme } = useApp();
+  const { user, isAuthLoaded, isLoaded, event, myConferences, selectConference, createNewConference, theme } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const currentPath = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
@@ -61,8 +61,8 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
     return pathname.includes(cleanHref);
   };
 
-  // 1. Loading state while authentication credentials are verified
-  if (!isAuthLoaded) {
+  // 1. Loading state while authentication credentials are verified or organizer data is being loaded
+  if (!isAuthLoaded || (user && !isLoaded)) {
     return (
       <div className="min-h-screen bg-[#1560BD] flex items-center justify-center text-white">
         <div className="flex flex-col items-center gap-3">

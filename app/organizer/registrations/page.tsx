@@ -7,21 +7,26 @@ import { Button } from "@/components/ui/Button";
 
 export default function RegistrationsPage() {
   const router = useRouter();
-  const { user, isAuthLoaded, registrations, committees, portfolios, verifyPayment, event } = useApp();
+  const { user, isAuthLoaded, isLoaded, registrations, committees, portfolios, verifyPayment, event } = useApp();
 
-  // Guard against unauthenticated render
-  if (!isAuthLoaded || !user) {
+  // Guard against unauthenticated render or pending data load
+  if (!isAuthLoaded || !isLoaded || !user) {
     return null;
   }
 
   // If conference is still in setup/draft, disallow access
   useEffect(() => {
+    if (!isLoaded) return;
     if (!event.name || event.id === "new-conference") {
       router.replace("/organizer/conferences");
     } else if (event.status !== "published") {
       router.replace("/organizer/setup?step=basics");
     }
-  }, [event.name, event.id, event.status, router]);
+  }, [isLoaded, event.name, event.id, event.status, router]);
+
+  if (!event.name || event.id === "new-conference" || event.status !== "published") {
+    return null;
+  }
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<string>("all");

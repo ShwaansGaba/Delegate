@@ -39,6 +39,7 @@ export default function OrganizerAllotmentPage() {
   const {
     user,
     isAuthLoaded,
+    isLoaded,
     committees,
     portfolios,
     registrations,
@@ -51,19 +52,24 @@ export default function OrganizerAllotmentPage() {
     executeAutoAllot,
   } = useApp();
 
-  // Guard against unauthenticated render
-  if (!isAuthLoaded || !user) {
+  // Guard against unauthenticated render or pending data load
+  if (!isAuthLoaded || !isLoaded || !user) {
     return null;
   }
 
   // If conference is still in setup/draft, disallow allotment access
   useEffect(() => {
+    if (!isLoaded) return;
     if (!event.name || event.id === "new-conference") {
       router.replace("/organizer/conferences");
     } else if (event.status !== "published") {
       router.replace("/organizer/setup?step=basics");
     }
-  }, [event.name, event.id, event.status, router]);
+  }, [isLoaded, event.name, event.id, event.status, router]);
+
+  if (!event.name || event.id === "new-conference" || event.status !== "published") {
+    return null;
+  }
 
   // View mode switcher: Grid, Queue, Matrix
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
