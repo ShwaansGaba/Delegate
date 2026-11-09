@@ -133,6 +133,7 @@ export default function OrganizerSetupPage() {
   const [dateTo, setDateTo] = useState(event.dateTo || "");
   const [deadlineDate, setDeadlineDate] = useState(event.deadlineDate || "");
   const [venue, setVenue] = useState(event.venue || "");
+  const [bannerUrl, setBannerUrl] = useState(event.bannerUrl || event.imageUrl || "");
   const [fee, setFee] = useState(event.fee ? event.fee.toString() : "1500");
   const [schoolFee, setSchoolFee] = useState(
     event.schoolFeePerStudent ? event.schoolFeePerStudent.toString() : "1200"
@@ -148,6 +149,7 @@ export default function OrganizerSetupPage() {
       setDateTo(event.dateTo || "");
       setDeadlineDate(event.deadlineDate || "");
       setVenue(event.venue || "");
+      setBannerUrl(event.bannerUrl || event.imageUrl || "");
       setFee(event.fee ? event.fee.toString() : "1500");
       setSchoolFee(
         event.schoolFeePerStudent ? event.schoolFeePerStudent.toString() : "1200"
@@ -267,6 +269,8 @@ export default function OrganizerSetupPage() {
       schoolFeePerStudent: Math.max(0, Number(schoolFee) || 0),
       deadline: deadlineDate,
       deadlineDate,
+      bannerUrl: bannerUrl.trim(),
+      imageUrl: bannerUrl.trim(),
     });
     setCurrentStep("committees");
   };
@@ -727,6 +731,22 @@ export default function OrganizerSetupPage() {
                 placeholder="e.g. Main Auditorium / Campus Campus"
                 className="w-full bg-neutral-100 rounded-xl px-3.5 py-2.5 sm:py-3 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs sm:text-sm font-bold text-neutral-700 mb-1">
+                Poster / Banner Image URL <span className="text-gray-400 font-normal">(Optional)</span>
+              </label>
+              <input
+                type="url"
+                value={bannerUrl}
+                onChange={(e) => setBannerUrl(e.target.value)}
+                placeholder="e.g. https://example.com/mun-poster.jpg"
+                className="w-full bg-neutral-100 rounded-xl px-3.5 py-2.5 sm:py-3 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]"
+              />
+              <p className="text-[11px] sm:text-xs text-neutral-500 mt-1">
+                Shown on the public conferences page card. If left empty, an editorial graphic poster is generated automatically.
+              </p>
             </div>
           </div>
 

@@ -67,6 +67,8 @@ export interface EventModel {
   status: "draft" | "published" | "closed";
   rules: EventRules;
   branding?: ConferenceBranding;
+  bannerUrl?: string;
+  imageUrl?: string;
 }
 
 export type PaymentStatus = "unpaid" | "proof_uploaded" | "verified";

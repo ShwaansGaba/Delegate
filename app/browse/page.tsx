@@ -15,11 +15,15 @@ export default function BrowseCommitteesPage() {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
       const evParam = sp.get("event") || sp.get("eventId");
-      if (evParam && evParam !== event.id) {
-        loadEventById(evParam);
+      if (evParam) {
+        if (evParam !== event.id) {
+          loadEventById(evParam);
+        }
+      } else if (!event.name || event.status !== "published") {
+        router.replace("/conferences");
       }
     }
-  }, [event.id, loadEventById]);
+  }, [event.id, event.name, event.status, loadEventById, router]);
 
   useEffect(() => {
     document.title = event.name ? `Committees - ${event.name} | Delegato` : "Committees | Delegato";

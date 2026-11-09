@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { DelegatoIcon } from "@/components/ui/DelegatoBrand";
-import { ArrowLeft, Calendar, MapPin, Users, Award } from "lucide-react";
+import { Search, X, MapPin, Calendar, Users, Award, ChevronDown, User, Check, ExternalLink } from "lucide-react";
 
 interface ConferenceItem {
   id: string;
@@ -20,6 +20,10 @@ interface ConferenceItem {
   deadline?: string;
   deadline_date?: string;
   status?: string;
+  banner_url?: string;
+  bannerUrl?: string;
+  image_url?: string;
+  imageUrl?: string;
   committees?: {
     id: string;
     name: string;
@@ -28,15 +32,29 @@ interface ConferenceItem {
   }[];
 }
 
+const BANNER_PALETTES = [
+  { bg: "#0B1B33", text: "#FFFFFF", dateColor: "#FFD23F", badgeBg: "#FFFFFF", badgeText: "#0B1B33" },
+  { bg: "#FFD23F", text: "#0B1B33", dateColor: "#0B1B33", badgeBg: "#0B1B33", badgeText: "#FFFFFF" },
+  { bg: "#0F4C96", text: "#FFFFFF", dateColor: "#FFD23F", badgeBg: "#FFFFFF", badgeText: "#0B1B33" },
+  { bg: "#FFFFFF", text: "#1560BD", dateColor: "#0B1B33", badgeBg: "#1560BD", badgeText: "#FFFFFF" },
+  { bg: "#EAF1FB", text: "#0B1B33", dateColor: "#1560BD", badgeBg: "#1560BD", badgeText: "#FFFFFF" },
+];
+
 export default function AvailableConferencesPage() {
   const router = useRouter();
-  const { event, committees, portfolios } = useApp();
+  const { event, committees, portfolios, user } = useApp();
   const [selectedConfForModal, setSelectedConfForModal] = useState<string | null>(null);
   const [conferences, setConferences] = useState<ConferenceItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Filters & Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeChip, setActiveChip] = useState<"all" | "this_month" | "closing_soon" | "school_teams" | "under_1500">("all");
+  const [selectedCity, setSelectedCity] = useState<string>("All");
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+
   useEffect(() => {
-    document.title = "Available Conferences | Delegato";
+    document.title = "Explore MUN Conferences | Delegato";
 
     async function loadLiveConferences() {
       setLoading(true);
@@ -90,6 +108,7 @@ export default function AvailableConferencesPage() {
                   deadline: ev.deadline,
                   deadline_date: ev.deadline_date,
                   status: ev.status,
+                  banner_url: ev.banner_url || ev.bannerUrl || ev.image_url || ev.imageUrl,
                   committees: evComms,
                 });
               }
@@ -124,6 +143,7 @@ export default function AvailableConferencesPage() {
                       deadline: c.deadline,
                       deadline_date: c.deadline_date || (c as unknown as { deadlineDate?: string }).deadlineDate,
                       status: c.status,
+                      banner_url: c.banner_url || (c as unknown as { bannerUrl?: string }).bannerUrl || (c as unknown as { imageUrl?: string }).imageUrl,
                     });
                   }
                 });
@@ -146,6 +166,7 @@ export default function AvailableConferencesPage() {
           school_fee_per_student: event.schoolFeePerStudent,
           deadline: event.deadline,
           status: event.status,
+          banner_url: event.bannerUrl || event.imageUrl,
           committees: committees.map((c) => ({
             id: c.id,
             name: c.name,
@@ -165,7 +186,7 @@ export default function AvailableConferencesPage() {
     if (isSupabaseConfigured && supabase) {
       const client = supabase;
       const channel = client
-        .channel("realtime_conferences")
+        .channel("realtime_conferences_browse")
         .on("postgres_changes", { event: "*", schema: "public", table: "events" }, () => {
           loadLiveConferences();
         })
@@ -175,193 +196,772 @@ export default function AvailableConferencesPage() {
         client.removeChannel(channel);
       };
     }
-  }, [event.name, event.id, event.dates, event.dateFrom, event.dateTo, event.venue, event.fee, event.schoolFeePerStudent, event.deadline, event.status, committees, portfolios]);
+  }, [event.name, event.id, event.dates, event.dateFrom, event.dateTo, event.venue, event.fee, event.schoolFeePerStudent, event.deadline, event.status, event.bannerUrl, event.imageUrl, committees, portfolios]);
+
+  // Extract cities from venues
+  const detectedCities = useMemo(() => {
+    const set = new Set<string>();
+    conferences.forEach((c) => {
+      if (c.venue) {
+        const parts = c.venue.split(",").map((s) => s.trim());
+        const last = parts[parts.length - 1];
+        if (last && last.length < 30) {
+          set.add(last);
+        }
+      }
+    });
+    return Array.from(set).sort();
+  }, [conferences]);
+
+  // Compute seats for a conference
+  const getSeatsLeft = (conf: ConferenceItem) => {
+    let seats = 0;
+    if (conf.committees && conf.committees.length > 0) {
+      conf.committees.forEach((c) => {
+        const open = c.portfolios?.filter((p) => p.status === "open").length;
+        seats += open !== undefined ? open : c.total_seats || 20;
+      });
+    } else {
+      seats = 36; // sensible default
+    }
+    return Math.max(1, seats);
+  };
+
+  // Filtered conferences
+  const filteredConferences = useMemo(() => {
+    return conferences.filter((conf) => {
+      // 1. City filter
+      if (selectedCity !== "All") {
+        const venueLower = (conf.venue || "").toLowerCase();
+        if (!venueLower.includes(selectedCity.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // 2. Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesName = conf.name.toLowerCase().includes(q);
+        const matchesVenue = (conf.venue || "").toLowerCase().includes(q);
+        const matchesComm = (conf.committees || []).some((c) => c.name.toLowerCase().includes(q));
+        if (!matchesName && !matchesVenue && !matchesComm) {
+          return false;
+        }
+      }
+
+      // 3. Chip filter
+      if (activeChip === "this_month") {
+        const now = new Date();
+        const curMonth = now.toLocaleString("default", { month: "short" }).toLowerCase();
+        const datesStr = (conf.dates || conf.date_from || "").toLowerCase();
+        return datesStr.includes(curMonth);
+      }
+      if (activeChip === "closing_soon") {
+        const seats = getSeatsLeft(conf);
+        return seats < 30;
+      }
+      if (activeChip === "school_teams") {
+        return (conf.school_fee_per_student || 0) > 0;
+      }
+      if (activeChip === "under_1500") {
+        return (conf.fee || 0) <= 1500;
+      }
+
+      return true;
+    });
+  }, [conferences, selectedCity, searchQuery, activeChip]);
+
+  // Featured conference (first in list)
+  const featuredConf = filteredConferences[0];
 
   return (
-    <main className="min-h-screen bg-[#1560BD] flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-10 text-white page-transition">
-      <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col">
-        {/* Navigation / Header */}
-        <div className="flex items-center justify-between mb-4 sm:mb-8 pb-3 sm:pb-4 border-b border-blue-400/30">
-          <button
-            type="button"
-            onClick={() => router.push("/")}
-            className="inline-flex items-center gap-1.5 sm:gap-2 text-white hover:text-yellow-300 font-bold text-base sm:text-lg cursor-pointer transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-            Back to Home
-          </button>
+    <main className="min-h-screen bg-[#1560BD] text-white font-sans antialiased selection:bg-[#FFD23F] selection:text-[#0B1B33] pb-24 md:pb-12">
+      {/* Container */}
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-8">
+        {/* ========================================================
+            DESKTOP HEADER (from reference HTML)
+        ======================================================== */}
+        <header className="hidden md:flex items-center gap-5 h-24">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 group select-none shrink-0" aria-label="Delegato Home">
+            <DelegatoIcon size="sm" rounded="md" />
+            <span className="font-heading font-extrabold text-[32px] text-[#FFD23F] tracking-tight group-hover:opacity-95 transition-opacity">
+              Delegato
+            </span>
+          </Link>
 
+          {/* City Dropdown Chip */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
+              className="inline-flex items-center gap-1.5 border-2 border-white rounded-full px-4 py-2 font-bold text-base bg-white text-[#0B1B33] hover:bg-neutral-100 transition-colors cursor-pointer shadow-sm"
+            >
+              <span>{selectedCity === "All" ? "All Cities" : selectedCity}</span>
+              <ChevronDown className="w-4 h-4" />
+            </button>
+
+            {isCityDropdownOpen && (
+              <div className="absolute left-0 mt-2 w-48 bg-white text-[#0B1B33] rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-fadeIn">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCity("All");
+                    setIsCityDropdownOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-2 text-sm font-bold flex items-center justify-between hover:bg-blue-50 transition-colors ${selectedCity === "All" ? "text-[#1560BD]" : "text-gray-700"}`}
+                >
+                  All Cities
+                  {selectedCity === "All" && <Check className="w-4 h-4 text-[#1560BD]" />}
+                </button>
+                {detectedCities.map((city) => (
+                  <button
+                    key={city}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCity(city);
+                      setIsCityDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm font-bold flex items-center justify-between hover:bg-blue-50 transition-colors ${selectedCity === city ? "text-[#1560BD]" : "text-gray-700"}`}
+                  >
+                    {city}
+                    {selectedCity === city && <Check className="w-4 h-4 text-[#1560BD]" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Search bar */}
+          <div className="flex items-center gap-3 bg-white text-[#3b4660] rounded-2xl h-14 px-4 text-base flex-1 shadow-sm">
+            <Search className="w-5 h-5 text-[#3b4660] shrink-0" strokeWidth={2.5} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search conferences, schools, or cities"
+              className="bg-transparent text-[#0B1B33] placeholder-[#3b4660] font-medium outline-none w-full text-base"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="text-gray-400 hover:text-gray-600 p-1"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Quick links & Host Button */}
           <Link
             href="/status"
-            className="text-white hover:text-yellow-300 underline font-bold text-sm sm:text-base"
+            className="font-bold text-white hover:text-[#FFD23F] transition-colors text-base shrink-0"
           >
-            Already registered? Check status
+            Check status
           </Link>
-        </div>
 
-        {/* Title */}
-        <div className="mb-4 sm:mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-white/10 text-blue-100 text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 sm:mb-3">
-            <DelegatoIcon size="sm" rounded="md" />
-            <span>Delegato Conference Hub</span>
+          <Link
+            href={user ? "/organizer/conferences" : "/login"}
+            className="font-bold text-white hover:text-[#FFD23F] transition-colors text-base shrink-0"
+          >
+            {user ? "Dashboard" : "Log in"}
+          </Link>
+
+          <Link
+            href="/organizer/conferences"
+            className="bg-[#FFD23F] text-[#0B1B33] font-bold text-lg px-5 py-3 rounded-xl hover:bg-yellow-400 active:scale-95 transition-all shrink-0 shadow-sm"
+          >
+            Organize a MUN
+          </Link>
+        </header>
+
+        {/* ========================================================
+            MOBILE HEADER
+        ======================================================== */}
+        <header className="md:hidden pt-3 pb-2 space-y-3">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-1.5 select-none" aria-label="Delegato Home">
+              <DelegatoIcon size="sm" rounded="md" />
+              <span className="font-heading font-extrabold text-2xl text-[#FFD23F]">
+                Delegato
+              </span>
+            </Link>
+
+            <div className="flex items-center gap-2">
+              {/* City pill */}
+              <button
+                type="button"
+                onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
+                className="inline-flex items-center gap-1 border border-white rounded-full px-3 py-1 text-xs font-bold bg-white text-[#0B1B33]"
+              >
+                <span>{selectedCity === "All" ? "Cities" : selectedCity}</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+
+              {/* Account icon */}
+              <Link
+                href={user ? "/organizer/conferences" : "/login"}
+                className="w-8 h-8 rounded-full border border-white flex items-center justify-center text-white"
+                aria-label="Account"
+              >
+                <User className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-white leading-tight">
-            Available MUN Conferences
-          </h1>
-          <p className="text-base sm:text-xl text-blue-100 font-medium mt-1 sm:mt-2">
-            Explore upcoming Model United Nations conferences and register your delegation.
-          </p>
-        </div>
 
-        {/* Conferences List */}
-        <div className="space-y-4 sm:space-y-6 flex-1">
-          {loading ? (
-            <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center">
-              <div className="text-xl sm:text-2xl font-heading font-bold text-gray-700">
-                Loading conferences...
+          {/* Mobile City Dropdown */}
+          {isCityDropdownOpen && (
+            <div className="bg-white text-[#0B1B33] rounded-2xl shadow-xl border border-gray-100 p-2 z-50">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCity("All");
+                  setIsCityDropdownOpen(false);
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs font-bold text-gray-700"
+              >
+                All Cities
+              </button>
+              {detectedCities.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCity(c);
+                    setIsCityDropdownOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-xs font-bold text-gray-700"
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Mobile Search input */}
+          <div className="flex items-center gap-2 bg-white text-[#3b4660] rounded-xl h-11 px-3 text-sm shadow-sm">
+            <Search className="w-4 h-4 text-[#3b4660] shrink-0" strokeWidth={2.5} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search conferences, schools, or cities"
+              className="bg-transparent text-[#0B1B33] placeholder-[#3b4660] font-medium outline-none w-full text-xs sm:text-sm"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="text-gray-400 p-1"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* ========================================================
+            HERO / FEATURED CARD
+        ======================================================== */}
+        {loading ? (
+          <div className="bg-white text-[#0B1B33] rounded-[22px] p-10 text-center my-4 animate-pulse">
+            <p className="font-heading font-extrabold text-2xl text-gray-700">
+              Loading conferences...
+            </p>
+          </div>
+        ) : featuredConf ? (
+          <div className="mt-2 sm:mt-4">
+            {/* Desktop Hero Card */}
+            <div className="hidden md:flex bg-white text-[#0B1B33] rounded-[22px] overflow-hidden min-h-[360px] shadow-lg">
+              {/* Poster Column */}
+              <div
+                style={{
+                  backgroundColor: featuredConf.banner_url ? undefined : BANNER_PALETTES[0].bg,
+                  backgroundImage: featuredConf.banner_url ? `url(${featuredConf.banner_url})` : undefined,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
+                className="w-[480px] shrink-0 relative flex flex-col justify-between p-7 select-none"
+              >
+                {featuredConf.banner_url && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />
+                )}
+                <span className="relative z-10 self-start bg-white text-[#0B1B33] border-2 border-[#0B1B33] rounded-[10px] px-3 py-0.5 text-sm font-bold shadow-sm">
+                  Closing soon
+                </span>
+                <div className="relative z-10 font-heading font-extrabold text-4xl lg:text-5xl text-white leading-[1.02] tracking-tight drop-shadow-md">
+                  {featuredConf.name}
+                </div>
+                <div className="relative z-10 text-lg font-bold text-[#FFD23F] drop-shadow-sm">
+                  {featuredConf.dates || (featuredConf.date_from ? `${featuredConf.date_from} to ${featuredConf.date_to}` : "Dates TBA")}
+                </div>
+              </div>
+
+              {/* Details Column */}
+              <div className="p-8 lg:p-10 flex-1 flex flex-col justify-center">
+                <h2 className="text-3xl lg:text-4xl font-heading font-extrabold text-[#0B1B33] leading-tight">
+                  {featuredConf.name}
+                </h2>
+                <p className="mt-2 text-lg text-[#3b4660] font-medium">
+                  {featuredConf.dates || "Upcoming"}, {featuredConf.venue || "Campus Venue"}, {featuredConf.committees?.length || 3} committees
+                </p>
+                <p className="mt-4 text-xl lg:text-2xl font-bold text-[#0B1B33]">
+                  ₹{(featuredConf.fee || 1500).toLocaleString("en-IN")} per delegate
+                </p>
+                <p className="text-base text-gray-600 font-medium mt-0.5">
+                  ₹{(featuredConf.school_fee_per_student || featuredConf.fee || 1200).toLocaleString("en-IN")} per student for school teams
+                </p>
+                <p className="mt-3 mb-6 text-lg font-bold text-[#B3261E]">
+                  {getSeatsLeft(featuredConf)} seats left
+                </p>
+                <div className="flex items-center gap-3.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedConfForModal(featuredConf.id)}
+                    className="bg-[#FFD23F] text-[#0B1B33] font-bold text-lg px-7 py-3.5 rounded-xl hover:bg-yellow-400 active:scale-95 transition-all cursor-pointer shadow-sm"
+                  >
+                    Register
+                  </button>
+                  <Link
+                    href={`/browse?event=${encodeURIComponent(featuredConf.id)}`}
+                    className="bg-white text-[#0B1B33] border-2 border-[#0B1B33] font-bold text-lg px-6 py-3 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    View details
+                  </Link>
+                </div>
               </div>
             </div>
-          ) : conferences.length === 0 ? (
-            /* Clean Empty State when 0 conferences */
-            <div className="bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-6 sm:p-14 text-center border border-blue-100 animate-fadeIn">
-              <div className="inline-flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-blue-50 text-[#1560BD] mb-3 sm:mb-5">
-                <Calendar className="w-7 h-7 sm:w-10 sm:h-10" />
+
+            {/* Mobile Hero Card */}
+            <div className="md:hidden bg-white text-[#0B1B33] rounded-[22px] overflow-hidden shadow-md mt-2">
+              <div
+                style={{
+                  backgroundColor: featuredConf.banner_url ? undefined : BANNER_PALETTES[0].bg,
+                  backgroundImage: featuredConf.banner_url ? `url(${featuredConf.banner_url})` : undefined,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
+                className="relative h-[170px] p-4 flex flex-col justify-between"
+              >
+                {featuredConf.banner_url && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />
+                )}
+                <span className="relative z-10 self-start bg-white text-[#0B1B33] border-2 border-[#0B1B33] rounded-[10px] px-2.5 py-0.5 text-xs font-bold">
+                  Closing soon
+                </span>
+                <div className="relative z-10 font-heading font-extrabold text-2xl text-white leading-tight">
+                  {featuredConf.name}
+                </div>
+                <div className="relative z-10 text-sm font-bold text-[#FFD23F]">
+                  {featuredConf.dates || "Dates TBA"}
+                </div>
               </div>
-              <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-[#0B1B33] mb-2 sm:mb-3">
-                No Active Conferences
-              </h2>
-              <p className="text-base sm:text-xl text-gray-600 font-medium max-w-lg mx-auto mb-6 sm:mb-8">
-                There are currently no Model United Nations conferences open for registration right now.
-                Sign in as an organizer to set up your conference and launch registrations.
-              </p>
+              <div className="p-4 flex items-center justify-between">
+                <div>
+                  <div className="text-base font-bold text-[#0B1B33]">
+                    ₹{(featuredConf.fee || 1500).toLocaleString("en-IN")}
+                  </div>
+                  <div className="text-xs font-bold text-[#B3261E]">
+                    {getSeatsLeft(featuredConf)} seats left
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedConfForModal(featuredConf.id)}
+                  className="bg-[#FFD23F] text-[#0B1B33] font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-yellow-400 active:scale-95 transition-all"
+                >
+                  Register
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {/* ========================================================
+            FILTER CHIPS
+        ======================================================== */}
+        <div className="mt-6 sm:mt-8 flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1">
+          <button
+            type="button"
+            onClick={() => setActiveChip("all")}
+            className={`px-5 py-2 rounded-full font-bold text-sm sm:text-base whitespace-nowrap transition-all cursor-pointer ${
+              activeChip === "all"
+                ? "bg-white text-[#0B1B33] shadow-sm"
+                : "border-2 border-white text-white hover:bg-white/10"
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveChip("this_month")}
+            className={`px-5 py-2 rounded-full font-bold text-sm sm:text-base whitespace-nowrap transition-all cursor-pointer ${
+              activeChip === "this_month"
+                ? "bg-white text-[#0B1B33] shadow-sm"
+                : "border-2 border-white text-white hover:bg-white/10"
+            }`}
+          >
+            This month
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveChip("closing_soon")}
+            className={`px-5 py-2 rounded-full font-bold text-sm sm:text-base whitespace-nowrap transition-all cursor-pointer ${
+              activeChip === "closing_soon"
+                ? "bg-white text-[#0B1B33] shadow-sm"
+                : "border-2 border-white text-white hover:bg-white/10"
+            }`}
+          >
+            Closing soon
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveChip("school_teams")}
+            className={`px-5 py-2 rounded-full font-bold text-sm sm:text-base whitespace-nowrap transition-all cursor-pointer ${
+              activeChip === "school_teams"
+                ? "bg-white text-[#0B1B33] shadow-sm"
+                : "border-2 border-white text-white hover:bg-white/10"
+            }`}
+          >
+            School teams
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveChip("under_1500")}
+            className={`px-5 py-2 rounded-full font-bold text-sm sm:text-base whitespace-nowrap transition-all cursor-pointer ${
+              activeChip === "under_1500"
+                ? "bg-white text-[#0B1B33] shadow-sm"
+                : "border-2 border-white text-white hover:bg-white/10"
+            }`}
+          >
+            Under Rs 1,500
+          </button>
+        </div>
+
+        {/* Empty state when no conferences match filter */}
+        {!loading && filteredConferences.length === 0 && (
+          <div className="bg-white text-[#0B1B33] rounded-[22px] p-8 sm:p-14 text-center my-8 shadow-sm">
+            <h3 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#0B1B33] mb-2">
+              No Conferences Found
+            </h3>
+            <p className="text-neutral-600 font-medium max-w-md mx-auto mb-6 text-sm sm:text-base">
+              {conferences.length === 0
+                ? "There are currently no active Model United Nations conferences open for registration."
+                : "No conferences matched your search or active filter. Try resetting your search or filters."}
+            </p>
+            {conferences.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setActiveChip("all");
+                  setSelectedCity("All");
+                }}
+                className="bg-[#1560BD] text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors"
+              >
+                Clear all filters
+              </button>
+            ) : (
               <Link href="/organizer/conferences">
                 <button
                   type="button"
-                  className="bg-[#FFD23F] text-[#0B1B33] px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-base sm:text-xl font-heading font-extrabold hover:bg-yellow-400 active:scale-95 transition-all shadow-md cursor-pointer"
+                  className="bg-[#FFD23F] text-[#0B1B33] px-6 py-3.5 rounded-xl font-heading font-extrabold text-base hover:bg-yellow-400 transition-colors shadow-sm cursor-pointer"
                 >
                   Set Up Your Conference →
                 </button>
               </Link>
-            </div>
-          ) : (
-            /* Render active conferences */
-            conferences.map((conf, index) => {
-              const commsCount = conf.committees?.length || committees.length || 0;
-              let seatsAvailable = 0;
-              if (conf.committees) {
-                conf.committees.forEach((c) => {
-                  const openCount = c.portfolios?.filter((p) => p.status === "open").length;
-                  seatsAvailable += openCount !== undefined ? openCount : c.total_seats;
-                });
-              } else {
-                seatsAvailable = portfolios.filter((p) => p.status === "open").length || 0;
-              }
+            )}
+          </div>
+        )}
 
-              const staggerClass = `stagger-${Math.min(index + 1, 6)}`;
+        {/* ========================================================
+            "CLOSING SOON" HORIZONTAL SECTION (from reference HTML)
+        ======================================================== */}
+        {filteredConferences.length > 0 && (
+          <section className="mt-8 sm:mt-11">
+            <h2 className="font-heading font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white mb-4 sm:mb-5">
+              Closing soon
+            </h2>
 
-              return (
-                <div
-                  key={conf.id}
-                  className={`bg-white text-[#0B1B33] rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-blue-100 interactive-card reveal-item ${staggerClass}`}
-                >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-gray-100">
-                    <div>
-                      <div className="inline-block px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs sm:text-sm font-bold mb-1.5 sm:mb-2">
-                        {conf.status === "published" ? "Open for Registrations" : "Registration Open"}
-                      </div>
-                      <h2 className="text-xl sm:text-3xl font-heading font-extrabold text-[#0B1B33]">
-                        {conf.name}
-                      </h2>
-                    </div>
+            {/* Scrollable on mobile, flex grid on desktop */}
+            <div className="flex gap-4 sm:gap-5 overflow-x-auto no-scrollbar pb-3 pt-1">
+              {filteredConferences.slice(0, 4).map((conf, idx) => {
+                const palette = BANNER_PALETTES[(idx + 1) % BANNER_PALETTES.length];
+                const seatsLeft = getSeatsLeft(conf);
 
-                    <div className="text-left md:text-right shrink-0">
-                      <div className="text-xs sm:text-sm text-gray-500 font-semibold uppercase">Delegate Fee</div>
-                      <div className="text-xl sm:text-2xl font-heading font-extrabold text-[#1560BD]">
-                        ₹{(conf.fee || 1500).toLocaleString("en-IN")}
-                      </div>
-                      <div className="text-xs text-gray-500 font-medium">
-                        School team: ₹{(conf.school_fee_per_student || conf.fee || 1200).toLocaleString("en-IN")}/student
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Details grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 py-4 sm:py-6 border-b border-gray-100 text-[#0B1B33]">
-                    <div className="flex items-start gap-2.5 sm:gap-3">
-                      <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-[#1560BD] shrink-0 mt-0.5" />
-                      <div>
-                        <div className="text-xs text-gray-500 font-bold uppercase">Dates</div>
-                        <div className="text-sm sm:text-base font-bold">
-                          {conf.dates || (conf.date_from ? `${conf.date_from} to ${conf.date_to}` : "Dates TBA")}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2.5 sm:gap-3">
-                      <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-[#1560BD] shrink-0 mt-0.5" />
-                      <div>
-                        <div className="text-xs text-gray-500 font-bold uppercase">Venue</div>
-                        <div className="text-sm sm:text-base font-bold line-clamp-2">
-                          {conf.venue || "Main Auditorium"}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2.5 sm:gap-3">
-                      <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#1560BD] shrink-0 mt-0.5" />
-                      <div>
-                        <div className="text-xs text-gray-500 font-bold uppercase">Committees & Seats</div>
-                        <div className="text-sm sm:text-base font-bold">
-                          {commsCount} Committees {seatsAvailable > 0 ? `• ${seatsAvailable} Open Seats` : ""}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="pt-4 sm:pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-                    <Link
-                      href={`/browse?event=${encodeURIComponent(conf.id)}`}
-                      className="w-full sm:w-auto text-[#1560BD] hover:text-[#0F4C96] font-heading font-bold text-sm sm:text-base underline flex items-center justify-center gap-1.5 py-1 sm:py-2"
+                return (
+                  <div
+                    key={`soon-${conf.id}`}
+                    onClick={() => setSelectedConfForModal(conf.id)}
+                    className="w-[220px] sm:w-[262px] shrink-0 bg-white text-[#0B1B33] rounded-[22px] overflow-hidden flex flex-col shadow-md hover:shadow-xl transition-all cursor-pointer hover:-translate-y-1 group"
+                  >
+                    {/* Top Poster Banner (ready for image upload) */}
+                    <div
+                      style={{
+                        backgroundColor: conf.banner_url ? undefined : palette.bg,
+                        color: conf.banner_url ? "#FFFFFF" : palette.text,
+                        backgroundImage: conf.banner_url ? `url(${conf.banner_url})` : undefined,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }}
+                      className="relative h-[220px] sm:h-[290px] p-4 sm:p-5 flex flex-col justify-between select-none"
                     >
-                      <Award className="w-4 h-4" />
-                      Browse committee agendas & guides
-                    </Link>
-
-                    <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedConfForModal(conf.id)}
-                        className="w-full sm:w-auto bg-[#FFD23F] text-[#0B1B33] px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl text-base sm:text-lg font-heading font-extrabold hover:bg-yellow-400 active:scale-95 transition-all text-center cursor-pointer"
+                      {conf.banner_url && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />
+                      )}
+                      <span
+                        style={{
+                          backgroundColor: conf.banner_url ? "#FFFFFF" : palette.badgeBg,
+                          color: conf.banner_url ? "#0B1B33" : palette.badgeText,
+                          borderColor: conf.banner_url ? "#0B1B33" : palette.badgeBg,
+                        }}
+                        className="relative z-10 self-start border-2 rounded-[10px] px-2.5 py-0.5 text-xs sm:text-sm font-bold shadow-sm"
                       >
-                        Register for this MUN
-                      </button>
+                        {idx === 0 ? "Closing soon" : "Filling fast"}
+                      </span>
+
+                      <div className="relative z-10 font-heading font-extrabold text-xl sm:text-[28px] leading-[1.05] drop-shadow-sm group-hover:scale-[1.02] transition-transform">
+                        {conf.name}
+                      </div>
+
+                      <div
+                        style={{ color: conf.banner_url ? "#FFD23F" : palette.dateColor }}
+                        className="relative z-10 text-sm sm:text-lg font-bold"
+                      >
+                        {conf.dates || (conf.date_from ? `${conf.date_from}` : "Dates TBA")}
+                      </div>
+                    </div>
+
+                    {/* Bottom Card Body */}
+                    <div className="p-4 sm:p-[18px] flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="font-bold text-base sm:text-[20px] leading-tight text-[#0B1B33] line-clamp-1">
+                          {conf.name}
+                        </div>
+                        <div className="mt-1 text-xs sm:text-base text-[#3b4660] line-clamp-1">
+                          {conf.dates || "Upcoming"}, {conf.venue?.split(",")[0] || "Delhi"}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-3 text-xs sm:text-base">
+                        <span className="font-bold text-[#0B1B33]">
+                          From ₹{(conf.fee || 1500).toLocaleString("en-IN")}
+                        </span>
+                        <span className="font-bold text-[#B3261E]">
+                          {seatsLeft} seats left
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
-        {/* Footer */}
-        <div className="mt-12 text-center text-blue-200 text-sm">
-          Are you a school organizer?{" "}
-          <Link href="/organizer/conferences" className="text-white underline font-bold ml-1 hover:text-yellow-300">
-            Log in to manage or host a conference
-          </Link>
-        </div>
+        {/* ========================================================
+            "ALL CONFERENCES" SECTION (from reference HTML)
+        ======================================================== */}
+        {filteredConferences.length > 0 && (
+          <section className="mt-10 sm:mt-12">
+            <div className="flex items-baseline justify-between mb-4 sm:mb-5">
+              <h2 className="font-heading font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white">
+                All conferences
+              </h2>
+              <span className="font-bold text-sm sm:text-lg text-blue-100">
+                {filteredConferences.length} open
+              </span>
+            </div>
+
+            {/* Desktop: Grid of cards */}
+            <div className="hidden sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {filteredConferences.map((conf, idx) => {
+                const palette = BANNER_PALETTES[idx % BANNER_PALETTES.length];
+                const seatsLeft = getSeatsLeft(conf);
+
+                return (
+                  <div
+                    key={`all-desk-${conf.id}`}
+                    onClick={() => setSelectedConfForModal(conf.id)}
+                    className="bg-white text-[#0B1B33] rounded-[22px] overflow-hidden flex flex-col shadow-md hover:shadow-xl transition-all cursor-pointer hover:-translate-y-1 group"
+                  >
+                    {/* Top Poster Banner */}
+                    <div
+                      style={{
+                        backgroundColor: conf.banner_url ? undefined : palette.bg,
+                        color: conf.banner_url ? "#FFFFFF" : palette.text,
+                        backgroundImage: conf.banner_url ? `url(${conf.banner_url})` : undefined,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }}
+                      className="relative h-[250px] p-5 flex flex-col justify-between select-none"
+                    >
+                      {conf.banner_url && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />
+                      )}
+                      <span className="relative z-10 self-start text-xs font-bold opacity-0">
+                        Badge
+                      </span>
+                      <div className="relative z-10 font-heading font-extrabold text-[24px] leading-[1.05] drop-shadow-sm group-hover:scale-[1.02] transition-transform">
+                        {conf.name}
+                      </div>
+                      <div
+                        style={{ color: conf.banner_url ? "#FFD23F" : palette.dateColor }}
+                        className="relative z-10 text-base font-bold"
+                      >
+                        {conf.dates || "Upcoming"}
+                      </div>
+                    </div>
+
+                    {/* Bottom Card Body */}
+                    <div className="p-[18px] flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="font-bold text-[19px] leading-tight text-[#0B1B33] line-clamp-1">
+                          {conf.name}
+                        </div>
+                        <div className="mt-1 text-sm text-[#3b4660] line-clamp-1">
+                          {conf.dates || "Upcoming"}, {conf.venue?.split(",")[0] || "Auditorium"}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-3 text-sm">
+                        <span className="font-bold text-[#0B1B33]">
+                          From ₹{(conf.fee || 1500).toLocaleString("en-IN")}
+                        </span>
+                        <span className="font-bold text-[#B3261E]">
+                          {seatsLeft} seats left
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Mobile: Horizontal list matching template_2.html */}
+            <div className="sm:hidden space-y-3.5">
+              {filteredConferences.map((conf, idx) => {
+                const palette = BANNER_PALETTES[idx % BANNER_PALETTES.length];
+                const seatsLeft = getSeatsLeft(conf);
+                const shortTitle = conf.name.split(" ")[0] || "MUN";
+
+                return (
+                  <div
+                    key={`all-mob-${conf.id}`}
+                    onClick={() => setSelectedConfForModal(conf.id)}
+                    className="bg-white text-[#0B1B33] rounded-[20px] overflow-hidden flex shadow-sm active:scale-[0.99] transition-transform cursor-pointer"
+                  >
+                    {/* Left Poster (ready for image) */}
+                    <div
+                      style={{
+                        backgroundColor: conf.banner_url ? undefined : palette.bg,
+                        color: conf.banner_url ? "#FFFFFF" : palette.text,
+                        backgroundImage: conf.banner_url ? `url(${conf.banner_url})` : undefined,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }}
+                      className="w-[112px] shrink-0 p-3 flex flex-col justify-between relative select-none"
+                    >
+                      {conf.banner_url && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                      )}
+                      <span className="relative z-10 text-[10px] font-bold opacity-0">.</span>
+                      <div className="relative z-10 font-heading font-extrabold text-[20px] leading-[1.02] line-clamp-2">
+                        {shortTitle}
+                      </div>
+                      <div
+                        style={{ color: conf.banner_url ? "#FFD23F" : palette.dateColor }}
+                        className="relative z-10 text-xs font-bold"
+                      >
+                        {conf.dates?.split(" ")[0] || ""}
+                      </div>
+                    </div>
+
+                    {/* Right Details */}
+                    <div className="p-3.5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="font-bold text-[17px] leading-tight text-[#0B1B33] line-clamp-1">
+                          {conf.name}
+                        </div>
+                        <div className="mt-1 text-xs text-[#3b4660] line-clamp-1">
+                          {conf.dates || "Upcoming"}, {conf.venue?.split(",")[0] || "Auditorium"}
+                        </div>
+                      </div>
+                      <div className="mt-2.5 flex items-center justify-between">
+                        <div className="text-sm font-bold text-[#0B1B33]">
+                          ₹{(conf.fee || 1500).toLocaleString("en-IN")}
+                        </div>
+                        <div className="text-xs font-bold text-[#B3261E]">
+                          {seatsLeft} seats left
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ========================================================
+            FOOTER (from reference HTML)
+        ======================================================== */}
+        <footer className="mt-16 pt-8 pb-10 border-t border-white/20 text-blue-100 text-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="font-heading font-extrabold text-white text-base">Delegato</span>
+            <span>• The MUN Operations Platform</span>
+          </div>
+
+          <div className="flex items-center gap-5 font-medium">
+            <Link href="/status" className="hover:text-white transition-colors">
+              Check status
+            </Link>
+            <Link href="/login" className="hover:text-white transition-colors">
+              Log in
+            </Link>
+            <Link href="/organizer/conferences" className="hover:text-white font-bold text-[#FFD23F]">
+              Organizers
+            </Link>
+          </div>
+        </footer>
       </div>
 
-      {/* Registration Mode Modal */}
+      {/* ========================================================
+          MOBILE FLOATING BOTTOM NAV (from template_1 & template_2)
+      ======================================================== */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#0F4C96] border-t border-white/10 z-40 flex items-center justify-around text-sm font-bold text-white shadow-2xl">
+        <Link
+          href="/conferences"
+          className="flex flex-col items-center justify-center h-full px-4 border-b-4 border-[#FFD23F] text-white"
+        >
+          <span>Explore</span>
+        </Link>
+        <Link
+          href="/status"
+          className="flex flex-col items-center justify-center h-full px-4 text-blue-200 hover:text-white font-medium"
+        >
+          <span>Check status</span>
+        </Link>
+        <Link
+          href={user ? "/organizer/conferences" : "/login"}
+          className="flex flex-col items-center justify-center h-full px-4 text-blue-200 hover:text-white font-medium"
+        >
+          <span>{user ? "Dashboard" : "Account"}</span>
+        </Link>
+      </div>
+
+      {/* ========================================================
+          REGISTRATION MODE MODAL
+      ======================================================== */}
       {selectedConfForModal && (
-        <div className="fixed inset-0 z-50 bg-[#0B1B33]/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full text-[#0B1B33] border border-gray-200 animate-slideUp">
+        <div className="fixed inset-0 z-50 bg-[#0B1B33]/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full text-[#0B1B33] border border-gray-200 shadow-2xl animate-slideUp">
             <h3 className="text-2xl font-heading font-extrabold mb-1 text-[#0B1B33]">
               Choose Registration Type
             </h3>
-            <p className="text-gray-500 text-sm mb-5 font-medium">
-              Unique link: <span className="font-mono text-xs bg-slate-100 p-1 rounded font-bold text-[#1560BD] break-all">?event={selectedConfForModal}</span>
+            <p className="text-gray-500 text-xs sm:text-sm mb-5 font-medium">
+              Event: <span className="font-mono text-xs bg-slate-100 p-1 rounded font-bold text-[#1560BD] break-all">{selectedConfForModal}</span>
             </p>
 
             <div className="space-y-3 sm:space-y-4">
@@ -373,8 +973,8 @@ export default function AvailableConferencesPage() {
                 <div className="text-lg sm:text-xl font-heading font-extrabold text-[#0B1B33] group-hover:text-[#1560BD]">
                   Individual Delegate
                 </div>
-                <div className="text-sm text-gray-500 font-medium mt-1">
-                  Pick 3 committee preferences and submit your portfolio preferences directly.
+                <div className="text-xs sm:text-sm text-gray-500 font-medium mt-1">
+                  Pick committee preferences and submit your portfolio preferences directly.
                 </div>
               </button>
 
@@ -386,7 +986,7 @@ export default function AvailableConferencesPage() {
                 <div className="text-lg sm:text-xl font-heading font-extrabold text-[#0B1B33] group-hover:text-[#1560BD]">
                   School Delegation Team
                 </div>
-                <div className="text-sm text-gray-500 font-medium mt-1">
+                <div className="text-xs sm:text-sm text-gray-500 font-medium mt-1">
                   Head delegate or teacher coordinator registering multiple delegates with discounted fees.
                 </div>
               </button>
@@ -400,7 +1000,7 @@ export default function AvailableConferencesPage() {
                   navigator.clipboard?.writeText(link);
                   alert("Conference registration link copied!");
                 }}
-                className="text-[#1560BD] font-bold text-sm underline cursor-pointer"
+                className="text-[#1560BD] font-bold text-xs sm:text-sm underline cursor-pointer"
               >
                 Copy registration link
               </button>
@@ -408,7 +1008,7 @@ export default function AvailableConferencesPage() {
               <button
                 type="button"
                 onClick={() => setSelectedConfForModal(null)}
-                className="text-gray-500 hover:text-gray-800 font-bold text-base px-3 py-1.5 cursor-pointer"
+                className="text-gray-500 hover:text-gray-800 font-bold text-sm sm:text-base px-3 py-1.5 cursor-pointer"
               >
                 Cancel
               </button>
