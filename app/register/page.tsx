@@ -110,13 +110,13 @@ export default function IndividualRegisterPage() {
   const handleNext = () => {
     setErrorMsg("");
     if (step === 1) {
-      if (!name.trim()) {
-        setErrorMsg("Please enter your name.");
+      if (!name.trim() || name.trim().length < 2) {
+        setErrorMsg("Please enter your full name (at least 2 characters).");
         return;
       }
       setStep(2);
     } else if (step === 2) {
-      if (!school.trim()) {
+      if (!school.trim() || school.trim().length < 2) {
         setErrorMsg("Please enter or select your school.");
         return;
       }
@@ -143,10 +143,18 @@ export default function IndividualRegisterPage() {
         setErrorMsg("Please select all 3 portfolio choices for Committee 1.");
         return;
       }
+      if (new Set([pref1Port1, pref1Port2, pref1Port3]).size !== 3) {
+        setErrorMsg("Please choose 3 distinct portfolios for Committee 1.");
+        return;
+      }
       setStep(4);
     } else if (step === 4) {
       if (!pref2Comm || !pref2Port1 || !pref2Port2 || !pref2Port3) {
         setErrorMsg("Please select all 3 portfolio choices for Committee 2.");
+        return;
+      }
+      if (new Set([pref2Port1, pref2Port2, pref2Port3]).size !== 3) {
+        setErrorMsg("Please choose 3 distinct portfolios for Committee 2.");
         return;
       }
       if (pref2Comm === pref1Comm) {
@@ -157,6 +165,10 @@ export default function IndividualRegisterPage() {
     } else if (step === 5) {
       if (!pref3Comm || !pref3Port1 || !pref3Port2 || !pref3Port3) {
         setErrorMsg("Please select all 3 portfolio choices for Committee 3.");
+        return;
+      }
+      if (new Set([pref3Port1, pref3Port2, pref3Port3]).size !== 3) {
+        setErrorMsg("Please choose 3 distinct portfolios for Committee 3.");
         return;
       }
       if (pref3Comm === pref1Comm || pref3Comm === pref2Comm) {
@@ -177,6 +189,7 @@ export default function IndividualRegisterPage() {
   };
 
   const handleConfirmRegistration = async () => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
       const newReg = await addRegistration({

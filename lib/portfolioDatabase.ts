@@ -1,3 +1,5 @@
+import type { MunPortfolio } from "./types";
+
 export interface PortfolioItem {
   name: string;
   code: string;
@@ -461,3 +463,89 @@ export const MASTER_PORTFOLIO_LIST: PortfolioItem[] = [
   ...INDIAN_POLITICIANS,
   ...REGIONAL_BODIES,
 ];
+
+/**
+ * Resilient Portfolio Matcher:
+ * Reconciles portfolio ID or code/slug against active committee portfolios.
+ * Resolves re-added or migrated portfolios cleanly without broken raw IDs.
+ */
+export function findMatchingPortfolio(
+  pId: string | undefined,
+  committeeId: string | undefined,
+  portfolios: MunPortfolio[]
+): MunPortfolio | undefined {
+  if (!pId) return undefined;
+
+  // 1. Exact ID match (fastest and cleanest)
+  const exact = portfolios.find((p) => p.id === pId);
+  if (exact) return exact;
+
+  // 2. Filter within committee if provided
+  const commPorts = committeeId
+    ? portfolios.filter((p) => p.committeeId === committeeId)
+    : portfolios;
+
+  const parts = pId.toLowerCase().split("-");
+  const lastPart = parts[parts.length - 1];
+  const secondLast = parts.length > 1 ? parts[parts.length - 2] : "";
+
+  // 2a. Match by country code (e.g. "BR" from -br)
+  const byCode = commPorts.find(
+    (p) =>
+      p.code.toLowerCase() === lastPart ||
+      p.code.toLowerCase() === secondLast ||
+      pId.toLowerCase().endsWith(`-${p.code.toLowerCase()}`)
+  );
+  if (byCode) return byCode;
+
+  // 2b. Match by country name slug (e.g. "brazil")
+  const byName = commPorts.find((p) => {
+    const slug = p.countryName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return (
+      slug === lastPart ||
+      slug === secondLast ||
+      pId.toLowerCase().includes(`-${slug}`) ||
+      pId.toLowerCase().includes(slug)
+    );
+  });
+  if (byName) return byName;
+
+  return undefined;
+}
+
+/**
+ * Resilient Display Name Resolver:
+ * Reconciles any portfolio ID or slug to human-friendly name.
+ * If deleted and unknown, returns "NIL" instead of ugly raw database IDs.
+ */
+export function getPortfolioDisplayName(
+  pId: string | undefined,
+  committeeId: string | undefined,
+  portfolios: MunPortfolio[]
+): string {
+  if (!pId) return "NIL";
+
+  // First check if active portfolio exists
+  const match = findMatchingPortfolio(pId, committeeId, portfolios);
+  if (match) return match.countryName;
+
+  const parts = pId.toLowerCase().split("-");
+  const lastPart = parts[parts.length - 1];
+  const secondLast = parts.length > 1 ? parts[parts.length - 2] : "";
+
+  // Check master database to identify what country/item it was
+  const found = MASTER_PORTFOLIO_LIST.find(
+    (item) =>
+      item.code.toLowerCase() === lastPart ||
+      item.code.toLowerCase() === secondLast ||
+      item.name.toLowerCase().replace(/[^a-z0-9]/g, "") === lastPart ||
+      item.name.toLowerCase().replace(/[^a-z0-9]/g, "") === secondLast
+  );
+  if (found) return found.name;
+
+  if (lastPart && lastPart.length <= 15 && !/^[0-9]+$/.test(lastPart)) {
+    return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
+  }
+
+  return "NIL";
+}

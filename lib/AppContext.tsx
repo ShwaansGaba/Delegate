@@ -15,6 +15,7 @@ import { simulateAutoAllotment, AutoAllotSimulationResult } from "./autoAllot";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { getPortfoliosForCommittee, getAutoPortfolios } from "./committeeTemplates";
 import { formatDateDDMMYYYY } from "./dateUtils";
+import { findMatchingPortfolio } from "./portfolioDatabase";
 
 export interface AuthUser {
   id: string;
@@ -718,6 +719,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id, isLoaded, myConferences, event, committees, portfolios, registrations]);
 
+  // Synchronously persist per-conference and user state to localStorage
+  const persistConferenceState = (
+    c: MunCommittee[],
+    p: MunPortfolio[],
+    r: Registration[],
+    targetEventId?: string
+  ) => {
+    const eId = targetEventId || event.id;
+    if (typeof window === "undefined" || !eId || eId === "new-conference") return;
+    try {
+      localStorage.setItem(
+        `delegate_conf_data_${eId}`,
+        JSON.stringify({
+          committees: c,
+          portfolios: p,
+          registrations: r,
+        })
+      );
+      if (user?.id) {
+        const userStorageKey = `delegate_storage_${user.id}`;
+        let myConfs = myConferences;
+        try {
+          const existing = localStorage.getItem(userStorageKey);
+          if (existing) {
+            const parsed = JSON.parse(existing);
+            if (Array.isArray(parsed.myConferences)) {
+              myConfs = parsed.myConferences;
+            }
+          }
+        } catch {}
+        localStorage.setItem(
+          userStorageKey,
+          JSON.stringify({
+            myConferences: myConfs,
+            event,
+          })
+        );
+      }
+    } catch (e) {
+      console.warn("Error persisting conference state to localStorage:", e);
+    }
+  };
+
   // Real Auth Methods
   const signUp = async (email: string, password: string): Promise<{ error?: string }> => {
     if (isSupabaseConfigured && supabase) {
@@ -1109,7 +1153,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date().toISOString(),
     };
 
-    setRegistrations((prev) => [newReg, ...prev]);
+    setRegistrations((prev) => {
+      const updated = [newReg, ...prev];
+      persistConferenceState(committees, portfolios, updated, newReg.eventId || event.id);
+      return updated;
+    });
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -1516,59 +1564,77 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeCommittee = (id: string) => {
-    setCommittees((prev) => prev.filter((c) => c.id !== id));
-    setPortfolios((prev) => prev.filter((p) => p.committeeId !== id));
-    setRegistrations((prev) =>
-      prev.map((r) => {
-        if (r.allotment?.committeeId === id) {
-          const copy = { ...r };
-          delete copy.allotment;
-          return copy;
-        }
-        return r;
-      })
-    );
+    const updatedComms = committees.filter((c) => c.id !== id);
+    const updatedPorts = portfolios.filter((p) => p.committeeId !== id);
+    const affectedRegs = registrations.filter((r) => r.allotment?.committeeId === id);
+    const updatedRegs = registrations.map((r) => {
+      if (r.allotment?.committeeId === id) {
+        const copy = { ...r };
+        delete copy.allotment;
+        return copy;
+      }
+      return r;
+    });
+
+    setCommittees(updatedComms);
+    setPortfolios(updatedPorts);
+    setRegistrations(updatedRegs);
+    persistConferenceState(updatedComms, updatedPorts, updatedRegs);
+
     if (isSupabaseConfigured && supabase) {
       supabase.from("committees").delete().eq("id", id).then();
+      supabase.from("portfolios").delete().eq("committee_id", id).then();
+      for (const reg of affectedRegs) {
+        supabase.from("registrations").update({ allotment: null }).eq("id", reg.id).then();
+      }
     }
   };
 
   const deletePortfolio = (portfolioId: string) => {
-    setPortfolios((prev) => prev.filter((p) => p.id !== portfolioId));
-    setRegistrations((prev) =>
-      prev.map((r) => {
-        if (r.allotment?.portfolioId === portfolioId) {
-          const copy = { ...r };
-          delete copy.allotment;
-          return copy;
-        }
-        return r;
-      })
-    );
+    const updatedPorts = portfolios.filter((p) => p.id !== portfolioId);
+    const affectedRegs = registrations.filter((r) => r.allotment?.portfolioId === portfolioId);
+    const updatedRegs = registrations.map((r) => {
+      if (r.allotment?.portfolioId === portfolioId) {
+        const copy = { ...r };
+        delete copy.allotment;
+        return copy;
+      }
+      return r;
+    });
+
+    setPortfolios(updatedPorts);
+    setRegistrations(updatedRegs);
+    persistConferenceState(committees, updatedPorts, updatedRegs);
+
     if (isSupabaseConfigured && supabase) {
       supabase.from("portfolios").delete().eq("id", portfolioId).then();
-      // Ensure any allotment referencing this deleted portfolio is nullified in Supabase
-      supabase.from("registrations").update({ allotment: null }).eq("allotment->>portfolioId", portfolioId).then();
+      for (const reg of affectedRegs) {
+        supabase.from("registrations").update({ allotment: null }).eq("id", reg.id).then();
+      }
     }
   };
 
   const deleteMultiplePortfolios = (portfolioIds: string[]) => {
     const idSet = new Set(portfolioIds);
-    setPortfolios((prev) => prev.filter((p) => !idSet.has(p.id)));
-    setRegistrations((prev) =>
-      prev.map((r) => {
-        if (r.allotment && idSet.has(r.allotment.portfolioId)) {
-          const copy = { ...r };
-          delete copy.allotment;
-          return copy;
-        }
-        return r;
-      })
-    );
+    const updatedPorts = portfolios.filter((p) => !idSet.has(p.id));
+    const affectedRegs = registrations.filter((r) => r.allotment && idSet.has(r.allotment.portfolioId));
+    const updatedRegs = registrations.map((r) => {
+      if (r.allotment && idSet.has(r.allotment.portfolioId)) {
+        const copy = { ...r };
+        delete copy.allotment;
+        return copy;
+      }
+      return r;
+    });
+
+    setPortfolios(updatedPorts);
+    setRegistrations(updatedRegs);
+    persistConferenceState(committees, updatedPorts, updatedRegs);
+
     if (isSupabaseConfigured && supabase) {
       supabase.from("portfolios").delete().in("id", portfolioIds).then();
-      for (const pId of portfolioIds) {
-        supabase.from("registrations").update({ allotment: null }).eq("allotment->>portfolioId", pId).then();
+      for (const reg of affectedRegs) {
+        supabase.from("registrations").update({ allotment: null }).eq("id", reg.id).then();
       }
     }
   };
@@ -1591,15 +1657,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       code: item.code.toUpperCase().slice(0, 5),
       status: "open",
     };
-    setPortfolios((prev) => [...prev, newPort]);
+    const updatedPorts = [...portfolios, newPort];
+    setPortfolios(updatedPorts);
 
     // Keep committee total_seats in sync with the portfolio count
     const updatedCount = existingCount + 1;
-    setCommittees((prev) =>
-      prev.map((c) =>
-        c.id === committeeId && c.totalSeats < updatedCount ? { ...c, totalSeats: updatedCount } : c
-      )
+    const updatedComms = committees.map((c) =>
+      c.id === committeeId && c.totalSeats < updatedCount ? { ...c, totalSeats: updatedCount } : c
     );
+    setCommittees(updatedComms);
+    persistConferenceState(updatedComms, updatedPorts, registrations);
 
     if (isSupabaseConfigured && supabase) {
       supabase.from("committees").update({ total_seats: updatedCount }).eq("id", committeeId).then();
@@ -1730,22 +1797,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     committeeId: string,
     portfolioId: string
   ): Promise<{ success: boolean; reassignedDelegateName?: string }> => {
-    let targetPort = portfolios.find((p) => p.id === portfolioId);
-    if (!targetPort) {
-      const commPorts = portfolios.filter((p) => p.committeeId === committeeId);
-      const parts = portfolioId.toLowerCase().split("-");
-      const lastPart = parts[parts.length - 1];
-      const secondLast = parts.length > 1 ? parts[parts.length - 2] : "";
-
-      targetPort = commPorts.find(
-        (p) =>
-          p.code.toLowerCase() === lastPart ||
-          p.code.toLowerCase() === secondLast ||
-          portfolioId.endsWith(`-${p.code.toLowerCase()}`) ||
-          p.countryName.toLowerCase().replace(/[^a-z0-9]/g, "") === lastPart
-      );
-    }
-
+    const targetPort = findMatchingPortfolio(portfolioId, committeeId, portfolios);
     if (!targetPort) {
       return { success: false };
     }
@@ -1769,37 +1821,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       status: "tentative",
     };
 
-    // 1. Update portfolios in local state
-    setPortfolios((prev) =>
-      prev.map((p) => {
-        // Target portfolio assigned to regId
-        if (p.id === actualPortId) {
-          return { ...p, status: "taken", allottedRegistrationId: regId };
-        }
-        // If this delegate already held another portfolio, free it
-        if (p.allottedRegistrationId === regId) {
-          return { ...p, status: "open", allottedRegistrationId: undefined };
-        }
-        return p;
-      })
-    );
+    // 1. Calculate updated portfolios
+    const updatedPorts = portfolios.map((p) => {
+      // Target portfolio assigned to regId
+      if (p.id === actualPortId) {
+        return { ...p, status: "taken" as const, allottedRegistrationId: regId };
+      }
+      // If this delegate already held another portfolio, free it
+      if (p.allottedRegistrationId === regId) {
+        return { ...p, status: "open" as const, allottedRegistrationId: undefined };
+      }
+      return p;
+    });
 
-    // 2. Update registrations in local state
-    setRegistrations((prev) =>
-      prev.map((r) => {
-        // If previous holder had this portfolio, unallot them
-        if (previousRegId && r.id === previousRegId && previousRegId !== regId) {
-          const copy = { ...r };
-          delete copy.allotment;
-          return copy;
-        }
-        // Assign allotment to target delegate
-        if (r.id === regId) {
-          return { ...r, allotment };
-        }
-        return r;
-      })
-    );
+    // 2. Calculate updated registrations
+    const updatedRegs = registrations.map((r) => {
+      // If previous holder had this portfolio, unallot them
+      if (previousRegId && r.id === previousRegId && previousRegId !== regId) {
+        const copy = { ...r };
+        delete copy.allotment;
+        return copy;
+      }
+      // Assign allotment to target delegate
+      if (r.id === regId) {
+        return { ...r, allotment };
+      }
+      return r;
+    });
+
+    setPortfolios(updatedPorts);
+    setRegistrations(updatedRegs);
+    persistConferenceState(committees, updatedPorts, updatedRegs);
 
     // 3. Persist directly to Supabase
     if (isSupabaseConfigured && supabase) {
@@ -1835,24 +1887,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const unallotDelegate = async (regId: string) => {
-    setPortfolios((prev) =>
-      prev.map((p) =>
-        p.allottedRegistrationId === regId
-          ? { ...p, status: "open", allottedRegistrationId: undefined }
-          : p
-      )
+    const updatedPorts = portfolios.map((p) =>
+      p.allottedRegistrationId === regId
+        ? { ...p, status: "open" as const, allottedRegistrationId: undefined }
+        : p
     );
 
-    setRegistrations((prev) =>
-      prev.map((r) => {
-        if (r.id === regId) {
-          const copy = { ...r };
-          delete copy.allotment;
-          return copy;
-        }
-        return r;
-      })
-    );
+    const updatedRegs = registrations.map((r) => {
+      if (r.id === regId) {
+        const copy = { ...r };
+        delete copy.allotment;
+        return copy;
+      }
+      return r;
+    });
+
+    setPortfolios(updatedPorts);
+    setRegistrations(updatedRegs);
+    persistConferenceState(committees, updatedPorts, updatedRegs);
 
     if (isSupabaseConfigured && supabase) {
       await supabase
@@ -1900,6 +1952,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setRegistrations(updatedRegs);
     setPortfolios(updatedPorts);
+    persistConferenceState(committees, updatedPorts, updatedRegs);
 
     if (isSupabaseConfigured && supabase) {
       for (const allot of sim.proposedAllotments) {

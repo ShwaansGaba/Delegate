@@ -4,7 +4,16 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { Registration, MunPortfolio, MunCommittee } from "@/lib/types";
-import { ALL_COUNTRIES } from "@/lib/portfolioDatabase";
+import { ALL_COUNTRIES, findMatchingPortfolio, getPortfolioDisplayName } from "@/lib/portfolioDatabase";
+
+function sanitizeCSV(val: unknown): string {
+  if (val === null || val === undefined) return '""';
+  let str = String(val).replace(/"/g, '""');
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = "'" + str;
+  }
+  return `"${str}"`;
+}
 import {
   Search,
   Download,
@@ -111,11 +120,16 @@ export default function OrganizerAllotmentPage() {
     setTimeout(() => setToast(null), 4000);
   }, []);
 
+  // Resilient check if a registration has a valid active allotment
+  const isRegAllotted = useCallback(
+    (r: Registration) =>
+      Boolean(r.allotment && findMatchingPortfolio(r.allotment.portfolioId, r.allotment.committeeId, portfolios)),
+    [portfolios]
+  );
+
   // Summary Metrics
   const totalDelegates = registrations.length;
-  const allottedCount = registrations.filter(
-    (r) => r.allotment && portfolios.some((p) => p.id === r.allotment?.portfolioId)
-  ).length;
+  const allottedCount = registrations.filter(isRegAllotted).length;
   const unallottedCount = totalDelegates - allottedCount;
   const paidCount = registrations.filter((r) => r.paymentStatus === "verified").length;
   const totalPortfolios = portfolios.length;
@@ -123,10 +137,8 @@ export default function OrganizerAllotmentPage() {
 
   // Unallotted delegates list for Queue and Matrix assignment (including delegates whose allotted portfolio was deleted)
   const unallottedDelegates = useMemo(() => {
-    return registrations.filter(
-      (r) => !r.allotment || !portfolios.some((p) => p.id === r.allotment?.portfolioId)
-    );
-  }, [registrations, portfolios]);
+    return registrations.filter((r) => !isRegAllotted(r));
+  }, [registrations, isRegAllotted]);
 
   // Keep queue index within bounds
   useEffect(() => {
@@ -138,19 +150,19 @@ export default function OrganizerAllotmentPage() {
   // Set default focused delegate in Grid view
   useEffect(() => {
     if (!focusedDelegateId && registrations.length > 0) {
-      const firstUnallotted = registrations.find(
-        (r) => !r.allotment || !portfolios.some((p) => p.id === r.allotment?.portfolioId)
-      );
+      const firstUnallotted = registrations.find((r) => !isRegAllotted(r));
       setFocusedDelegateId(firstUnallotted ? firstUnallotted.id : registrations[0].id);
     }
-  }, [registrations, portfolios, focusedDelegateId]);
+  }, [registrations, isRegAllotted, focusedDelegateId]);
 
   // Helper: Portfolio availability map
   const portfolioAvailabilityMap = useMemo(() => {
     const map = new Map<string, { isTaken: boolean; delegateName?: string; regId?: string }>();
     for (const p of portfolios) {
       const assignedReg = registrations.find(
-        (r) => r.id === p.allottedRegistrationId || r.allotment?.portfolioId === p.id
+        (r) =>
+          r.id === p.allottedRegistrationId ||
+          (r.allotment && findMatchingPortfolio(r.allotment.portfolioId, r.allotment.committeeId, portfolios)?.id === p.id)
       );
       const isTaken = p.status === "taken" || Boolean(assignedReg);
       map.set(p.id, {
@@ -232,22 +244,26 @@ export default function OrganizerAllotmentPage() {
     ]);
 
     const res = await allotDelegateManual(regId, committeeId, portfolioId);
-    if (res.success) {
-      if (res.reassignedDelegateName) {
-        showToast(
-          `Reassigned ${targetPort?.countryName || "seat"} (${targetComm?.name || "Committee"}) to ${
-            targetReg?.delegateName || "delegate"
-          }. ${res.reassignedDelegateName} is now unallotted.`,
-          "warning"
-        );
-      } else {
-        showToast(
-          `Allotted ${targetPort?.countryName || "seat"} (${targetComm?.name || "Committee"}) to ${
-            targetReg?.delegateName || "delegate"
-          }!`,
-          "success"
-        );
-      }
+    if (!res.success) {
+      setHistoryStack((prev) => prev.slice(0, -1));
+      showToast("Could not allot seat. Portfolio may no longer be available.", "warning");
+      return;
+    }
+
+    if (res.reassignedDelegateName) {
+      showToast(
+        `Reassigned ${targetPort?.countryName || "seat"} (${targetComm?.name || "Committee"}) to ${
+          targetReg?.delegateName || "delegate"
+        }. ${res.reassignedDelegateName} is now unallotted.`,
+        "warning"
+      );
+    } else {
+      showToast(
+        `Allotted ${targetPort?.countryName || "seat"} (${targetComm?.name || "Committee"}) to ${
+          targetReg?.delegateName || "delegate"
+        }!`,
+        "success"
+      );
     }
   };
 
@@ -344,11 +360,13 @@ export default function OrganizerAllotmentPage() {
   // Filtered Delegates for Grid View
   const gridDelegates = useMemo(() => {
     return registrations.filter((reg) => {
+      const allottedPort = findMatchingPortfolio(reg.allotment?.portfolioId, reg.allotment?.committeeId, portfolios);
+      const allottedComm = committees.find((c) => c.id === reg.allotment?.committeeId);
+      const isAllotted = Boolean(reg.allotment && allottedPort);
+
       // Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const allottedPort = portfolios.find((p) => p.id === reg.allotment?.portfolioId);
-        const allottedComm = committees.find((c) => c.id === reg.allotment?.committeeId);
         const matches =
           reg.delegateName.toLowerCase().includes(q) ||
           reg.school.toLowerCase().includes(q) ||
@@ -360,10 +378,10 @@ export default function OrganizerAllotmentPage() {
 
       // Status Filter
       if (statusFilter === "unallotted") {
-        return !reg.allotment;
+        return !isAllotted;
       }
       if (statusFilter === "attention") {
-        return !reg.allotment && (areAllPreferencesTaken(reg) || reg.paymentStatus !== "verified");
+        return !isAllotted && (areAllPreferencesTaken(reg) || reg.paymentStatus !== "verified");
       }
       if (statusFilter === "unpaid") {
         return reg.paymentStatus !== "verified";
@@ -373,7 +391,7 @@ export default function OrganizerAllotmentPage() {
     });
   }, [registrations, portfolios, committees, searchQuery, statusFilter, areAllPreferencesTaken]);
 
-  // Export to Excel / CSV
+  // Export to Excel / CSV with Formula Injection Sanitization
   const handleExportExcel = () => {
     const headers = [
       "Row",
@@ -393,30 +411,30 @@ export default function OrganizerAllotmentPage() {
 
     const rows = registrations.map((r, idx) => {
       const comm = committees.find((c) => c.id === r.allotment?.committeeId);
-      const port = portfolios.find((p) => p.id === r.allotment?.portfolioId);
+      const port = findMatchingPortfolio(r.allotment?.portfolioId, r.allotment?.committeeId, portfolios);
 
       const pref1 = r.preferences?.[0];
       const pref2 = r.preferences?.[1];
       const pref3 = r.preferences?.[2];
 
       const getCommName = (cId?: string) => committees.find((c) => c.id === cId)?.name || cId || "";
-      const getPortNames = (pIds?: string[]) =>
-        (pIds || []).map((id) => portfolios.find((p) => p.id === id)?.countryName || id).join(" / ");
+      const getPortNames = (pIds?: string[], cId?: string) =>
+        (pIds || []).map((id) => getPortfolioDisplayName(id, cId, portfolios)).join(" / ");
 
       return [
         idx + 1,
-        `"${r.registrationNumber || ""}"`,
-        `"${(r.delegateName || "").replace(/"/g, '""')}"`,
-        `"${(r.school || "").replace(/"/g, '""')}"`,
+        sanitizeCSV(r.registrationNumber || ""),
+        sanitizeCSV(r.delegateName || ""),
+        sanitizeCSV(r.school || ""),
         r.paymentStatus === "verified" ? "Paid" : "Unpaid",
-        `"${(comm?.name || "Unallotted").replace(/"/g, '""')}"`,
-        `"${(port?.countryName || "Unallotted").replace(/"/g, '""')}"`,
-        `"${getCommName(pref1?.committeeId)}"`,
-        `"${getPortNames(pref1?.portfolioIds)}"`,
-        `"${getCommName(pref2?.committeeId)}"`,
-        `"${getPortNames(pref2?.portfolioIds)}"`,
-        `"${getCommName(pref3?.committeeId)}"`,
-        `"${getPortNames(pref3?.portfolioIds)}"`,
+        sanitizeCSV(comm?.name || (r.allotment ? "NIL" : "Unallotted")),
+        sanitizeCSV(port?.countryName || (r.allotment ? "NIL" : "Unallotted")),
+        sanitizeCSV(getCommName(pref1?.committeeId)),
+        sanitizeCSV(getPortNames(pref1?.portfolioIds, pref1?.committeeId)),
+        sanitizeCSV(getCommName(pref2?.committeeId)),
+        sanitizeCSV(getPortNames(pref2?.portfolioIds, pref2?.committeeId)),
+        sanitizeCSV(getCommName(pref3?.committeeId)),
+        sanitizeCSV(getPortNames(pref3?.portfolioIds, pref3?.committeeId)),
       ].join(",");
     });
 
@@ -702,7 +720,7 @@ export default function OrganizerAllotmentPage() {
                     gridDelegates.map((reg) => {
                       const isFocused = focusedDelegateId === reg.id;
                       const allottedPort = reg.allotment?.portfolioId
-                        ? portfolios.find((p) => p.id === reg.allotment?.portfolioId)
+                        ? findMatchingPortfolio(reg.allotment.portfolioId, reg.allotment.committeeId, portfolios)
                         : undefined;
                       const isAllotted = Boolean(reg.allotment && allottedPort);
                       const isPaid = reg.paymentStatus === "verified";
@@ -944,7 +962,7 @@ export default function OrganizerAllotmentPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           {(pref.portfolioIds || []).map((pId) => {
                             const port = findMatchingPortfolio(pId, pref.committeeId, portfolios);
-                            const name = getPortfolioCountryName(pId, pref.committeeId, portfolios);
+                            const name = getPortfolioDisplayName(pId, pref.committeeId, portfolios);
                             const actualPId = port ? port.id : pId;
                             const isAvailable = port ? isPortfolioAvailable(port.id, pref.committeeId) : false;
                             const isFirstAvail = currentQueueFirstAvailable?.portfolioId === actualPId;
@@ -1490,81 +1508,6 @@ export default function OrganizerAllotmentPage() {
 }
 
 // =========================================================================
-// HELPERS: Portfolio Matcher & Country Name Resolver
-// =========================================================================
-function findMatchingPortfolio(
-  pId: string,
-  committeeId: string | undefined,
-  portfolios: MunPortfolio[]
-): MunPortfolio | undefined {
-  if (!pId) return undefined;
-
-  // 1. Exact ID match (fastest and cleanest)
-  const exact = portfolios.find((p) => p.id === pId);
-  if (exact) return exact;
-
-  // 2. Search in matching committee
-  const commPorts = committeeId
-    ? portfolios.filter((p) => p.committeeId === committeeId)
-    : portfolios;
-
-  const parts = pId.toLowerCase().split("-");
-  const lastPart = parts[parts.length - 1];
-  const secondLast = parts.length > 1 ? parts[parts.length - 2] : "";
-
-  // 2a. Match by country code (e.g. port.code === "BR" when pId ends with -br)
-  const byCode = commPorts.find(
-    (p) =>
-      p.code.toLowerCase() === lastPart ||
-      p.code.toLowerCase() === secondLast ||
-      pId.endsWith(`-${p.code.toLowerCase()}`)
-  );
-  if (byCode) return byCode;
-
-  // 2b. Match by country name slug (e.g. "brazil")
-  const byName = commPorts.find((p) => {
-    const slug = p.countryName.toLowerCase().replace(/[^a-z0-9]/g, "");
-    return (
-      slug === lastPart ||
-      slug === secondLast ||
-      pId.includes(`-${slug}`) ||
-      pId.includes(slug)
-    );
-  });
-  if (byName) return byName;
-
-  return undefined;
-}
-
-function getPortfolioCountryName(
-  pId: string,
-  committeeId: string | undefined,
-  portfolios: MunPortfolio[]
-): string {
-  const match = findMatchingPortfolio(pId, committeeId, portfolios);
-  if (match) return match.countryName;
-
-  const parts = pId.toLowerCase().split("-");
-  const lastPart = parts[parts.length - 1];
-  const secondLast = parts.length > 1 ? parts[parts.length - 2] : "";
-
-  const country = ALL_COUNTRIES.find(
-    (c) =>
-      c.code.toLowerCase() === lastPart ||
-      c.code.toLowerCase() === secondLast ||
-      c.name.toLowerCase().replace(/[^a-z0-9]/g, "") === lastPart ||
-      c.name.toLowerCase().replace(/[^a-z0-9]/g, "") === secondLast
-  );
-  if (country) return country.name;
-
-  if (lastPart && lastPart.length <= 15) {
-    return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
-  }
-
-  return "NIL";
-}
-
-// =========================================================================
 // HELPER: Preference Cell Renderer in Grid View
 // =========================================================================
 function renderPreferenceCell(
@@ -1585,7 +1528,7 @@ function renderPreferenceCell(
   const isDelegateAllotted = Boolean(
     reg.allotment &&
     reg.allotment.portfolioId &&
-    portfolios.some((p) => p.id === reg.allotment?.portfolioId)
+    findMatchingPortfolio(reg.allotment.portfolioId, reg.allotment.committeeId, portfolios)
   );
 
   return (
@@ -1596,7 +1539,7 @@ function renderPreferenceCell(
       <div className="flex flex-wrap items-center gap-1.5">
         {(pref.portfolioIds || []).map((pId) => {
           const port = findMatchingPortfolio(pId, pref.committeeId, portfolios);
-          const name = getPortfolioCountryName(pId, pref.committeeId, portfolios);
+          const name = getPortfolioDisplayName(pId, pref.committeeId, portfolios);
           const actualPId = port ? port.id : pId;
           const isAvail = port ? isPortfolioAvailable(port.id, pref.committeeId) : false;
           const isFirstAvail = !isDelegateAllotted && firstAvailablePId === actualPId;

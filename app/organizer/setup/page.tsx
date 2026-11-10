@@ -245,12 +245,22 @@ export default function OrganizerSetupPage() {
       setValidationError("Please provide both Start Date and End Date.");
       return;
     }
+
+    const todayISO = new Date().toISOString().split("T")[0];
+    if (dateFrom < todayISO) {
+      setValidationError("Conference Start Date must be today or in the future.");
+      return;
+    }
     if (dateTo < dateFrom) {
       setValidationError("Conference End date cannot be before Start date.");
       return;
     }
     if (!deadlineDate) {
       setValidationError("Please set a registration deadline date.");
+      return;
+    }
+    if (deadlineDate < todayISO) {
+      setValidationError("Registration deadline must be today or in the future.");
       return;
     }
     if (deadlineDate > dateFrom) {
@@ -263,6 +273,17 @@ export default function OrganizerSetupPage() {
     }
     if (!city.trim()) {
       setValidationError("Please enter the city where the conference is hosted (e.g. Delhi, Mumbai).");
+      return;
+    }
+
+    const parsedFee = Number(fee);
+    if (isNaN(parsedFee) || parsedFee < 0) {
+      setValidationError("Individual delegate fee cannot be negative.");
+      return;
+    }
+    const parsedSchoolFee = Number(schoolFee);
+    if (isNaN(parsedSchoolFee) || parsedSchoolFee < 0) {
+      setValidationError("School team fee cannot be negative.");
       return;
     }
 
@@ -676,6 +697,7 @@ export default function OrganizerSetupPage() {
                 <input
                   type="date"
                   value={dateFrom}
+                  min={new Date().toISOString().split("T")[0]}
                   onChange={(e) => setDateFrom(e.target.value)}
                   className="w-full bg-neutral-100 rounded-xl px-3.5 py-2.5 sm:py-3 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]"
                 />
@@ -687,6 +709,7 @@ export default function OrganizerSetupPage() {
                 <input
                   type="date"
                   value={dateTo}
+                  min={dateFrom || new Date().toISOString().split("T")[0]}
                   onChange={(e) => setDateTo(e.target.value)}
                   className="w-full bg-neutral-100 rounded-xl px-3.5 py-2.5 sm:py-3 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]"
                 />
@@ -705,6 +728,8 @@ export default function OrganizerSetupPage() {
               <input
                 type="date"
                 value={deadlineDate}
+                min={new Date().toISOString().split("T")[0]}
+                max={dateFrom || undefined}
                 onChange={(e) => setDeadlineDate(e.target.value)}
                 className="w-full bg-neutral-100 rounded-xl px-3.5 py-2.5 sm:py-3 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]"
               />
@@ -722,6 +747,7 @@ export default function OrganizerSetupPage() {
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={fee}
                   onChange={(e) => setFee(e.target.value)}
                   className="w-full bg-neutral-100 rounded-xl px-3.5 py-2.5 sm:py-3 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]"
@@ -733,6 +759,7 @@ export default function OrganizerSetupPage() {
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={schoolFee}
                   onChange={(e) => setSchoolFee(e.target.value)}
                   className="w-full bg-neutral-100 rounded-xl px-3.5 py-2.5 sm:py-3 text-sm sm:text-base font-semibold outline-none focus:ring-2 focus:ring-[#1560BD]"

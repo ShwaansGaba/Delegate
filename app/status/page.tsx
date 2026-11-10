@@ -8,6 +8,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Button } from "@/components/ui/Button";
 import { PlacardCard } from "@/components/mun/PlacardCard";
 import { Registration } from "@/lib/types";
+import { findMatchingPortfolio } from "@/lib/portfolioDatabase";
 
 export default function StatusPage() {
   const router = useRouter();
@@ -173,23 +174,21 @@ export default function StatusPage() {
     );
   }
 
-  // If delegate has been allotted a portfolio, display their allotment placard immediately!
-  const isAllotted = Boolean(currentReg.allotment);
+  // If delegate has been allotted a portfolio, reconcile with active portfolios
+  const comm = committees.find((c) => c.id === currentReg.allotment?.committeeId);
+  const port = findMatchingPortfolio(
+    currentReg.allotment?.portfolioId,
+    currentReg.allotment?.committeeId,
+    portfolios
+  );
+  // Valid active allotment requires a real matching portfolio in the committee
+  const isAllotted = Boolean(currentReg.allotment && port);
   const areAllotmentsPublished = Boolean(event.rules?.allotmentsPublished);
   const isPaymentPending = currentReg.paymentStatus !== "verified";
 
   // State 2: Published Allotment Placard
-  if (isAllotted) {
-    const comm = committees.find((c) => c.id === currentReg.allotment?.committeeId);
-    let port = portfolios.find((p) => p.id === currentReg.allotment?.portfolioId);
-
-    // Fallback display if portfolios are reconciling
-    let countryDisplay = port?.countryName;
-    if (!countryDisplay && currentReg.allotment?.portfolioId) {
-      const parts = currentReg.allotment.portfolioId.split("-");
-      const lastPart = parts[parts.length - 1];
-      countryDisplay = lastPart ? lastPart.toUpperCase() : "Allotted Portfolio";
-    }
+  if (isAllotted && port) {
+    const countryDisplay = port.countryName || "Allotted Portfolio";
 
     return (
       <main

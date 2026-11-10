@@ -42,6 +42,8 @@ export default function SchoolTeamRegistrationPage() {
   const [headDelegateName, setHeadDelegateName] = useState("Aarav Mehta");
   const [teamSize, setTeamSize] = useState(5);
   const [step, setStep] = useState<"delegates" | "review">("delegates");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [members, setMembers] = useState<TeamMember[]>([
     { name: "Aarav Mehta", hasChoices: true, choicesSummary: "3 choices set" },
@@ -89,6 +91,8 @@ export default function SchoolTeamRegistrationPage() {
   };
 
   const handleConfirmTeam = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     // Register head delegate and all delegates
     // Use real committees and portfolios from active event when available
     const dynamicPreferences: CommitteePreference[] =
@@ -266,8 +270,29 @@ export default function SchoolTeamRegistrationPage() {
               </div>
             </div>
 
+            {errorMsg && (
+              <div className="p-3 bg-rose-500/90 text-white rounded-xl text-xs font-bold animate-shake">
+                {errorMsg}
+              </div>
+            )}
+
             <div className="pt-4 pb-4 sm:pt-6 sm:pb-2 mt-auto">
-              <Button onClick={() => setStep("review")}>Review team</Button>
+              <Button
+                onClick={() => {
+                  setErrorMsg("");
+                  if (!schoolName.trim() || schoolName.trim().length < 2) {
+                    setErrorMsg("Please enter a valid school/delegation name (at least 2 characters).");
+                    return;
+                  }
+                  if (!headDelegateName.trim() || headDelegateName.trim().length < 2) {
+                    setErrorMsg("Please enter a valid head delegate name (at least 2 characters).");
+                    return;
+                  }
+                  setStep("review");
+                }}
+              >
+                Review team
+              </Button>
             </div>
           </div>
         ) : (

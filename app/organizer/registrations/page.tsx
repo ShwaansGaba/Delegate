@@ -5,6 +5,16 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
 import { Button } from "@/components/ui/Button";
 import { formatDateDDMMYYYY } from "@/lib/dateUtils";
+import { getPortfolioDisplayName } from "@/lib/portfolioDatabase";
+
+function sanitizeCSV(val: unknown): string {
+  if (val === null || val === undefined) return '""';
+  let str = String(val).replace(/"/g, '""');
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = "'" + str;
+  }
+  return `"${str}"`;
+}
 
 export default function RegistrationsPage() {
   const router = useRouter();
@@ -109,23 +119,24 @@ export default function RegistrationsPage() {
       const c2 = committees.find((c) => c.id === r.preferences[1]?.committeeId)?.name || "";
       const c3 = committees.find((c) => c.id === r.preferences[2]?.committeeId)?.name || "";
       const allotComm = committees.find((c) => c.id === r.allotment?.committeeId)?.name || "";
-      const allotPort = portfolios.find((p) => p.id === r.allotment?.portfolioId)?.countryName || "";
+      const allotPort = getPortfolioDisplayName(r.allotment?.portfolioId, r.allotment?.committeeId, portfolios);
+      const cleanAllotPort = allotPort === "NIL" ? (r.allotment ? "NIL" : "Unallotted") : allotPort;
 
       return [
-        `"${r.registrationNumber}"`,
-        `"${r.delegateName}"`,
-        `"${r.email}"`,
-        `"${r.phone}"`,
-        `"${r.school}"`,
-        `"${r.classYear}"`,
-        `"${r.registrationType}"`,
-        `"${r.paymentStatus}"`,
-        r.feeAmount,
-        `"${c1}"`,
-        `"${c2}"`,
-        `"${c3}"`,
-        `"${allotComm}"`,
-        `"${allotPort}"`,
+        sanitizeCSV(r.registrationNumber || ""),
+        sanitizeCSV(r.delegateName || ""),
+        sanitizeCSV(r.email || ""),
+        sanitizeCSV(r.phone || ""),
+        sanitizeCSV(r.school || ""),
+        sanitizeCSV(r.classYear || ""),
+        sanitizeCSV(r.registrationType || ""),
+        sanitizeCSV(r.paymentStatus || ""),
+        r.feeAmount ?? 0,
+        sanitizeCSV(c1),
+        sanitizeCSV(c2),
+        sanitizeCSV(c3),
+        sanitizeCSV(allotComm || (r.allotment ? "NIL" : "Unallotted")),
+        sanitizeCSV(cleanAllotPort),
       ].join(",");
     });
 
