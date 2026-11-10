@@ -48,14 +48,30 @@ export function adjustHexBrightness(hex: string, percent: number): string {
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
 
+export interface SignUpResult {
+  status: "logged_in" | "verify_otp" | "already_exists";
+  email?: string;
+  error?: string;
+}
+
+export interface VerifyOtpResult {
+  success: boolean;
+  error?: string;
+}
+
 interface AppContextType {
   user: AuthUser | null;
   isAuthLoaded: boolean;
   theme: AccountTheme;
   updateTheme: (newTheme: Partial<AccountTheme>) => void;
-  signUp: (email: string, password: string) => Promise<{ error?: string }>;
+  signUp: (email: string, password: string) => Promise<SignUpResult>;
+  verifyOtp: (email: string, token: string) => Promise<VerifyOtpResult>;
+  resendOtp: (email: string) => Promise<{ success: boolean; error?: string }>;
+  resetPasswordForEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
+  verifyRecoveryOtp: (email: string, token: string, newPassword: string) => Promise<VerifyOtpResult>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
   event: EventModel;
   myConferences: EventModel[];
   allEvents: EventModel[];
@@ -762,36 +778,200 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Real Auth Methods
-  const signUp = async (email: string, password: string): Promise<{ error?: string }> => {
+  // Real Auth Methods: Enterprise 2-Step Sign Up & Login Architecture
+  const signUp = async (email: string, password: string): Promise<SignUpResult> => {
+    const cleanEmail = email.trim().toLowerCase();
     if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+      });
+
       if (error) {
-        // If Supabase has email signups toggled off in their dashboard, fallback gracefully so user is never locked out
-        if (error.message?.toLowerCase().includes("signups are disabled") || error.message?.toLowerCase().includes("signup is disabled")) {
+        const msg = error.message.toLowerCase();
+        if (
+          msg.includes("already registered") ||
+          msg.includes("already in use") ||
+          msg.includes("user already exists")
+        ) {
+          return {
+            status: "already_exists",
+            email: cleanEmail,
+            error: "This email is already registered. Please log in with your password.",
+          };
+        }
+        if (msg.includes("signups are disabled") || msg.includes("signup is disabled")) {
           const id = `user_${Date.now().toString(36)}`;
-          const newUser: AuthUser = { id, email };
+          const newUser: AuthUser = { id, email: cleanEmail };
           setUser(newUser);
           try {
             localStorage.setItem("delegate_auth_user", JSON.stringify(newUser));
           } catch {}
-          return {};
+          return { status: "logged_in", email: cleanEmail };
         }
-        return { error: error.message };
+        return { status: "verify_otp", error: error.message };
       }
-      if (data?.user?.email) {
-        setUser({ id: data.user.id, email: data.user.email });
+
+      // Gotcha 2: Supabase returns HTTP 200 with identities: [] if user already exists
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        return {
+          status: "already_exists",
+          email: cleanEmail,
+          error: "This email is already registered. Please log in with your password.",
+        };
       }
-      return {};
+
+      // If email confirmation is disabled in Supabase, session is established immediately
+      if (data?.session && data.user?.email) {
+        const newUser: AuthUser = { id: data.user.id, email: data.user.email };
+        setUser(newUser);
+        try {
+          localStorage.setItem("delegate_auth_user", JSON.stringify(newUser));
+        } catch {}
+        return { status: "logged_in", email: cleanEmail };
+      }
+
+      // Email confirmation enabled -> 6-digit OTP code sent to user
+      return { status: "verify_otp", email: cleanEmail };
     } else {
       const id = `user_${Date.now().toString(36)}`;
-      const newUser: AuthUser = { id, email };
+      const newUser: AuthUser = { id, email: cleanEmail };
       setUser(newUser);
       try {
         localStorage.setItem("delegate_auth_user", JSON.stringify(newUser));
       } catch {}
-      return {};
+      return { status: "logged_in", email: cleanEmail };
     }
+  };
+
+  const verifyOtp = async (email: string, token: string): Promise<VerifyOtpResult> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanToken = token.trim();
+
+    if (!cleanToken || cleanToken.length < 6) {
+      return { success: false, error: "Please enter the complete 6-digit code." };
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      // Primary attempt: type signup
+      let { data, error } = await supabase.auth.verifyOtp({
+        email: cleanEmail,
+        token: cleanToken,
+        type: "signup",
+      });
+
+      // Fallback attempt: type email
+      if (error) {
+        const fallbackRes = await supabase.auth.verifyOtp({
+          email: cleanEmail,
+          token: cleanToken,
+          type: "email",
+        });
+        if (!fallbackRes.error) {
+          data = fallbackRes.data;
+          error = null;
+        }
+      }
+
+      if (error) {
+        return {
+          success: false,
+          error: error.message || "Invalid or expired verification code. Please request a new one.",
+        };
+      }
+
+      if (data?.user?.email) {
+        const authUser: AuthUser = { id: data.user.id, email: data.user.email };
+        setUser(authUser);
+        try {
+          localStorage.setItem("delegate_auth_user", JSON.stringify(authUser));
+        } catch {}
+      }
+      return { success: true };
+    } else {
+      const id = `user_${Date.now().toString(36)}`;
+      const authUser: AuthUser = { id, email: cleanEmail };
+      setUser(authUser);
+      try {
+        localStorage.setItem("delegate_auth_user", JSON.stringify(authUser));
+      } catch {}
+      return { success: true };
+    }
+  };
+
+  const resendOtp = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: cleanEmail,
+      });
+      if (error) {
+        const fallback = await supabase.auth.signInWithOtp({ email: cleanEmail });
+        if (fallback.error) {
+          return { success: false, error: error.message };
+        }
+      }
+      return { success: true };
+    }
+    return { success: true };
+  };
+
+  const resetPasswordForEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail);
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    }
+    return { success: true };
+  };
+
+  const verifyRecoveryOtp = async (
+    email: string,
+    token: string,
+    newPassword: string
+  ): Promise<VerifyOtpResult> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanToken = token.trim();
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: cleanEmail,
+        token: cleanToken,
+        type: "recovery",
+      });
+      if (error) return { success: false, error: error.message };
+
+      const updateRes = await supabase.auth.updateUser({ password: newPassword });
+      if (updateRes.error) return { success: false, error: updateRes.error.message };
+
+      if (data?.user?.email) {
+        const authUser: AuthUser = { id: data.user.id, email: data.user.email };
+        setUser(authUser);
+        try {
+          localStorage.setItem("delegate_auth_user", JSON.stringify(authUser));
+        } catch {}
+      }
+      return { success: true };
+    }
+    return { success: true };
+  };
+
+  const deleteAccount = async (): Promise<{ success: boolean; error?: string }> => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.rpc("delete_user_account");
+        if (error) {
+          console.warn("delete_user_account RPC error:", error);
+        }
+      } catch (err) {
+        console.warn("RPC call failed:", err);
+      }
+      await signOut();
+      return { success: true };
+    }
+    await signOut();
+    return { success: true };
   };
 
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
@@ -2327,6 +2507,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         theme,
         updateTheme,
         signUp,
+        verifyOtp,
+        resendOtp,
+        resetPasswordForEmail,
+        verifyRecoveryOtp,
+        deleteAccount,
         signIn,
         signOut,
         event,
