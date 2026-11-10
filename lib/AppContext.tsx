@@ -238,20 +238,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem("delegate_auth_user", JSON.stringify(u));
           } catch {}
         } else {
+          setUser(null);
           try {
-            const stored = localStorage.getItem("delegate_auth_user");
-            if (stored) {
-              setUser(JSON.parse(stored));
-            } else {
-              setUser(null);
-            }
-          } catch {
-            setUser(null);
-          }
+            localStorage.removeItem("delegate_auth_user");
+          } catch {}
         }
         setIsAuthLoaded(true);
       }).catch(() => {
         setUser(null);
+        try {
+          localStorage.removeItem("delegate_auth_user");
+        } catch {}
         setIsAuthLoaded(true);
       });
 
@@ -262,7 +259,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           try {
             localStorage.setItem("delegate_auth_user", JSON.stringify(u));
           } catch {}
-        } else if (_event === "SIGNED_OUT") {
+        } else {
           setUser(null);
           try {
             localStorage.removeItem("delegate_auth_user");
@@ -272,17 +269,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       return () => subscription.unsubscribe();
     } else {
-      // Local auth check without any dummy user fallback
-      try {
-        const stored = localStorage.getItem("delegate_auth_user");
-        if (stored) {
-          setUser(JSON.parse(stored));
-        } else {
-          setUser(null);
-        }
-      } catch {
-        setUser(null);
-      }
+      setUser(null);
       setIsAuthLoaded(true);
     }
   }, []);
@@ -483,26 +470,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {}
 
-    // Fallback: search any other conferences stored locally on this browser
-    if (cleanConfs.length === 0 && typeof window !== "undefined") {
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && (k.startsWith("delegate_storage_") || k.startsWith("delegate_public_conf_"))) {
-            const raw = localStorage.getItem(k);
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              const list: EventModel[] = parsed.myConferences || (parsed.name ? [parsed] : []);
-              list.forEach((c) => {
-                if (c.name && c.name.trim().length > 0 && !cleanConfs.some((ex) => ex.id === c.id)) {
-                  cleanConfs.push(c);
-                }
-              });
-            }
-          }
-        }
-      } catch {}
-    }
+    // STRICT ISOLATION: Never import conferences from other users or arbitrary local keys!
 
     if (cleanConfs.length > 0) {
       setMyConferences(cleanConfs);
@@ -800,15 +768,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             error: "This email is already registered. Please log in with your password.",
           };
         }
-        if (msg.includes("signups are disabled") || msg.includes("signup is disabled")) {
-          const id = `user_${Date.now().toString(36)}`;
-          const newUser: AuthUser = { id, email: cleanEmail };
-          setUser(newUser);
-          try {
-            localStorage.setItem("delegate_auth_user", JSON.stringify(newUser));
-          } catch {}
-          return { status: "logged_in", email: cleanEmail };
-        }
         return { status: "verify_otp", error: error.message };
       }
 
@@ -834,13 +793,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Email confirmation enabled -> 6-digit OTP code sent to user
       return { status: "verify_otp", email: cleanEmail };
     } else {
-      const id = `user_${Date.now().toString(36)}`;
-      const newUser: AuthUser = { id, email: cleanEmail };
-      setUser(newUser);
-      try {
-        localStorage.setItem("delegate_auth_user", JSON.stringify(newUser));
-      } catch {}
-      return { status: "logged_in", email: cleanEmail };
+      return { status: "verify_otp", error: "Authentication service unavailable. Please check your network connection." };
     }
   };
 
@@ -958,7 +911,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteAccount = async (): Promise<{ success: boolean; error?: string }> => {
-    if (isSupabaseConfigured && supabase) {
+    const currentUserId = user?.id;
+    if (isSupabaseConfigured && supabase && currentUserId) {
+      try {
+        await supabase.from("events").delete().eq("owner_id", currentUserId);
+      } catch (e) {
+        console.warn("Error deleting events before account removal:", e);
+      }
+
       try {
         const { error } = await supabase.rpc("delete_user_account");
         if (error) {
@@ -967,43 +927,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.warn("RPC call failed:", err);
       }
-      await signOut();
-      return { success: true };
+    }
+    if (currentUserId && typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(`delegate_storage_${currentUserId}`);
+      } catch {}
     }
     await signOut();
     return { success: true };
   };
 
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
+      return { error: "Please enter both email and password." };
+    }
+
     if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      });
+
       if (error) {
-        // Check if there is an active local/fallback session for this email
-        try {
-          const stored = localStorage.getItem("delegate_auth_user");
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed.email?.toLowerCase() === email.toLowerCase()) {
-              setUser(parsed);
-              return {};
-            }
-          }
-        } catch {}
         return { error: error.message };
       }
+
       if (data?.user?.email) {
-        setUser({ id: data.user.id, email: data.user.email });
+        const u = { id: data.user.id, email: data.user.email };
+        setUser(u);
+        try {
+          localStorage.setItem("delegate_auth_user", JSON.stringify(u));
+        } catch {}
       }
       return {};
-    } else {
-      const id = `user_${Date.now().toString(36)}`;
-      const newUser: AuthUser = { id, email };
-      setUser(newUser);
-      try {
-        localStorage.setItem("delegate_auth_user", JSON.stringify(newUser));
-      } catch {}
-      return {};
     }
+
+    return { error: "Authentication service unavailable. Please check your network connection." };
   };
 
   const signOut = async () => {
