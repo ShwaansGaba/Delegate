@@ -69,7 +69,8 @@ const CARD_STYLES = [
 
 export default function OrganizerAccountPage() {
   const router = useRouter();
-  const { user, isAuthLoaded, signOut, theme, updateTheme, event, myConferences, updateEventBasics, clearDatabase } = useApp();
+  const { user, isAuthLoaded, signOut, theme, updateTheme, event, myConferences, updateEventBasics, clearDatabase, deleteAccount } = useApp();
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   // Guard against unauthenticated render
   if (!isAuthLoaded || !user) {
@@ -832,6 +833,43 @@ export default function OrganizerAccountPage() {
           </button>
         </div>
       </form>
+
+      {/* Danger Zone: Delete Account */}
+      <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 shadow-xl border border-rose-300 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-heading font-extrabold text-rose-700">
+              Permanently Delete Account
+            </h3>
+            <p className="text-neutral-600 text-xs sm:text-sm font-medium mt-1">
+              Completely wipes your credentials from Supabase Auth and purges local storage. Your email will be freed immediately, allowing you to re-register at any time and receive a fresh 6-digit OTP code without error.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={isDeletingAccount}
+            onClick={async () => {
+              const confirmed = confirm(
+                "Are you sure you want to permanently delete your Delegato account? This will erase your login credentials from the cloud and cannot be undone."
+              );
+              if (confirmed) {
+                setIsDeletingAccount(true);
+                const res = await deleteAccount();
+                if (res.success) {
+                  alert("Your account has been permanently deleted.");
+                  router.push("/");
+                } else {
+                  alert(res.error || "Failed to delete account. Please try again.");
+                  setIsDeletingAccount(false);
+                }
+              }
+            }}
+            className="px-6 py-3 rounded-xl bg-rose-700 hover:bg-rose-800 disabled:opacity-50 text-white font-heading font-extrabold text-sm transition-colors cursor-pointer shrink-0"
+          >
+            {isDeletingAccount ? "Deleting account..." : "Delete Account"}
+          </button>
+        </div>
+      </div>
 
       {/* Danger Zone: Wipe Database & Reset */}
       <div className="bg-white text-[#0B1B33] rounded-3xl p-6 sm:p-8 shadow-xl border border-red-200 space-y-4">

@@ -92,7 +92,7 @@ export function AuthScreen({ onSuccess, onClose, initialMode = "login" }: AuthSc
         } else if (res.status === "verify_otp") {
           setMode("verify_otp");
           setOtpDigits(["", "", "", "", "", ""]);
-          setCooldown(60);
+          setCooldown(30);
           setSuccessMsg(`We sent a 6-digit verification code to ${cleanEmail}`);
         } else if (res.error) {
           setErrorMsg(res.error);
@@ -206,7 +206,7 @@ export function AuthScreen({ onSuccess, onClose, initialMode = "login" }: AuthSc
       } else {
         await resendOtp(email);
       }
-      setCooldown(60);
+      setCooldown(30);
       setSuccessMsg("A fresh 6-digit code has been sent to your email.");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to resend code";
@@ -232,7 +232,7 @@ export function AuthScreen({ onSuccess, onClose, initialMode = "login" }: AuthSc
       if (res.success) {
         setMode("recovery_otp");
         setOtpDigits(["", "", "", "", "", ""]);
-        setCooldown(60);
+        setCooldown(30);
         setSuccessMsg(`We sent a 6-digit recovery code to ${cleanEmail}`);
       } else {
         setErrorMsg(res.error || "Could not send reset code. Please verify your email.");
