@@ -9,11 +9,8 @@ export const metadata: Metadata = {
   },
   description: "Registration, payments, and allotment without spreadsheets. Free to start.",
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "32x32" },
-      { url: "/favicon.png", type: "image/png" },
-    ],
-    apple: "/branding/delegato-icon-tight.jpg",
+    icon: "/branding/delegato-icon.jpg",
+    apple: "/branding/delegato-icon.jpg",
   },
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/AppContext";
@@ -9,13 +9,12 @@ import { getAssetUrl } from "@/lib/registrationLinks";
 export default function LandingPage() {
   const router = useRouter();
   const { user } = useApp();
-  const [activeTab, setActiveTab] = useState<"grid" | "matrix" | "queue">("grid");
 
   useEffect(() => {
     document.title = "Delegato: run your MUN in one link";
   }, []);
 
-  const handleStart = () => {
+  const handleCreateConferenceClick = () => {
     if (user) {
       router.push("/organizer/conferences");
     } else {
@@ -24,44 +23,39 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1560BD] text-white font-body flex flex-col">
-      {/* HEADER / NAVIGATION */}
+    <div className="min-h-screen bg-[#1560BD] text-white flex flex-col">
+      {/* ========================================================
+          HEADER
+      ======================================================== */}
       <header className="w-full bg-[#1560BD] border-b border-white/20">
-        <div className="max-w-[1240px] mx-auto px-6 sm:px-10 h-20 flex items-center justify-between gap-6">
-          <Link href="/" className="flex items-center shrink-0">
+        <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between gap-4">
+          <Link href="/" className="inline-block shrink-0" aria-label="Delegato">
             <img
               src={getAssetUrl("/branding/delegato-logo-transparent.png")}
               alt="Delegato"
-              className="h-9 sm:h-11 w-auto object-contain"
+              className="h-10 sm:h-12 w-auto object-contain"
             />
           </Link>
 
-          <nav className="flex items-center gap-5 sm:gap-8 text-base font-medium">
+          <nav className="flex items-center gap-6 sm:gap-8 text-base font-bold">
             <Link
               href="/conferences"
               className="text-white hover:underline hidden sm:inline"
             >
-              Browse conferences
-            </Link>
-
-            <Link
-              href="/status"
-              className="text-white hover:underline hidden md:inline"
-            >
-              Check status
+              Browse events
             </Link>
 
             {user ? (
               <Link
                 href="/organizer/conferences"
-                className="text-white font-bold hover:underline"
+                className="text-white hover:underline"
               >
                 My conferences
               </Link>
             ) : (
               <Link
                 href="/login"
-                className="text-white font-bold hover:underline"
+                className="text-white hover:underline"
               >
                 Log in
               </Link>
@@ -69,270 +63,108 @@ export default function LandingPage() {
 
             <button
               type="button"
-              onClick={handleStart}
-              className="bg-[#FFD23F] text-[#0B1B33] font-heading font-extrabold text-base px-5 py-2.5 rounded-lg border-2 border-[#FFD23F] hover:bg-[#ffe066] transition-colors cursor-pointer"
+              onClick={handleCreateConferenceClick}
+              className="bg-[#FFD23F] hover:bg-yellow-400 text-[#0B1B33] font-bold text-base px-5 py-2.5 rounded-lg cursor-pointer"
             >
-              Host a MUN
+              Create your conference
             </button>
           </nav>
         </div>
       </header>
 
-      {/* 1. HERO SECTION */}
-      <section className="bg-[#1560BD] text-white pt-14 sm:pt-20 pb-16 sm:pb-24 border-b border-white/20">
-        <div className="max-w-[1240px] mx-auto px-6 sm:px-10">
-          <div className="max-w-4xl text-left">
-            <h1 className="font-heading font-extrabold text-5xl sm:text-7xl lg:text-[84px] leading-[1.02] tracking-tight text-white">
+      {/* ========================================================
+          SECTION 1: BLUE HERO
+      ======================================================== */}
+      <section className="bg-[#1560BD] text-white pt-16 sm:pt-24 pb-20 sm:pb-28">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="max-w-3xl">
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-white leading-tight">
               Run your MUN in one link.
             </h1>
 
-            <p className="text-xl sm:text-2xl text-blue-100 font-normal leading-relaxed mt-6 max-w-2xl">
+            <p className="text-xl sm:text-2xl text-blue-100 font-semibold mt-6 leading-relaxed">
               Registration, payments, and allotment without spreadsheets. Free to start.
             </p>
 
-            <p className="text-base sm:text-lg text-blue-200 mt-4 max-w-2xl leading-relaxed">
-              Replace late night manual data entry with one clean link for your entire conference. Delegates sign up, choose their committees, and submit their payments in minutes.
+            <p className="text-base sm:text-lg text-blue-100 mt-6 leading-relaxed">
+              Anyone who has organized a conference knows the headache. Google Forms with missing phone numbers. Delegates sending cropped payment screenshots on WhatsApp at midnight. Three people claiming the same portfolio in UNSC. Delegato gives your secretariat one clean system for delegate intake.
             </p>
 
-            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+            <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
               <button
                 type="button"
-                onClick={handleStart}
-                className="bg-[#FFD23F] text-[#0B1B33] font-heading font-extrabold text-lg px-8 py-4 rounded-lg border-2 border-[#FFD23F] hover:bg-[#ffe066] transition-colors cursor-pointer text-center"
+                onClick={handleCreateConferenceClick}
+                className="bg-[#FFD23F] hover:bg-yellow-400 text-[#0B1B33] font-bold text-lg px-7 py-4 rounded-lg cursor-pointer text-center"
               >
                 Create your conference
               </button>
 
               <Link
                 href="/status"
-                className="text-white font-medium text-base hover:underline py-2"
+                className="bg-transparent border border-white text-white hover:bg-white hover:text-[#1560BD] font-bold text-lg px-7 py-4 rounded-lg text-center"
               >
-                Already registered? Check status
+                Check registration status
               </Link>
             </div>
 
-            <div className="mt-6 text-base text-blue-200">
-              Free to start. Ready in five minutes. No credit card required.
-            </div>
-          </div>
-
-          {/* REAL PRODUCT SHOWCASE: ACTUAL HIGH RESOLUTION SCREENSHOTS */}
-          <div className="mt-14 sm:mt-16 text-left">
-            {/* View Switcher Tabs */}
-            <div className="flex flex-wrap items-center gap-3 mb-4">
-              <button
-                type="button"
-                onClick={() => setActiveTab("grid")}
-                className={`px-4 py-2 rounded-lg text-base font-heading font-bold cursor-pointer transition-colors ${
-                  activeTab === "grid"
-                    ? "bg-[#FFD23F] text-[#0B1B33]"
-                    : "bg-[#0F4C96] text-white border border-white/20 hover:bg-[#1258ab]"
-                }`}
-              >
-                Allotment Grid View
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("matrix")}
-                className={`px-4 py-2 rounded-lg text-base font-heading font-bold cursor-pointer transition-colors ${
-                  activeTab === "matrix"
-                    ? "bg-[#FFD23F] text-[#0B1B33]"
-                    : "bg-[#0F4C96] text-white border border-white/20 hover:bg-[#1258ab]"
-                }`}
-              >
-                Committee Matrix View
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("queue")}
-                className={`px-4 py-2 rounded-lg text-base font-heading font-bold cursor-pointer transition-colors ${
-                  activeTab === "queue"
-                    ? "bg-[#FFD23F] text-[#0B1B33]"
-                    : "bg-[#0F4C96] text-white border border-white/20 hover:bg-[#1258ab]"
-                }`}
-              >
-                Delegate Queue View
-              </button>
-            </div>
-
-            {/* Clean Browser Frame for Actual App Screenshots */}
-            <div className="border border-white/30 rounded-lg overflow-hidden bg-[#0B1B33] shadow-2xl">
-              {/* Window Bar */}
-              <div className="bg-[#071324] px-5 py-3 border-b border-white/15 flex items-center justify-between text-base text-neutral-300">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-red-500/80 inline-block" />
-                  <span className="w-3 h-3 rounded-full bg-yellow-500/80 inline-block" />
-                  <span className="w-3 h-3 rounded-full bg-green-500/80 inline-block" />
-                  <span className="font-mono text-base text-blue-200 ml-3">
-                    delegato.app / organizer / {activeTab === "grid" ? "allotment" : activeTab === "matrix" ? "matrix" : "queue"}
-                  </span>
-                </div>
-                <div className="text-base text-neutral-400 hidden sm:block">
-                  Live Organizer Interface
-                </div>
-              </div>
-
-              {/* Real Image Render */}
-              <div className="bg-neutral-900 p-2 sm:p-4">
-                {activeTab === "grid" && (
-                  <img
-                    src={getAssetUrl("/screenshots/allotment-grid.png")}
-                    alt="Delegato Allotment Grid View"
-                    className="w-full h-auto rounded-md object-contain max-h-[720px]"
-                  />
-                )}
-                {activeTab === "matrix" && (
-                  <img
-                    src={getAssetUrl("/screenshots/allotment-matrix.png")}
-                    alt="Delegato Committee Matrix View"
-                    className="w-full h-auto rounded-md object-contain max-h-[720px]"
-                  />
-                )}
-                {activeTab === "queue" && (
-                  <img
-                    src={getAssetUrl("/screenshots/allotment-queue.png")}
-                    alt="Delegato Delegate Queue View"
-                    className="w-full h-auto rounded-md object-contain max-h-[720px]"
-                  />
-                )}
-              </div>
-            </div>
-
-            <p className="mt-3 text-base text-blue-200">
-              Actual Delegato organizer screen. Click the tabs above to see how allotments and registrations are handled.
+            <p className="text-base text-blue-200 mt-6 font-medium">
+              Free to start. No credit card needed. Ready in five minutes.
             </p>
           </div>
         </div>
       </section>
 
-      {/* 2. REALITY CHECK: THE OLD WAY VS DELEGATO */}
-      <section className="bg-white text-[#0B1B33] py-20 sm:py-28">
-        <div className="max-w-[1240px] mx-auto px-6 sm:px-10 text-left">
-          <div className="max-w-3xl mb-14 sm:mb-20">
-            <h2 className="text-4xl sm:text-6xl font-heading font-extrabold text-[#0B1B33] tracking-tight">
-              Why secretariats switch to Delegato
-            </h2>
-            <p className="text-lg sm:text-xl text-neutral-700 font-normal mt-4 leading-relaxed">
-              Every conference organizer knows the exhaustion of running registrations by hand. Here is how things change.
-            </p>
-          </div>
+      {/* ========================================================
+          SECTION 2: WHITE SECTION FOR THE STEPS
+      ======================================================== */}
+      <section className="bg-white text-[#0B1B33] py-20 sm:py-32">
+        <div className="max-w-5xl mx-auto px-6">
+          <h2 className="text-3xl sm:text-5xl font-bold text-[#0B1B33] tracking-tight">
+            How you run your conference
+          </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-            {/* The Old Way */}
-            <div className="border border-neutral-300 rounded-lg p-8 bg-neutral-50 text-left">
-              <div className="font-heading font-bold text-xl text-red-600 mb-4">
-                The spreadsheet way
-              </div>
-              <ul className="space-y-4 text-base text-neutral-700">
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-red-500">✕</span>
-                  <span>Four separate Google Forms that get out of sync within days.</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-red-500">✕</span>
-                  <span>Cross checking hundreds of blurry bank payment screenshots in WhatsApp group chats.</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-red-500">✕</span>
-                  <span>Accidentally allotting the same Security Council seat to two delegates who both paid.</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-red-500">✕</span>
-                  <span>Manually emailing individual placards and study guides until three in the morning.</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* The Delegato Way */}
-            <div className="border-2 border-[#1560BD] rounded-lg p-8 bg-[#1560BD]/5 text-left">
-              <div className="font-heading font-bold text-xl text-[#1560BD] mb-4">
-                The Delegato way
-              </div>
-              <ul className="space-y-4 text-base text-neutral-800">
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-[#1560BD]">✓</span>
-                  <span>One public link where delegates register, choose portfolios, and submit proof.</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-[#1560BD]">✓</span>
-                  <span>UPI payment reference tracking tied directly to each delegate registration.</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-[#1560BD]">✓</span>
-                  <span>Live portfolio vacancy count so nobody applies for taken seats.</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="font-bold text-[#1560BD]">✓</span>
-                  <span>Digital placards generated on publish. Delegates check their status anytime.</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. HOW IT WORKS (WITH VISUAL STEP BREAKDOWN) */}
-      <section className="bg-[#0F4C96] text-white py-20 sm:py-28 border-y border-white/20">
-        <div className="max-w-[1240px] mx-auto px-6 sm:px-10 text-left">
-          <div className="max-w-3xl mb-14 sm:mb-20">
-            <h2 className="text-4xl sm:text-6xl font-heading font-extrabold text-white tracking-tight">
-              How it works
-            </h2>
-            <p className="text-lg sm:text-xl text-blue-100 font-normal mt-4 leading-relaxed">
-              Three simple steps from blank screen to a fully allotted conference.
-            </p>
-          </div>
-
-          <div className="space-y-12 sm:space-y-16">
+          <div className="mt-16 sm:mt-24 space-y-16 sm:space-y-24">
             {/* Step 1 */}
-            <div className="pt-8 border-t border-white/20 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 items-start">
-              <div className="md:col-span-3">
-                <span className="font-heading font-extrabold text-6xl sm:text-7xl text-[#FFD23F]">
-                  01
-                </span>
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-10">
+              <div className="text-6xl sm:text-7xl font-bold text-[#1560BD] shrink-0 leading-none">
+                1
               </div>
-              <div className="md:col-span-9 max-w-2xl">
-                <h3 className="text-2xl sm:text-3xl font-heading font-extrabold text-white mb-3">
-                  Set up your committees and pricing
+              <div className="max-w-2xl">
+                <h3 className="text-2xl sm:text-3xl font-bold text-[#0B1B33]">
+                  Set up your committees
                 </h3>
-                <p className="text-lg text-blue-100 leading-relaxed">
-                  Choose committees from our prebuilt templates or add your own custom agendas. Set your delegate fees, delegation discounts, and your UPI QR code.
+                <p className="text-base sm:text-lg text-neutral-700 mt-3 leading-relaxed">
+                  Add your committees and available countries. Set registration deadlines and delegate fees. Your conference gets its own link.
                 </p>
               </div>
             </div>
 
             {/* Step 2 */}
-            <div className="pt-8 border-t border-white/20 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 items-start">
-              <div className="md:col-span-3">
-                <span className="font-heading font-extrabold text-6xl sm:text-7xl text-[#FFD23F]">
-                  02
-                </span>
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-10">
+              <div className="text-6xl sm:text-7xl font-bold text-[#1560BD] shrink-0 leading-none">
+                2
               </div>
-              <div className="md:col-span-9 max-w-2xl">
-                <h3 className="text-2xl sm:text-3xl font-heading font-extrabold text-white mb-3">
-                  Share your registration link
+              <div className="max-w-2xl">
+                <h3 className="text-2xl sm:text-3xl font-bold text-[#0B1B33]">
+                  Share the link with delegates
                 </h3>
-                <p className="text-lg text-blue-100 leading-relaxed">
-                  Post your link in Instagram bios and WhatsApp delegate groups. Delegates fill their past experience, pick their top three countries, and upload their payment screenshot.
+                <p className="text-base sm:text-lg text-neutral-700 mt-3 leading-relaxed">
+                  Send the link in school delegations and WhatsApp groups. Delegates fill their details on mobile and pick three committee preferences.
                 </p>
               </div>
             </div>
 
             {/* Step 3 */}
-            <div className="pt-8 border-t border-white/20 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 items-start">
-              <div className="md:col-span-3">
-                <span className="font-heading font-extrabold text-6xl sm:text-7xl text-[#FFD23F]">
-                  03
-                </span>
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-10">
+              <div className="text-6xl sm:text-7xl font-bold text-[#1560BD] shrink-0 leading-none">
+                3
               </div>
-              <div className="md:col-span-9 max-w-2xl">
-                <h3 className="text-2xl sm:text-3xl font-heading font-extrabold text-white mb-3">
-                  Review allotments and publish placards
+              <div className="max-w-2xl">
+                <h3 className="text-2xl sm:text-3xl font-bold text-[#0B1B33]">
+                  Verify payments and allot seats
                 </h3>
-                <p className="text-lg text-blue-100 leading-relaxed">
-                  Let the matching system allot portfolios based on preference priority, or make manual assignments with drag and drop. Hit publish and delegates get instant digital placards on their phones.
+                <p className="text-base sm:text-lg text-neutral-700 mt-3 leading-relaxed">
+                  Check payment transaction numbers in one table. Allot delegates based on their ranked choices with one click. Delegates see their placard on their phone.
                 </p>
               </div>
             </div>
@@ -340,100 +172,118 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 4. FOUNDER NOTE (DEDICATED SECTION, WARM, GENUINE) */}
-      <section className="bg-white text-[#0B1B33] py-20 sm:py-24 border-b border-neutral-200">
-        <div className="max-w-[1000px] mx-auto px-6 sm:px-10 text-left">
-          <div className="border-l-4 border-[#1560BD] pl-6 sm:pl-10">
-            <div className="font-heading font-extrabold text-2xl sm:text-3xl text-[#0B1B33] mb-4">
-              A note from the team
-            </div>
-            <p className="text-lg sm:text-xl text-neutral-800 leading-relaxed">
-              [FOUNDER NOTE] If you have ever stayed up until four in the morning cross checking bank references against messy sheets, you know why Delegato exists. We built it because running a conference should be about debate, diplomacy, and student leadership, not clerical work.
-            </p>
-            <div className="mt-6 text-base font-bold text-[#1560BD]">
-              Built by delegates for secretariats
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ========================================================
+          SECTION 3: BACK TO BLUE FOR BENEFITS WITH THIN RULES
+      ======================================================== */}
+      <section className="bg-[#1560BD] text-white py-20 sm:py-28">
+        <div className="max-w-5xl mx-auto px-6">
+          <h2 className="text-3xl sm:text-5xl font-bold text-white tracking-tight">
+            What you avoid
+          </h2>
+          <p className="text-lg sm:text-xl text-blue-100 mt-4 max-w-2xl">
+            The problems that usually keep the secretariat awake the week before the conference.
+          </p>
 
-      {/* 5. FINAL CALL TO ACTION (FLAT YELLOW CLOSING BAND) */}
-      <section className="bg-[#FFD23F] text-[#0B1B33] py-20 sm:py-28">
-        <div className="max-w-[1240px] mx-auto px-6 sm:px-10 text-left">
-          <div className="max-w-3xl">
-            <h2 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-extrabold text-[#0B1B33] tracking-tight leading-tight">
-              Start your conference today.
-            </h2>
-
-            <p className="mt-5 text-xl sm:text-2xl font-medium text-[#0B1B33] leading-relaxed">
-              Setup takes five minutes. Free to start.
-            </p>
-
-            <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-5">
-              <button
-                type="button"
-                onClick={handleStart}
-                className="bg-[#0B1B33] text-white font-heading font-extrabold text-lg px-8 py-4 rounded-lg hover:bg-black transition-colors cursor-pointer text-center"
-              >
-                Create your conference
-              </button>
-
-              <span className="text-base font-medium text-[#0B1B33]">
-                No credit card required.
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. FOOTER */}
-      <footer className="bg-[#0F4C96] text-white py-14 sm:py-16 border-t border-white/20 mt-auto">
-        <div className="max-w-[1240px] mx-auto px-6 sm:px-10 text-left">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pb-10 border-b border-white/20">
-            <div>
-              <img
-                src={getAssetUrl("/branding/delegato-logo-transparent.png")}
-                alt="Delegato"
-                className="h-10 w-auto object-contain"
-              />
-              <p className="text-base text-blue-200 mt-3 max-w-md">
-                Registration, payments, and allotment without spreadsheets.
+          <div className="mt-14 max-w-3xl">
+            <div className="pt-8 pb-8 border-t border-white/20">
+              <h3 className="text-xl sm:text-2xl font-bold text-white">
+                No more lost payment screenshots
+              </h3>
+              <p className="text-base sm:text-lg text-blue-100 mt-2 leading-relaxed">
+                Delegates submit transaction numbers and payment receipts directly in the form. You mark them verified with one click instead of scrolling through WhatsApp photos.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-6 sm:gap-10 text-base font-medium text-blue-100">
-              <Link href="/conferences" className="hover:text-white hover:underline">
-                Conferences
-              </Link>
-              <Link href="/status" className="hover:text-white hover:underline">
-                Check status
-              </Link>
-              <Link
-                href={user ? "/organizer/conferences" : "/login"}
-                className="hover:text-white hover:underline"
-              >
-                {user ? "My conferences" : "Log in"}
-              </Link>
-              <Link href="/terms" className="hover:text-white hover:underline">
-                Terms
-              </Link>
-              <a
-                href="mailto:support@delegato.app"
-                className="hover:text-white hover:underline"
-              >
-                Contact
-              </a>
+            <div className="pt-8 pb-8 border-t border-white/20">
+              <h3 className="text-xl sm:text-2xl font-bold text-white">
+                No double country claims
+              </h3>
+              <p className="text-base sm:text-lg text-blue-100 mt-2 leading-relaxed">
+                When a delegate picks their preferred portfolios, the list shows what is open. You never have two people arguing over who paid first for the United States.
+              </p>
             </div>
+
+            <div className="pt-8 pb-8 border-t border-white/20">
+              <h3 className="text-xl sm:text-2xl font-bold text-white">
+                No spreadsheet formulas breaking at midnight
+              </h3>
+              <p className="text-base sm:text-lg text-blue-100 mt-2 leading-relaxed">
+                Seat counts, delegate intake, and payment status update on their own. You do not need to build complex formulas or lock columns before sharing with your executive board.
+              </p>
+            </div>
+
+            <div className="pt-8 pb-8 border-t border-white/20">
+              <h3 className="text-xl sm:text-2xl font-bold text-white">
+                School delegations handled cleanly
+              </h3>
+              <p className="text-base sm:text-lg text-blue-100 mt-2 leading-relaxed">
+                Faculty advisors and head delegates can register their entire school group together. You see the total count, total fee, and individual delegate details in one entry.
+              </p>
+            </div>
+
+            <div className="pt-8 pb-8 border-t border-white/20 border-b">
+              <h3 className="text-xl sm:text-2xl font-bold text-white">
+                Delegates stop asking for status updates
+              </h3>
+              <p className="text-base sm:text-lg text-blue-100 mt-2 leading-relaxed">
+                Every delegate has a status page using their registration number. Once you publish allotments, their placard and committee show up on their phone.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================
+          SECTION 4: FLAT YELLOW CLOSING BAND
+      ======================================================== */}
+      <section className="bg-[#FFD23F] text-[#0B1B33] py-20 sm:py-24">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl sm:text-5xl font-bold text-[#0B1B33] tracking-tight leading-tight">
+              Start your conference today
+            </h2>
+            <p className="text-lg sm:text-xl font-medium text-[#0B1B33] mt-4">
+              Free to start. Open your registrations and share your link today.
+            </p>
+            <div className="mt-8">
+              <button
+                type="button"
+                onClick={handleCreateConferenceClick}
+                className="bg-[#0B1B33] hover:bg-black text-white font-bold text-lg px-8 py-4 rounded-lg cursor-pointer"
+              >
+                Create your conference
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================
+          FOOTER
+      ======================================================== */}
+      <footer className="bg-[#0d4182] text-white py-14 sm:py-16">
+        <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8">
+          <div className="text-base font-bold text-white">
+            Delegato, for MUN. Made in Delhi.
           </div>
 
-          <div className="pt-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-base text-blue-200">
-            <div>
-              Delegato, for MUN. Made in Delhi.
-            </div>
-            <div className="text-base text-blue-300">
-              © {new Date().getFullYear()} Delegato.
-            </div>
-          </div>
+          <nav className="flex items-center gap-6 sm:gap-8 flex-wrap text-base font-medium text-blue-100">
+            <Link href="/conferences" className="hover:text-white hover:underline">
+              Browse events
+            </Link>
+            <Link href="/status" className="hover:text-white hover:underline">
+              Check status
+            </Link>
+            <Link
+              href={user ? "/organizer/conferences" : "/login"}
+              className="hover:text-white hover:underline"
+            >
+              {user ? "My conferences" : "Log in"}
+            </Link>
+            <Link href="/terms" className="hover:text-white hover:underline">
+              Terms
+            </Link>
+          </nav>
         </div>
       </footer>
     </div>
