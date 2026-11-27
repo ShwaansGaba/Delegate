@@ -1,6 +1,8 @@
 name: Deploy Next.js to GitHub Pages
 
 on:
+  push:
+    branches: ["main", "master"]
   workflow_dispatch:
 
 permissions:
@@ -34,8 +36,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_aAKyRRw9WOv5m8zy1X6aVg_OPj0RZTL"
         run: npm run build
 
-      - name: Prevent Jekyll from skipping Next.js folders
-        run: touch ./out/.nojekyll
+      - name: Prevent Jekyll and ignore Vercel builds on gh-pages
+        run: |
+          touch ./out/.nojekyll
+          echo '{"ignoreCommand":"exit 0"}' > ./out/vercel.json
 
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
