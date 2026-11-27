@@ -5,12 +5,15 @@ import { Providers } from "@/components/Providers";
 export const metadata: Metadata = {
   title: {
     template: "%s | Delegato",
-    default: "Delegato | Student Events & MUN Platform",
+    default: "Delegato: run your MUN in one link",
   },
-  description: "Official registration, allotment, and conference management platform for student events and Model United Nations.",
+  description: "Registration, payments, and allotment without spreadsheets. Free to start.",
   icons: {
-    icon: "/branding/delegato-icon.jpg",
-    apple: "/branding/delegato-icon.jpg",
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/favicon.png", type: "image/png" },
+    ],
+    apple: "/branding/delegato-icon-tight.jpg",
   },
 };
 
